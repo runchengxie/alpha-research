@@ -21,7 +21,7 @@ from .research_dataset import build_research_dataset_from_modeling_state
 ensure_numpy_nan_alias()
 import pandas as pd  # noqa: E402
 
-from ..backtesting.rebalance import get_rebalance_dates  # noqa: E402
+from .rebalance_calendar import get_rebalance_dates  # noqa: E402
 
 logger = logging.getLogger("cstree")
 

@@ -7,7 +7,6 @@ from typing import Any, Optional, cast
 import numpy as np
 import pandas as pd
 
-from ..backtesting.rebalance import estimate_rebalance_gap, get_rebalance_dates
 from ..contracts.rebalance import _sample_rebalance_frame
 from ..metrics import bucket_ic_summary
 from ..pipeline.freshness_overlay import apply_freshness_overlay
@@ -17,6 +16,7 @@ from .evaluation import (
     _record_primary_period_metrics,
     _record_quantile_turnover_bucket_metrics,
 )
+from .rebalance_calendar import estimate_rebalance_gap, get_rebalance_dates
 
 logger = logging.getLogger("cstree")
 

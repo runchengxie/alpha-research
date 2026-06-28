@@ -7,8 +7,6 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
-from ..backtesting.engine import backtest_topk
-from ..backtesting.evaluation import _evaluate_walk_forward_backtest
 from ..contracts.rebalance import _sample_rebalance_frame
 from ..metrics import (
     daily_ic_series,
@@ -355,6 +353,33 @@ def _walk_forward_feature_importance_top(
     ]
 
 
+def _evaluate_injected_walk_forward_backtest(
+    window_meta: dict,
+    *,
+    model_w: Any,
+    direction: float,
+    context: Mapping[str, Any],
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
+    if not context["wf_backtest_enabled"]:
+        return None, None, None
+
+    evaluator = context.get("walk_forward_backtest_fn")
+    backtest_topk_fn = context.get("backtest_topk_fn")
+    if evaluator is None or backtest_topk_fn is None:
+        raise SystemExit(
+            "eval.walk_forward.backtest requires injected walk_forward_backtest_fn "
+            "and backtest_topk_fn from the strategy pipeline."
+        )
+    return evaluator(
+        window_meta,
+        model_w=model_w,
+        direction=direction,
+        context=context,
+        valid_dates_set=context["valid_dates_set"],
+        backtest_topk_fn=backtest_topk_fn,
+    )
+
+
 def _update_walk_forward_result(
     result: dict[str, Any],
     *,
@@ -469,13 +494,11 @@ def _evaluate_walk_forward_window(
         context=context,
         signal_col_w=signal_col_w,
     )
-    bt_stats_w, bt_benchmark_stats_w, bt_active_stats_w = _evaluate_walk_forward_backtest(
+    bt_stats_w, bt_benchmark_stats_w, bt_active_stats_w = _evaluate_injected_walk_forward_backtest(
         window_meta,
         model_w=model_w,
         direction=direction,
         context=context,
-        valid_dates_set=context["valid_dates_set"],
-        backtest_topk_fn=context.get("backtest_topk_fn", backtest_topk),
     )
 
     _update_walk_forward_result(

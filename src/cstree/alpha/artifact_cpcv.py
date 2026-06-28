@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from ..backtesting.metrics import summarize_period_returns
 from ..metrics import summarize_active_returns
 from ..pipeline.eval_benchmark import build_benchmark_series
+from ..return_metrics import summarize_period_returns
 from . import cpcv as cpcv_module
 from .transform import apply_score_postprocess
 

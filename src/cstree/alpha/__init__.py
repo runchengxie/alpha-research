@@ -16,6 +16,7 @@ __all__ = [
     "overfitting_diagnostics",
     "pbo",
     "period_evaluation",
+    "rebalance_calendar",
     "research_dataset",
     "research_model",
     "signal_artifact",

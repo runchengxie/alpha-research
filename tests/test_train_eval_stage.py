@@ -215,6 +215,7 @@ def _services() -> TrainEvalServices:
     return TrainEvalServices(
         backtest_topk_fn=lambda *args, **kwargs: None,
         bucket_ic_summary_fn=lambda *args, **kwargs: None,
+        walk_forward_backtest_fn=lambda *args, **kwargs: None,
     )
 
 

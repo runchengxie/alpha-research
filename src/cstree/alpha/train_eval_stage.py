@@ -271,6 +271,7 @@ def _build_walk_forward_context(
         "backtest_top_k": backtest_settings.backtest_top_k,
         "wf_feature_top_k": walk_forward_settings.wf_feature_top_k,
         "backtest_topk_fn": services.backtest_topk_fn,
+        "walk_forward_backtest_fn": services.walk_forward_backtest_fn,
     }
 
 
