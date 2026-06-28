@@ -22,11 +22,11 @@ from ..metrics import (
     summarize_ic,
     topk_positive_ratio,
 )
-from ..modeling import build_model, fit_model
 from ..rebalance import get_rebalance_dates
 from ..return_metrics import summarize_period_returns
-from ..split import build_sample_weight, time_series_cv_ic
-from ..transform import apply_score_postprocess
+from .modeling import build_model, fit_model
+from .split import build_sample_weight, time_series_cv_ic
+from .transform import apply_score_postprocess
 
 logger = logging.getLogger("cstree")
 

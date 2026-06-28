@@ -12,8 +12,8 @@ import yaml
 from ..backtest import summarize_period_returns
 from ..metrics import summarize_active_returns
 from ..pipeline.eval_benchmark import build_benchmark_series
-from ..transform import apply_score_postprocess
 from . import cpcv as cpcv_module
+from .transform import apply_score_postprocess
 
 
 @dataclass(frozen=True)
