@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from cstree.alpha.rebalance_calendar import estimate_rebalance_gap, get_rebalance_dates
+from cstree.alpha.rebalance_calendar import (
+    estimate_rebalance_gap,
+    get_rebalance_dates,
+    sample_rebalance_frame,
+)
 
 
 def test_rebalance_calendar_selects_period_ends() -> None:
@@ -29,3 +33,40 @@ def test_estimate_rebalance_gap_uses_calendar_positions() -> None:
     rebalance_dates = [pd.Timestamp("2024-01-05"), pd.Timestamp("2024-01-12")]
 
     assert estimate_rebalance_gap(trade_dates, rebalance_dates) == 5.0
+
+
+def test_sample_rebalance_frame_sorts_and_filters_dates() -> None:
+    frame = pd.DataFrame(
+        {
+            "trade_date": pd.to_datetime(
+                [
+                    "2024-01-12",
+                    "2024-01-05",
+                    "2024-01-19",
+                    "2024-01-12",
+                ]
+            ),
+            "symbol": ["CCC", "AAA", "DDD", "BBB"],
+            "pred": [3.0, 1.0, 4.0, 2.0],
+        }
+    )
+
+    sampled, rebalance_dates = sample_rebalance_frame(
+        frame,
+        frequency="W",
+        valid_dates={pd.Timestamp("2024-01-05"), pd.Timestamp("2024-01-12")},
+        allowed_dates=pd.DatetimeIndex(["2024-01-12", "2024-01-19"]),
+    )
+
+    assert rebalance_dates == [pd.Timestamp("2024-01-12")]
+    assert sampled["symbol"].tolist() == ["CCC", "BBB"]
+
+
+def test_sample_rebalance_frame_handles_empty_input() -> None:
+    frame = pd.DataFrame(columns=["trade_date", "symbol"])
+
+    sampled, rebalance_dates = sample_rebalance_frame(frame, frequency="W")
+
+    assert sampled.empty
+    assert sampled.columns.tolist() == ["trade_date", "symbol"]
+    assert rebalance_dates == []
