@@ -81,7 +81,7 @@ def _permutation_test_ic(
     scores = []
     eval_date_values = sorted(set(pd.to_datetime(eval_dates))) if eval_dates else None
     if eval_date_values:
-        from ..date_slices import _build_trade_date_slices, _slice_trade_dates
+        from .date_slices import _build_trade_date_slices, _slice_trade_dates
 
         (
             test_data_sorted,

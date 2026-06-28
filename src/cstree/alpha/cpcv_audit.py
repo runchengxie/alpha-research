@@ -8,8 +8,8 @@ from typing import Any
 
 import pandas as pd
 
-from ..date_slices import _build_trade_date_slices
 from . import cpcv as cpcv_module
+from .date_slices import _build_trade_date_slices
 
 logger = logging.getLogger("cstree")
 

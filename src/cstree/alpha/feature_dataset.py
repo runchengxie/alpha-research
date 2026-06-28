@@ -9,7 +9,7 @@ from typing import Any, cast
 import numpy as np
 
 from ..compat import ensure_numpy_nan_alias
-from ..pipeline.dataset_sampling import (
+from .dataset_sampling import (
     _normalize_extra_sample_dates,
     apply_feature_missing_fill,
     build_modeling_dataset,
