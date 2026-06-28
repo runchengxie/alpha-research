@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from ..contracts.rebalance import _sample_rebalance_frame
-from ..metrics import bucket_ic_summary
 from .evaluation import (
     _permutation_test_ic,
     _postprocess_pred_column,
@@ -16,6 +15,7 @@ from .evaluation import (
     _record_quantile_turnover_bucket_metrics,
 )
 from .freshness_overlay import apply_freshness_overlay
+from .metrics import bucket_ic_summary
 from .rebalance_calendar import estimate_rebalance_gap, get_rebalance_dates
 
 logger = logging.getLogger("cstree")

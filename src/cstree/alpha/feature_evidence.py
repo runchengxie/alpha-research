@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from ..metrics import daily_ic_series, quantile_returns, summarize_ic
+from .metrics import daily_ic_series, quantile_returns, summarize_ic
 
 
 def _resolve_path(path_text: str | Path | None, *, base_dir: Path | None = None) -> Path | None:

@@ -7,7 +7,7 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
-from ..metrics import (
+from .metrics import (
     assign_daily_quantile_bucket,
     daily_ic_series,
     estimate_turnover,

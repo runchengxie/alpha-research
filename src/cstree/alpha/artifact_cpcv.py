@@ -9,10 +9,10 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from ..metrics import summarize_active_returns
-from ..return_metrics import summarize_period_returns
 from . import cpcv as cpcv_module
 from .benchmarking import build_benchmark_series
+from .metrics import summarize_active_returns
+from .return_metrics import summarize_period_returns
 from .transform import apply_score_postprocess
 
 

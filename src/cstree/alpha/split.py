@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
 
-from ..metrics import daily_ic_series
+from .metrics import daily_ic_series
 from .modeling import build_model, fit_model, resolve_model_spec
 from .transform import apply_score_postprocess
 

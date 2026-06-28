@@ -8,7 +8,9 @@ import numpy as np
 import pandas as pd
 
 from ..contracts.rebalance import _sample_rebalance_frame
-from ..metrics import (
+from .date_slices import _apply_model_train_window, _slice_trade_dates
+from .evaluation import _permutation_test_ic, _postprocess_pred_column
+from .metrics import (
     daily_ic_series,
     estimate_turnover,
     hit_rate,
@@ -17,8 +19,6 @@ from ..metrics import (
     summarize_ic,
     topk_positive_ratio,
 )
-from .date_slices import _apply_model_train_window, _slice_trade_dates
-from .evaluation import _permutation_test_ic, _postprocess_pred_column
 from .modeling import build_model, feature_importance_frame, fit_model
 from .split import build_sample_weight, time_series_cv_ic
 

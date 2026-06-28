@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from ..metrics import daily_ic_series, summarize_ic
+from .metrics import daily_ic_series, summarize_ic
 from .modeling import build_model, fit_model
 from .split import build_sample_weight
 from .train_eval_contracts import (

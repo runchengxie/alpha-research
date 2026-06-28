@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from ..metrics import daily_ic_series, summarize_ic
+from .metrics import daily_ic_series, summarize_ic
 
 
 def _resolve_path(path_text: str | Path | None) -> Path | None:
