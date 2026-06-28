@@ -29,23 +29,26 @@ def apply_rebalance_buffer(
     candidate_order: list[str] = [code for code in ranked_codes if code in keep_set]
 
     preferred = set(ranked_codes[:entry_limit]) if entry_limit > 0 else set()
-    for code in ranked_codes:
-        if len(candidate_order) >= k:
-            break
-        if code in candidate_order:
-            continue
-        if preferred and code not in preferred:
-            continue
-        candidate_order.append(code)
-
-    if len(candidate_order) < k:
-        for code in ranked_codes:
-            if len(candidate_order) >= k:
-                break
-            if code not in candidate_order:
-                candidate_order.append(code)
-
+    _append_ranked_candidates(candidate_order, ranked_codes, k, allowed=preferred or None)
+    _append_ranked_candidates(candidate_order, ranked_codes, k)
     return candidate_order
+
+
+def _append_ranked_candidates(
+    selected: list[str],
+    ranked_codes: list[str],
+    k: int,
+    *,
+    allowed: set[str] | None = None,
+) -> None:
+    for code in ranked_codes:
+        if len(selected) >= k:
+            break
+        if code in selected:
+            continue
+        if allowed is not None and code not in allowed:
+            continue
+        selected.append(code)
 
 
 def apply_rank_offset(ranked_codes: list[str], rank_offset: int = 0) -> list[str]:
