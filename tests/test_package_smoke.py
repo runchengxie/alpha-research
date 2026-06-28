@@ -16,6 +16,8 @@ OWNED_MODULES = (
     "cstree.alpha.feature_evidence",
     "cstree.alpha.modeling",
     "cstree.alpha.train_eval_stage",
+    "cstree.alpha.split",
+    "cstree.alpha.transform",
 )
 
 
