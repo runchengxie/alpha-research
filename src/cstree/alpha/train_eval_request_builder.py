@@ -241,4 +241,6 @@ def _services_from_kwargs(reader: _TrainEvalKwargReader) -> TrainEvalServices:
         backtest_topk_fn=get("backtest_topk_fn"),
         bucket_ic_summary_fn=get("bucket_ic_summary_fn"),
         walk_forward_backtest_fn=get("walk_forward_backtest_fn"),
+        period_eval_fn=get("period_eval_fn"),
+        live_snapshot_fn=get("live_snapshot_fn"),
     )

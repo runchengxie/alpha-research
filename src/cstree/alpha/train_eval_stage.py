@@ -6,21 +6,17 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from ..pipeline.eval import _evaluate_period
-from ..pipeline.live import _prepare_live_snapshot
-from ..pipeline.stats import (
-    _compute_rolling_ic,
-    _compute_rolling_sharpe,
-    _latest_rolling_stats,
-    build_recency_diagnostics,
-)
-from ..pipeline.support import (
-    _annotate_positions_window,
-    _summarize_walk_forward_feature_stability,
-)
 from .modeling import feature_importance_frame
 from .split import time_series_cv_ic
 from .train_eval_contracts import TrainEvalData, TrainEvalRequest
+from .train_eval_diagnostics import (
+    _annotate_positions_window,
+    _compute_rolling_ic,
+    _compute_rolling_sharpe,
+    _latest_rolling_stats,
+    _summarize_walk_forward_feature_stability,
+    build_recency_diagnostics,
+)
 from .train_eval_fit import (
     _TrainFitResult,
     fit_model_and_score_train as _fit_model_and_score_train,
@@ -433,7 +429,7 @@ def _prepare_stage_live_state(
     signal_settings = request.signal
     live_settings = request.live
     backtest_settings = request.backtest
-    return _prepare_live_snapshot(
+    return request.services.live_snapshot_fn(
         request.data.df_features,
         model,
         context={
@@ -559,7 +555,7 @@ def _evaluate_main_period(
         backtest_signal_direction=backtest_signal_direction,
     )
     test_df_full = _test_window_full_data(data)
-    eval_main = _evaluate_period(
+    eval_main = request.services.period_eval_fn(
         "Test",
         model,
         test_df_full,

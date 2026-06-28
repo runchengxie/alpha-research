@@ -158,6 +158,8 @@ class TrainEvalServices:
     backtest_topk_fn: Any
     bucket_ic_summary_fn: Any
     walk_forward_backtest_fn: Any
+    period_eval_fn: Any
+    live_snapshot_fn: Any
 
 
 def _data_window_kwargs(data: TrainEvalData) -> dict[str, Any]:
@@ -310,6 +312,8 @@ def _backtest_reporting_kwargs(
         "backtest_topk_fn": services.backtest_topk_fn,
         "bucket_ic_summary_fn": services.bucket_ic_summary_fn,
         "walk_forward_backtest_fn": services.walk_forward_backtest_fn,
+        "period_eval_fn": services.period_eval_fn,
+        "live_snapshot_fn": services.live_snapshot_fn,
     }
 
 

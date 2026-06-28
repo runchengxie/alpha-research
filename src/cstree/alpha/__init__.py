@@ -30,6 +30,7 @@ __all__ = [
     "split",
     "train_eval",
     "train_eval_contracts",
+    "train_eval_diagnostics",
     "train_eval_fit",
     "train_eval_request_builder",
     "train_eval_result",

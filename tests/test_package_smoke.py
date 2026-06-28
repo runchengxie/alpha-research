@@ -25,6 +25,7 @@ OWNED_MODULES = (
     "cstree.alpha.research_model",
     "cstree.alpha.signal_stability",
     "cstree.alpha.train_eval_contracts",
+    "cstree.alpha.train_eval_diagnostics",
     "cstree.alpha.train_eval_request_builder",
     "cstree.alpha.train_eval_result",
     "cstree.alpha.train_eval_stage",

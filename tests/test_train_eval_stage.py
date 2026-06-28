@@ -216,6 +216,8 @@ def _services() -> TrainEvalServices:
         backtest_topk_fn=lambda *args, **kwargs: None,
         bucket_ic_summary_fn=lambda *args, **kwargs: None,
         walk_forward_backtest_fn=lambda *args, **kwargs: None,
+        period_eval_fn=lambda *args, **kwargs: None,
+        live_snapshot_fn=lambda *args, **kwargs: _disabled_live_snapshot(),
     )
 
 
@@ -401,15 +403,20 @@ def _feature_importance_stub(*args, **kwargs) -> tuple[pd.DataFrame, str]:
 
 def test_run_train_eval_stage_honors_main_permutation_switch(monkeypatch) -> None:
     captured = {}
+    request = replace(
+        _request(),
+        services=replace(
+            _request().services,
+            period_eval_fn=lambda *args, **kwargs: _empty_period_eval_result(
+                captured,
+                **kwargs,
+            ),
+            live_snapshot_fn=_disabled_live_snapshot,
+        ),
+    )
 
     monkeypatch.setattr(train_eval_stage, "time_series_cv_ic", lambda *args, **kwargs: [])
     monkeypatch.setattr(train_eval_stage, "_fit_model_and_score_train", _fake_train_fit_result)
-    monkeypatch.setattr(train_eval_stage, "_prepare_live_snapshot", _disabled_live_snapshot)
-    monkeypatch.setattr(
-        train_eval_stage,
-        "_evaluate_period",
-        lambda *args, **kwargs: _empty_period_eval_result(captured, **kwargs),
-    )
     monkeypatch.setattr(
         train_eval_stage,
         "_run_walk_forward_evaluation",
@@ -417,7 +424,7 @@ def test_run_train_eval_stage_honors_main_permutation_switch(monkeypatch) -> Non
     )
     monkeypatch.setattr(train_eval_stage, "feature_importance_frame", _feature_importance_stub)
 
-    result = train_eval_stage.run_train_eval_stage(request=_request())
+    result = train_eval_stage.run_train_eval_stage(request=request)
 
     assert captured["run_perm_test"] is False
     assert result["perm_stats"] is None
