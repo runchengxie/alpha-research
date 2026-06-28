@@ -15,6 +15,7 @@ OWNED_MODULES = (
     "cstree.alpha.overfitting_diagnostics",
     "cstree.alpha.feature_evidence",
     "cstree.alpha.modeling",
+    "cstree.alpha.signal_stability",
     "cstree.alpha.train_eval_stage",
     "cstree.alpha.split",
     "cstree.alpha.transform",
