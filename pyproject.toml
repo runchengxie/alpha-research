@@ -23,6 +23,7 @@ dev = [
   "basedpyright>=1.39.9",
   "pytest>=9.0.3",
   "ruff>=0.8",
+  "ty>=0.0.55",
 ]
 
 [tool.setuptools]
@@ -51,6 +52,16 @@ max-complexity = 18
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
+[tool.ty.src]
+include = ["src/cstree/__init__.py"]
+exclude = [
+  ".venv",
+  "artifacts",
+  "build",
+  "dist",
+  "outputs",
+]
 
 [tool.uv.sources]
 market-data-platform = { path = "../market-data-platform", editable = true }
