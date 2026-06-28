@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from ..contracts.rebalance import _sample_rebalance_frame
+from ..date_slices import _apply_model_train_window, _slice_trade_dates
 from ..metrics import (
     daily_ic_series,
     estimate_turnover,
@@ -16,10 +17,6 @@ from ..metrics import (
     regression_error_metrics,
     summarize_ic,
     topk_positive_ratio,
-)
-from ..pipeline.dates import (
-    _apply_model_train_window,
-    _slice_trade_dates,
 )
 from .evaluation import _permutation_test_ic, _postprocess_pred_column
 from .modeling import build_model, feature_importance_frame, fit_model

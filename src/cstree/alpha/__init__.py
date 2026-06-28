@@ -2,6 +2,7 @@
 
 __all__ = [
     "artifact_cpcv",
+    "benchmarking",
     "cpcv",
     "cpcv_audit",
     "dynamic_signal_ensemble",
@@ -12,6 +13,8 @@ __all__ = [
     "feature_dataset",
     "feature_engineering",
     "feature_evidence",
+    "feature_windows",
+    "freshness_overlay",
     "modeling",
     "overfitting_diagnostics",
     "pbo",
@@ -27,4 +30,5 @@ __all__ = [
     "train_eval_stage",
     "transform",
     "walk_forward",
+    "walk_forward_windows",
 ]

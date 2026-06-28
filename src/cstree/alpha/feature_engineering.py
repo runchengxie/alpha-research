@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pandas_ta as ta
 
-from ..pipeline.support import _parse_window_config, parse_feature_windows
+from .feature_windows import _parse_window_config, parse_feature_windows
 
 
 def _numeric_column_or_nan(group: pd.DataFrame, column: str) -> pd.Series:

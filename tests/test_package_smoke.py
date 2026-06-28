@@ -10,15 +10,19 @@ from cstree import alpha
 
 OWNED_MODULES = (
     "cstree.alpha.signal_artifact",
+    "cstree.alpha.benchmarking",
     "cstree.alpha.cpcv",
     "cstree.alpha.pbo",
     "cstree.alpha.overfitting_diagnostics",
     "cstree.alpha.feature_evidence",
+    "cstree.alpha.feature_windows",
+    "cstree.alpha.freshness_overlay",
     "cstree.alpha.modeling",
     "cstree.alpha.research_dataset",
     "cstree.alpha.research_model",
     "cstree.alpha.signal_stability",
     "cstree.alpha.train_eval_stage",
+    "cstree.alpha.walk_forward_windows",
     "cstree.alpha.split",
     "cstree.alpha.transform",
 )

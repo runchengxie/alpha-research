@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 
 from ..pipeline.contracts import TrainEvalData, TrainEvalRequest
-from ..pipeline.dates import build_walk_forward_windows
 from ..pipeline.eval import _evaluate_period
 from ..pipeline.live import _prepare_live_snapshot
 from ..pipeline.stats import (
@@ -33,6 +32,7 @@ from .train_eval_fit import (
     fit_model_and_score_train as _fit_model_and_score_train,
 )
 from .walk_forward import _evaluate_walk_forward_window
+from .walk_forward_windows import build_walk_forward_windows
 
 logger = logging.getLogger("cstree")
 

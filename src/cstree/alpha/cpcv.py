@@ -12,7 +12,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from ..benchmarking import build_benchmark_series
 from ..date_slices import _apply_model_train_window, _slice_trade_dates
 from ..metrics import (
     daily_ic_series,
@@ -23,6 +22,7 @@ from ..metrics import (
     topk_positive_ratio,
 )
 from ..return_metrics import summarize_period_returns
+from .benchmarking import build_benchmark_series
 from .modeling import build_model, fit_model
 from .rebalance_calendar import get_rebalance_dates
 from .split import build_sample_weight, time_series_cv_ic
