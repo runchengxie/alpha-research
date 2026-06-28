@@ -7,10 +7,11 @@ modeling helpers, walk-forward/CPCV/PBO diagnostics, signal artifacts, and
 dynamic signal ensemble tooling.
 
 Current status: transitional stage-3 split. The package is physically separated
-from `cross-sectional-trees`, but some modules still import shared workspace
-helpers from `cstree.pipeline`, `cstree.contracts`, `cstree.benchmarking`, and
-`cstree.backtesting`. Run it from `research-workspace` with the sibling
-submodules checked out until those shared interfaces are extracted.
+from `cross-sectional-trees`, and workspace gates prevent runtime imports into
+`cstree.pipeline`, `cstree.backtesting`, and strategy-pipeline contract helpers.
+Full research runs are still orchestrated by `cross-sectional-trees`, but this
+package owns the alpha research layer and should be able to train, diagnose, and
+emit signal artifacts without importing portfolio backtesting internals.
 
 ## Local checks
 
