@@ -76,10 +76,6 @@ exclude = [
   "dist",
   "outputs",
 ]
-extraPaths = [
-  "../cross-sectional-trees/src",
-  "../portfolio-backtester/src",
-]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
