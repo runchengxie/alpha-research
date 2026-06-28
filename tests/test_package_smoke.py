@@ -11,6 +11,7 @@ from cstree import alpha
 OWNED_MODULES = (
     "cstree.alpha.signal_artifact",
     "cstree.alpha.benchmarking",
+    "cstree.alpha.compat",
     "cstree.alpha.cpcv",
     "cstree.alpha.dataset",
     "cstree.alpha.dataset_sampling",

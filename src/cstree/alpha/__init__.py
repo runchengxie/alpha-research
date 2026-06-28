@@ -3,6 +3,7 @@
 __all__ = [
     "artifact_cpcv",
     "benchmarking",
+    "compat",
     "cpcv",
     "cpcv_audit",
     "dataset",

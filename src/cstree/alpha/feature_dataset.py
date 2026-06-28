@@ -8,7 +8,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from ..compat import ensure_numpy_nan_alias
+from .compat import ensure_numpy_nan_alias
 from .dataset_sampling import (
     _normalize_extra_sample_dates,
     apply_feature_missing_fill,
