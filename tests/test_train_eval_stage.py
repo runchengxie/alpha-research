@@ -5,7 +5,9 @@ from dataclasses import replace
 import numpy as np
 import pandas as pd
 import pytest
-from cstree.pipeline.contracts import (
+
+from cstree.alpha import train_eval_stage
+from cstree.alpha.train_eval_contracts import (
     TrainEvalBacktestSettings,
     TrainEvalData,
     TrainEvalFeatureTarget,
@@ -17,8 +19,6 @@ from cstree.pipeline.contracts import (
     TrainEvalSignalSettings,
     TrainEvalWalkForwardSettings,
 )
-
-from cstree.alpha import train_eval_stage
 from cstree.alpha.train_eval_stage import _industry_exposure_columns
 
 
