@@ -41,11 +41,11 @@ class ResearchDataset:
 
     def frame_counts(self) -> dict[str, int]:
         return {
-            "raw_panel_rows": int(len(self.raw_panel)),
-            "raw_feature_label_rows": int(len(self.raw_feature_label)),
-            "infer_rows": int(len(self.infer_frame)),
-            "learn_rows": int(len(self.learn_frame)),
-            "backtest_pricing_rows": int(len(self.backtest_pricing_frame)),
+            "raw_panel_rows": len(self.raw_panel),
+            "raw_feature_label_rows": len(self.raw_feature_label),
+            "infer_rows": len(self.infer_frame),
+            "learn_rows": len(self.learn_frame),
+            "backtest_pricing_rows": len(self.backtest_pricing_frame),
         }
 
     def fetch_learn(self, segment: str = "all") -> pd.DataFrame:
@@ -225,8 +225,8 @@ def build_research_dataset_from_modeling_state(
     )
     dropped = modeling_state.get("dropped_date_counts")
     metadata = {
-        "valid_dates": int(len(modeling_state.get("valid_dates", []))),
-        "dropped_dates": int(len(dropped)) if dropped is not None else 0,
+        "valid_dates": len(modeling_state.get("valid_dates", [])),
+        "dropped_dates": len(dropped) if dropped is not None else 0,
         "min_symbols_per_date": int(min_symbols_per_date),
         "universe_by_date_applied": bool(universe_by_date_applied),
     }

@@ -72,8 +72,7 @@ def _normalize_long_frame(
     out = frame.copy()
     out[date_col] = _coerce_date_column(out[date_col])
     out[symbol_col] = out[symbol_col].astype(str)
-    out = out.dropna(subset=[date_col, symbol_col])
-    return out
+    return out.dropna(subset=[date_col, symbol_col])
 
 
 def _pivot_panel(

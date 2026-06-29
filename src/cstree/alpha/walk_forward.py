@@ -195,10 +195,7 @@ def _resolve_walk_forward_train_direction(
     train_ic_raw = daily_ic_series(train_eval, context["target"], "pred")
     train_ic_raw_stats = summarize_ic(train_ic_raw)
     raw_mean = train_ic_raw_stats.get("mean", np.nan)
-    if np.isfinite(raw_mean) and raw_mean != 0:
-        direction = float(np.sign(raw_mean))
-    else:
-        direction = 1.0
+    direction = float(np.sign(raw_mean)) if np.isfinite(raw_mean) and raw_mean != 0 else 1.0
     return direction, train_ic_raw_stats
 
 
@@ -285,7 +282,7 @@ def _walk_forward_permutation_stats(
         "mean": float(np.nanmean(perm_scores)),
         "std": float(np.nanstd(perm_scores)),
         "scores": [float(score) for score in perm_scores],
-        "runs": int(len(perm_scores)),
+        "runs": len(perm_scores),
     }
 
 

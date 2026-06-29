@@ -22,7 +22,7 @@ class FixedScoreArtifactModel:
         self.score_col = str(score_col)
         self.is_fitted_ = False
 
-    def fit(self, frame: pd.DataFrame) -> "FixedScoreArtifactModel":
+    def fit(self, frame: pd.DataFrame) -> FixedScoreArtifactModel:
         if self.score_col not in frame.columns:
             raise ValueError(f"fixed_score_artifact score column not found: {self.score_col}")
         self.is_fitted_ = True
@@ -130,15 +130,12 @@ def _fit_ranker_model(
 def _generic_feature_importance(model: Any) -> tuple[np.ndarray, str]:
     if hasattr(model, "feature_importances_"):
         return (
-            np.asarray(getattr(model, "feature_importances_"), dtype=float).reshape(-1),
+            np.asarray(model.feature_importances_, dtype=float).reshape(-1),
             "feature_importances",
         )
     if hasattr(model, "coef_"):
-        coef = np.asarray(getattr(model, "coef_"), dtype=float)
-        if coef.ndim > 1:
-            coef = np.mean(np.abs(coef), axis=0)
-        else:
-            coef = np.abs(coef)
+        coef = np.asarray(model.coef_, dtype=float)
+        coef = np.mean(np.abs(coef), axis=0) if coef.ndim > 1 else np.abs(coef)
         return np.asarray(coef, dtype=float).reshape(-1), "coef_abs"
     return np.array([], dtype=float), "none"
 

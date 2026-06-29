@@ -5,7 +5,7 @@ import csv
 import hashlib
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -337,7 +337,7 @@ def candidate_freeze_manifest(
     }
     return {
         "schema_version": 1,
-        "frozen_at": datetime.now(timezone.utc).isoformat(),
+        "frozen_at": datetime.now(UTC).isoformat(),
         "lifecycle_stage": lifecycle_stage,
         "paper_start_date": paper_start_date,
         "paper_end_date": paper_end_date,

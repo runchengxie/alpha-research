@@ -102,7 +102,7 @@ def test_feature_importance_frame_accepts_model_type_hint():
 
 
 def test_resolve_model_spec_rejects_unknown_type():
-    with pytest.raises(ValueError, match="Unsupported model.type"):
+    with pytest.raises(ValueError, match=r"Unsupported model\.type"):
         resolve_model_spec({"type": "random_forest", "params": {}})
 
 

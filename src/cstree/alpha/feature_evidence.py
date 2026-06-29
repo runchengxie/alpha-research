@@ -437,7 +437,8 @@ def _factor_ic_input_path(cfg: dict[str, Any], *, config_dir: Path) -> Path:
     )
     if path is None or not path.exists():
         raise SystemExit(
-            "feature_evidence.factor_ic_file, dataset_file, or scored_file is required for factor-ic."
+            "feature_evidence.factor_ic_file, dataset_file, or scored_file is required "
+            "for factor-ic."
         )
     return path
 

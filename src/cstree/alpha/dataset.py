@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import pandas as pd
 
@@ -13,8 +12,8 @@ class DatasetSchema:
     date_col: str
     instrument_col: str
     price_col: str
-    label_col: Optional[str]
-    tradable_col: Optional[str]
+    label_col: str | None
+    tradable_col: str | None
     feature_cols: list[str]
     extra_cols: list[str] | None = None
 

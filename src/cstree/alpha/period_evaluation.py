@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -120,8 +120,8 @@ def _record_period_permutation(
     label_prefix: str,
     signal_direction: float,
     rebalance_dates_eval: list[pd.Timestamp],
-    perm_train_df: Optional[pd.DataFrame],
-    perm_test_df: Optional[pd.DataFrame],
+    perm_train_df: pd.DataFrame | None,
+    perm_test_df: pd.DataFrame | None,
 ) -> None:
     if perm_train_df is None or perm_test_df is None:
         raise SystemExit("Permutation test requested but data was not provided.")
@@ -161,7 +161,7 @@ def _record_period_permutation(
         "mean": float(perm_mean),
         "std": float(perm_std),
         "scores": [float(score) for score in perm_scores],
-        "runs": int(len(perm_scores)),
+        "runs": len(perm_scores),
     }
 
 
@@ -201,8 +201,8 @@ def _score_and_record_period_eval_metrics(
     context: Mapping[str, Any],
     label_prefix: str,
     run_perm_test: bool,
-    perm_train_df: Optional[pd.DataFrame],
-    perm_test_df: Optional[pd.DataFrame],
+    perm_train_df: pd.DataFrame | None,
+    perm_test_df: pd.DataFrame | None,
 ) -> pd.DataFrame:
     eval_df_full = _score_period_frame(
         test_df_full,

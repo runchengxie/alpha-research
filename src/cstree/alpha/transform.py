@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -11,7 +10,7 @@ def apply_cross_sectional_transform(
     data: pd.DataFrame,
     features: list[str],
     method: str,
-    winsorize_pct: Optional[float],
+    winsorize_pct: float | None,
     group_cols: Sequence[str] | None = None,
 ) -> pd.DataFrame:
     if method == "none":
@@ -51,7 +50,7 @@ def apply_cross_sectional_series_transform(
     data: pd.DataFrame,
     column: str,
     method: str,
-    winsorize_pct: Optional[float] = None,
+    winsorize_pct: float | None = None,
     group_cols: Sequence[str] | None = None,
 ) -> pd.Series:
     if method == "none":
@@ -81,7 +80,7 @@ def neutralize_cross_sectional_series(
     controls: Sequence[str],
     *,
     strength: float = 1.0,
-    min_obs: Optional[int] = None,
+    min_obs: int | None = None,
 ) -> pd.Series:
     control_cols = [str(col).strip() for col in controls if str(col).strip()]
     if not control_cols:
@@ -165,7 +164,7 @@ def apply_score_postprocess(
     method: str,
     columns: Sequence[str],
     strength: float = 1.0,
-    min_obs: Optional[int] = None,
+    min_obs: int | None = None,
 ) -> pd.Series:
     method_text = str(method or "none").strip().lower()
     if method_text == "none":

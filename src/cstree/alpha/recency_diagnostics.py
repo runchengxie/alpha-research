@@ -132,8 +132,7 @@ def _prepare_recency_series(series: pd.Series | None) -> pd.Series:
     work.index = pd.to_datetime(work.index, errors="coerce")
     work = work[work.index.notna()]
     work = pd.to_numeric(work, errors="coerce")
-    work = work[work.notna()].astype(float).sort_index()
-    return work
+    return work[work.notna()].astype(float).sort_index()
 
 
 def _latest_recency_end(series_list: Iterable[pd.Series]) -> pd.Timestamp | None:
@@ -358,7 +357,7 @@ def compute_rolling_ic(
     if not np.isfinite(obs_per_year) or obs_per_year <= 0:
         return results, np.nan
     for months in window_months:
-        window_obs = int(round(obs_per_year * months / 12))
+        window_obs = round(obs_per_year * months / 12)
         if window_obs < 2:
             continue
         rolling = ic_series.rolling(window_obs, min_periods=window_obs)
@@ -379,7 +378,7 @@ def compute_rolling_sharpe(
     if not np.isfinite(periods_per_year) or periods_per_year <= 0:
         return results
     for months in window_months:
-        window_obs = int(round(periods_per_year * months / 12))
+        window_obs = round(periods_per_year * months / 12)
         if window_obs < 2:
             continue
         rolling = returns.rolling(window_obs, min_periods=window_obs)

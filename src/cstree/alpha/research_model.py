@@ -41,7 +41,7 @@ class CSTreeModel:
         features: list[str],
         target_col: str,
         date_col: str = "trade_date",
-    ) -> "CSTreeModel":
+    ) -> CSTreeModel:
         model_type, model_params = resolve_model_spec(model_cfg)
         return cls(
             model_type=model_type,
@@ -53,13 +53,14 @@ class CSTreeModel:
 
     @property
     def model_version(self) -> str:
-        return f"{self.model_type}:{_stable_id({'type': self.model_type, 'params': self.model_params})}"
+        payload = {"type": self.model_type, "params": self.model_params}
+        return f"{self.model_type}:{_stable_id(payload)}"
 
     @property
     def feature_set_id(self) -> str:
         return _stable_id({"features": self.features, "target": self.target_col})
 
-    def fit(self, dataset: ResearchDataset, segment: str = "all") -> "CSTreeModel":
+    def fit(self, dataset: ResearchDataset, segment: str = "all") -> CSTreeModel:
         train_frame = dataset.fetch_learn(segment)
         self.model = build_model(self.model_type, self.model_params)
         fit_model(

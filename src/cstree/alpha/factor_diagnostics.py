@@ -760,7 +760,7 @@ def _summary(
         "schema_version": 1,
         "artifact_type": "cstree.factor_diagnostics",
         "status": status,
-        "rows": int(len(scored)),
+        "rows": len(scored),
         "dates": int(scored["trade_date"].nunique()),
         "factors": len(factors),
         "factor_list": list(factors),

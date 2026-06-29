@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -272,7 +273,7 @@ def _feature_rows(
 def _summary(status: str, by_window: pd.DataFrame, by_symbol: pd.DataFrame) -> dict[str, Any]:
     return {
         "status": status,
-        "windows": int(len(by_window)),
+        "windows": len(by_window),
         "avg_rank_correlation": _column_mean(by_window, "rank_correlation"),
         "avg_entrant_count": _column_mean(by_window, "entrant_count"),
         "avg_exit_count": _column_mean(by_window, "exit_count"),
