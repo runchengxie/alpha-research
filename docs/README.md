@@ -13,13 +13,18 @@
 
 仍留在 `strategy-pipeline` 的文档应聚焦编排、CLI、配置合成、运行目录和执行目标导出。后续从 `strategy-pipeline/docs/` 迁移 alpha 主题时，先在原位置保留跳转说明，再更新相对链接和测试。
 
-## 优先承接页面
+## 已承接页面
 
-后续优先从 `strategy-pipeline` 迁入：
+这些页面已经从 `strategy-pipeline` 迁入，并由本仓库维护：
 
-- `docs/concepts/model-selection.md`
-- `docs/concepts/model-landscape.md`
-- `docs/concepts/overfitting-controls.md`
-- `docs/playbooks/research-template-design.md`
-- `docs/metrics.md` 中的 IC、CV、CPCV、PBO、DSR、feature evidence 和 signal artifact 内容
-- `docs/reference/outputs/summary.md` 中的 alpha 报告字段
+- [concepts/model-selection.md](concepts/model-selection.md)
+- [concepts/model-landscape.md](concepts/model-landscape.md)
+- [concepts/overfitting-controls.md](concepts/overfitting-controls.md)
+- [playbooks/research-template-design.md](playbooks/research-template-design.md)
+
+## 后续优先承接内容
+
+后续从 `strategy-pipeline` 拆分文档时，优先迁入：
+
+- `strategy-pipeline/docs/metrics.md` 中的 IC、CV、CPCV、PBO、DSR、feature evidence 和 signal artifact 内容
+- `strategy-pipeline/docs/reference/outputs/summary.md` 中的 alpha 报告字段
