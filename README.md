@@ -4,7 +4,9 @@ Alpha and factor research package for the research workspace.
 
 This repository owns `cstree.alpha.*`: feature datasets, feature evidence,
 modeling helpers, walk-forward/CPCV/PBO diagnostics, signal artifacts, and
-dynamic signal ensemble tooling.
+dynamic signal ensemble tooling. It also owns research feature derivation
+helpers, recency/rolling diagnostics, and promotion-gate evidence scoring that
+can run from materialized research artifacts.
 
 Current status: transitional stage-3 split. The package is physically separated
 from `cross-sectional-trees`, and workspace gates prevent runtime imports into
