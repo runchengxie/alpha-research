@@ -8,6 +8,6 @@ WORKSPACE = ROOT.parent
 
 sys.path[:0] = [
     str(ROOT / "src"),
-    str(WORKSPACE / "cross-sectional-trees" / "src"),
+    str(WORKSPACE / "strategy-pipeline" / "src"),
     str(WORKSPACE / "portfolio-backtester" / "src"),
 ]
