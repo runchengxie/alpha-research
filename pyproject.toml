@@ -68,7 +68,24 @@ exclude = [
 market-data-platform = { path = "../market-data-platform", editable = true }
 
 [tool.basedpyright]
-include = ["src/cstree/__init__.py"]
+include = [
+  "src/cstree/__init__.py",
+  "src/cstree/alpha/cpcv_audit.py",
+  "src/cstree/alpha/dataset_sampling.py",
+  "src/cstree/alpha/dataset_sampling_core.py",
+  "src/cstree/alpha/dynamic_signal_ensemble_types.py",
+  "src/cstree/alpha/evaluation.py",
+  "src/cstree/alpha/feature_windows.py",
+  "src/cstree/alpha/modeling_dataset.py",
+  "src/cstree/alpha/period_evaluation.py",
+  "src/cstree/alpha/promotion_gate_thresholds.py",
+  "src/cstree/alpha/signal_artifact.py",
+  "src/cstree/alpha/train_eval.py",
+  "src/cstree/alpha/train_eval_contracts.py",
+  "src/cstree/alpha/train_eval_request_builder.py",
+  "src/cstree/alpha/train_eval_result.py",
+  "src/cstree/alpha/walk_forward_windows.py",
+]
 exclude = [
   ".venv",
   "artifacts",
