@@ -143,6 +143,7 @@ def compute_calendar_cagr(
 
     return result
 
+
 _FUNDAMENTAL_SOURCE_DEPENDENCIES = {
     "sales": ("revenue", "operating_revenue"),
     "profit_margin": ("net_profit", "revenue", "operating_revenue"),
