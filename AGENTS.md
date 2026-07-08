@@ -4,9 +4,9 @@
 
 ## 仓库范围
 
-本仓库负责 `cstree.alpha.*`，维护特征、模型、walk-forward、CPCV、PBO、过拟合诊断、feature evidence、signal artifact 和 alpha 诊断工具。
+本仓库负责 alpha 研究与特征工程模块（`cstree.alpha.*`），维护特征、模型、walk-forward、CPCV、PBO、过拟合诊断、feature evidence、signal artifact 和 alpha 诊断工具。
 
-本仓库可以消费外部数据资产和研究配置，但不应在运行时导入 `cstree.pipeline`、`cstree.backtesting` 或交易执行实现。完整研究编排仍由 `strategy-pipeline` 负责。
+本仓库可以消费外部数据资产和研究配置，但不应在运行时导入策略编排（`cstree.pipeline`）、组合回测（`cstree.backtesting`）或交易执行实现。完整研究编排仍由 `strategy-pipeline` 负责。
 
 ## 常用命令
 
