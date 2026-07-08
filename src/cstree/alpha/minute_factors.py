@@ -88,9 +88,8 @@ def compute_volume_ratio(
     df = daily[["trade_date", "symbol", volume_col]].copy()
     df["trade_date"] = pd.to_datetime(df["trade_date"])
     df = df.set_index("trade_date").sort_index()
-    result = (
-        df.groupby("symbol")[volume_col]
-        .transform(lambda x: x / x.shift(1).rolling(window, min_periods=5).mean())
+    result = df.groupby("symbol")[volume_col].transform(
+        lambda x: x / x.shift(1).rolling(window, min_periods=5).mean()
     )
     result.name = "volume_ratio"
     return result
@@ -185,9 +184,7 @@ def compute_smart_money_q(
         / np.maximum(df["open"].astype(float), eps)
     )
     # Smart metric: |ret| / vol^beta
-    df["s_metric"] = df["ret_abs"] / np.maximum(
-        df[volume_col].astype(float) ** beta, eps
-    )
+    df["s_metric"] = df["ret_abs"] / np.maximum(df[volume_col].astype(float) ** beta, eps)
     # Price * volume for notional
     df["pv"] = df["close"].astype(float) * df[volume_col].astype(float)
 
