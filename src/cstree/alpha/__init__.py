@@ -35,6 +35,7 @@ __all__ = [
     "signal_artifact",
     "signal_stability",
     "split",
+    "style_replica",
     "train_eval",
     "train_eval_contracts",
     "train_eval_diagnostics",
