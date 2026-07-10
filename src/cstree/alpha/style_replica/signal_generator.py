@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002
 """Signal generator for StyleReplica-A80B20-v0.
 
 Orchestrates the full daily signal generation pipeline:

@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002
 """Residual volatility (RESVOL) computation for StyleReplica-A80B20-v0.
 
 Computes residual volatility as the standard deviation of residuals from a

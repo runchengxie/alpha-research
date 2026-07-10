@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002
 """B-leg scoring for StyleReplica-A80B20-v0.
 
 B-leg targets low-volatility convergence stocks as a stabilizing supplement.

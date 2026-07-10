@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002
 """Factor computation for StyleReplica-A80B20-v0.
 
 All factors are computed as daily cross-sectional percentile ranks (0–1 range),

@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002
 """A-leg scoring for StyleReplica-A80B20-v0.
 
 A-leg targets high-elasticity, active-growth AI hardware chain stocks.
