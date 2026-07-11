@@ -27,6 +27,7 @@ _A_WEIGHTS: dict[str, float] = {
     "mom120": 0.10,
     "industry_mom": 0.05,
 }
+_A_OPTIONAL_FACTORS = frozenset({"volume_activity"})
 
 # Note: volume_activity is optional — if missing, liquidity weight is effectively higher
 _A_TIEBREAK_WEIGHT = 0.01
@@ -34,7 +35,11 @@ _A_TIEBREAK_FACTOR = "resvol"
 
 
 def _validate_factors(factor_map: dict[str, pd.DataFrame]) -> None:
-    missing = [k for k in _A_WEIGHTS if k not in factor_map]
+    missing = [
+        factor
+        for factor in _A_WEIGHTS
+        if factor not in factor_map and factor not in _A_OPTIONAL_FACTORS
+    ]
     if missing:
         raise ValueError(f"Missing A-leg factors: {missing}")
 
@@ -69,7 +74,7 @@ def compute_score_a(
     total_weight = 0.0
 
     for factor_name, weight in w.items():
-        factor_df = factor_map[factor_name]
+        factor_df = factor_map.get(factor_name)
         if factor_df is None or factor_df.empty:
             continue
         aligned = factor_df.reindex(index=dates, columns=symbols)

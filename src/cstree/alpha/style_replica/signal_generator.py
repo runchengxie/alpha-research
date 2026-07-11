@@ -131,6 +131,120 @@ def _build_explanation_columns(
     return explanations
 
 
+def _filter_price_panel(
+    price_panel: pd.DataFrame,
+    instruments: pd.DataFrame | None,
+) -> pd.DataFrame:
+    if instruments is None:
+        return price_panel
+    return filter_style_replica_universe(price_panel, instruments, price_panel.index[-1])
+
+
+def _build_classification_series(
+    industry_frame: pd.DataFrame | None,
+    concept_frame: pd.DataFrame | None,
+) -> tuple[pd.Series | None, pd.Series | None]:
+    if industry_frame is None or industry_frame.empty:
+        return None, None
+
+    theme_series = build_theme_map(industry_frame, concept_frame=concept_frame)
+    industry_series = None
+    if "industry_name" in industry_frame.columns:
+        industry_series = industry_frame.set_index("symbol")["industry_name"]
+    return theme_series, industry_series
+
+
+def _compute_signal_scores(
+    price_panel: pd.DataFrame,
+    *,
+    turnover_panel: pd.DataFrame | None,
+    market_cap_panel: pd.DataFrame | None,
+    market_returns: pd.Series | None,
+    industry_series: pd.Series | None,
+) -> pd.DataFrame:
+    factors = compute_all_style_factors(
+        price_panel,
+        turnover_panel=turnover_panel,
+        market_cap_panel=market_cap_panel,
+        market_returns=market_returns,
+        industry_map=industry_series,
+    )
+    long_a = _wide_to_long(compute_score_a(factors), value_col="score_a")
+    long_b = _wide_to_long(compute_score_b(factors), value_col="score_b")
+    return long_a.merge(long_b, on=["signal_date", "symbol"], how="outer")
+
+
+def _assign_leg(row: pd.Series) -> str | None:
+    score_a = row.get("score_a")
+    score_b = row.get("score_b")
+    theme = row.get("theme")
+    if pd.isna(score_a) and pd.isna(score_b):
+        return None
+    if not pd.isna(theme) and not pd.isna(score_a):
+        return "A"
+    if not pd.isna(score_b):
+        return "B"
+    return None
+
+
+def _decorate_signals(
+    signals: pd.DataFrame,
+    *,
+    config: StyleReplicaConfig,
+    theme_series: pd.Series | None,
+    industry_series: pd.Series | None,
+) -> pd.DataFrame:
+    signals["model_version"] = config.model_version
+    signals["feature_set_id"] = config.feature_set_id
+    signals["signal_direction"] = 1.0
+    signals["theme"] = (
+        signals["symbol"].map(theme_series.to_dict()) if theme_series is not None else None
+    )
+    signals["industry"] = (
+        signals["symbol"].map(industry_series.to_dict()) if industry_series is not None else None
+    )
+
+    signals["raw_pred"] = signals[["score_a", "score_b"]].max(axis=1)
+    signals["signal_eval"] = signals["raw_pred"]
+    signals["signal_backtest"] = signals["raw_pred"]
+    signals["leg"] = signals.apply(_assign_leg, axis=1)
+    signals["eligible_for_backtest"] = True
+    signals["eligible_for_live"] = True
+    signals["selected_reason"] = signals.apply(_build_reason, axis=1)
+    return signals
+
+
+def _order_and_rank_signals(signals: pd.DataFrame) -> pd.DataFrame:
+    output_cols = [
+        "signal_date",
+        "symbol",
+        "raw_pred",
+        "signal_eval",
+        "signal_backtest",
+        "signal_direction",
+        "rank",
+        "model_version",
+        "feature_set_id",
+        "eligible_for_backtest",
+        "eligible_for_live",
+        "score_a",
+        "score_b",
+        "leg",
+        "theme",
+        "industry",
+        "selected_reason",
+    ]
+    available_cols = [column for column in output_cols if column in signals.columns]
+    extra_cols = [column for column in signals.columns if column not in available_cols]
+    ordered = signals[available_cols + extra_cols].reset_index(drop=True)
+    ordered["rank"] = (
+        ordered.groupby("signal_date", sort=False)["raw_pred"]
+        .rank(ascending=False, method="first", na_option="bottom")
+        .astype("Int64")
+    )
+    return ordered
+
+
 def generate_daily_signals(
     price_panel: pd.DataFrame,
     *,
@@ -159,153 +273,30 @@ def generate_daily_signals(
         explanatory columns (score_a, score_b, leg, theme, factor percentiles, etc.).
     """
     cfg = config or StyleReplicaConfig()
-
-    # 1. Filter universe
-    if instruments is not None:
-        filtered_prices = filter_style_replica_universe(
-            price_panel, instruments, price_panel.index[-1]
-        )
-    else:
-        filtered_prices = price_panel
+    filtered_prices = _filter_price_panel(price_panel, instruments)
 
     if filtered_prices.empty:
         return pd.DataFrame()
 
-    # 2. Build industry/theme mapping
-    theme_series: pd.Series | None = None
-    industry_series: pd.Series | None = None
-    if industry_frame is not None and not industry_frame.empty:
-        theme_series = build_theme_map(
-            industry_frame,
-            concept_frame=concept_frame,
-        )
-        if "industry_name" in industry_frame.columns:
-            industry_series = industry_frame.set_index("symbol")["industry_name"]
-
-    # 3. Compute all factors
-    factors = compute_all_style_factors(
+    theme_series, industry_series = _build_classification_series(
+        industry_frame,
+        concept_frame,
+    )
+    signals = _compute_signal_scores(
         filtered_prices,
         turnover_panel=turnover_panel,
         market_cap_panel=market_cap_panel,
         market_returns=market_returns,
-        industry_map=industry_series,
+        industry_series=industry_series,
     )
-
-    # 4. Compute scores
-    score_a = compute_score_a(factors)
-    score_b = compute_score_b(factors)
-
-    # 5. Convert to long format
-    long_a = _wide_to_long(score_a, value_col="score_a")
-    long_b = _wide_to_long(score_b, value_col="score_b")
-
-    signals = long_a.merge(long_b, on=["signal_date", "symbol"], how="outer")
-
-    # 6. Add metadata columns
-    signals["model_version"] = cfg.model_version
-    signals["feature_set_id"] = cfg.feature_set_id
-    signals["signal_direction"] = 1.0
-
-    # 7. Determine leg assignment: pick the higher score
-    # A-leg theme constraint: only stocks in AI hardware themes can be A-leg
-    if theme_series is not None:
-        theme_map = theme_series.to_dict()
-        signals["theme"] = signals["symbol"].map(theme_map)
-    else:
-        signals["theme"] = None
-
-    if industry_series is not None:
-        ind_map = industry_series.to_dict()
-        signals["industry"] = signals["symbol"].map(ind_map)
-    else:
-        signals["industry"] = None
-
-    # Leg assignment logic:
-    # - If stock has no AI hardware theme AND no valid B features → unassigned
-    # - If stock has AI hardware theme → can be A or B
-    # - A-leg preferred for themed stocks with top score_a; fallback to B
-    signals["leg"] = None
-    signals["leg"] = signals["leg"].astype(object)
-
-    for date in sorted(signals["signal_date"].unique()):
-        day_mask = signals["signal_date"] == date
-        day = signals.loc[day_mask].copy()
-
-        # Determine eligibility
-        has_theme = day["theme"].notna()
-        has_score_a = day["score_a"].notna()
-        has_score_b = day["score_b"].notna()
-
-        # A-leg eligible: has theme AND has score_a
-        a_eligible = has_theme & has_score_a
-        # B-leg eligible: has score_b (any stock)
-        b_eligible = has_score_b
-
-        # Assign legs — use score_a as primary signal for A, score_b for B
-        signals.loc[day_mask & a_eligible, "raw_pred"] = day.loc[a_eligible, "score_a"].values
-        signals.loc[day_mask & ~a_eligible & b_eligible, "raw_pred"] = day.loc[
-            ~a_eligible & b_eligible, "score_b"
-        ].values
-
-    # Use the max of score_a and score_b as the raw_pred for ranking
-    signals["raw_pred"] = signals[["score_a", "score_b"]].max(axis=1)
-    signals["signal_eval"] = signals["raw_pred"]
-    signals["signal_backtest"] = signals["raw_pred"]
-
-    # Leg designation
-    def _assign_leg(row: pd.Series) -> str | None:
-        a = row.get("score_a")
-        b = row.get("score_b")
-        theme = row.get("theme")
-        if pd.isna(a) and pd.isna(b):
-            return None
-        if theme is not None and not pd.isna(a):
-            return "A"
-        if not pd.isna(b):
-            return "B"
-        return None
-
-    signals["leg"] = signals.apply(_assign_leg, axis=1)
-
-    # Eligibility flags
-    signals["eligible_for_backtest"] = True
-    signals["eligible_for_live"] = True
-
-    # 8. Add explanation columns
-    signals["selected_reason"] = signals.apply(lambda r: _build_reason(r), axis=1)
-
-    # 9. Order columns
-    output_cols = [
-        "signal_date",
-        "symbol",
-        "raw_pred",
-        "signal_eval",
-        "signal_backtest",
-        "signal_direction",
-        "rank",
-        "model_version",
-        "feature_set_id",
-        "eligible_for_backtest",
-        "eligible_for_live",
-        "score_a",
-        "score_b",
-        "leg",
-        "theme",
-        "industry",
-        "selected_reason",
-    ]
-    available_cols = [c for c in output_cols if c in signals.columns]
-    extra_cols = [c for c in signals.columns if c not in available_cols]
-    signals = signals[available_cols + extra_cols].reset_index(drop=True)
-
-    # 10. Rank within date
-    signals["rank"] = (
-        signals.groupby("signal_date", sort=False)["raw_pred"]
-        .rank(ascending=False, method="first", na_option="bottom")
-        .astype("Int64")
+    return _order_and_rank_signals(
+        _decorate_signals(
+            signals,
+            config=cfg,
+            theme_series=theme_series,
+            industry_series=industry_series,
+        )
     )
-
-    return signals
 
 
 def _build_reason(row: pd.Series) -> str:

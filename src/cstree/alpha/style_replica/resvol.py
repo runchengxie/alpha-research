@@ -70,7 +70,8 @@ def _rolling_resvol_single(
         Xv = win_X[valid]
 
         try:
-            _coeffs, residuals, *_ = np.linalg.lstsq(Xv, y, rcond=None)
+            coeffs, *_ = np.linalg.lstsq(Xv, y, rcond=None)
+            residuals = y - Xv @ coeffs
             result[i] = float(np.std(residuals, ddof=1))
         except np.linalg.LinAlgError:
             continue
