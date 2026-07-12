@@ -42,9 +42,16 @@ DAILY_WATCH20_FEATURES = (
     "minute_volume_concentration",
     "minute_active_ratio",
     "minute_price_volume_corr",
+    "minute_volume_activity",
+    "hermite_stability",
 )
 
-MINUTE_FEATURES = tuple(name for name in DAILY_WATCH20_FEATURES if name.startswith("minute_"))
+_MINUTE_PREFIX = "minute_"
+MINUTE_ORIGIN_FEATURES = tuple(
+    name for name in DAILY_WATCH20_FEATURES if name.startswith(_MINUTE_PREFIX)
+)
+DERIVED_MINUTE_FEATURES = ("hermite_stability",)
+MINUTE_FEATURES = MINUTE_ORIGIN_FEATURES + DERIVED_MINUTE_FEATURES
 
 
 @dataclass(frozen=True)
@@ -351,6 +358,63 @@ def _known_false_flag(values: pd.Series) -> pd.Series:
     return numeric.eq(0).fillna(False) | text.isin({"false", "f", "no", "n"})
 
 
+_HERMITE_WINDOW: int = 60
+_HERMITE_MIN_PERIODS: int = 36
+
+
+def _add_hermite_stability(frame: pd.DataFrame) -> pd.DataFrame:
+    """Compute Hermite stability from minute_volume_activity.
+
+    Hermite stability measures how Gaussian (stable) the distribution of
+    intraday volume activity is over a rolling window.
+
+    ``closeness = -log(1 + h3² + h4²)``  —  HIGHER = more stable/Gaussian
+
+    Matches StyleReplica ``compute_hermite_stability_factor`` variant="closeness",
+    applied in long format per symbol.
+    """
+    va_col = "minute_volume_activity"
+    if va_col not in frame.columns or frame[va_col].isna().all():
+        frame["hermite_stability"] = np.nan
+        return frame
+
+    out = frame.sort_values(["symbol", "trade_date"], kind="mergesort").copy()
+
+    roll_mean = _rolling(
+        out, va_col, _HERMITE_WINDOW, operation="mean", min_periods=_HERMITE_MIN_PERIODS
+    )
+    roll_std = _rolling(
+        out, va_col, _HERMITE_WINDOW, operation="std", min_periods=_HERMITE_MIN_PERIODS
+    )
+    roll_std = roll_std.where(roll_std > 1e-8, np.nan)
+
+    z = ((out[va_col] - roll_mean) / roll_std).clip(-8.0, 8.0)
+    z2 = z * z
+
+    # Hermite polynomials h3 (skewness proxy) and h4 (kurtosis proxy)
+    h3_raw = (z * z2 - 3.0 * z) / np.sqrt(6.0)
+    h4_raw = (z2 * z2 - 6.0 * z2 + 3.0) / np.sqrt(24.0)
+
+    out["_h3_raw"] = h3_raw
+    out["_h4_raw"] = h4_raw
+    h3_roll = _rolling(
+        out, "_h3_raw", _HERMITE_WINDOW, operation="mean", min_periods=_HERMITE_MIN_PERIODS
+    )
+    h4_roll = _rolling(
+        out, "_h4_raw", _HERMITE_WINDOW, operation="mean", min_periods=_HERMITE_MIN_PERIODS
+    )
+
+    energy = h3_roll.pow(2) + h4_roll.pow(2)
+    out["hermite_stability"] = -np.log1p(energy)
+
+    if "minute_feature_available" in out.columns:
+        out["minute_feature_available"] = out["minute_feature_available"] | out[
+            "hermite_stability"
+        ].notna()
+
+    return out.drop(columns=["_h3_raw", "_h4_raw"])
+
+
 def _add_eligibility(frame: pd.DataFrame, config: DailyWatch20FeatureConfig) -> pd.DataFrame:
     out = frame.copy()
     market_ok = _target_market(out["symbol"])
@@ -389,6 +453,7 @@ def build_daily_watch20_feature_frame(
     out = _add_liquidity_and_style_features(out)
     out = _add_market_regime_features(out)
     out = _join_minute_features(out, minute_daily, lag_trade_days=cfg.minute_lag_trade_days)
+    out = _add_hermite_stability(out)
     out = _add_eligibility(out, cfg)
     out = _add_next_open_label(out, forward_days=cfg.forward_days)
     return out.sort_values(["trade_date", "symbol"], kind="mergesort").reset_index(drop=True)
