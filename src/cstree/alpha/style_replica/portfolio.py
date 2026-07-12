@@ -112,7 +112,7 @@ def _select_a_leg_for_date(
             or (symbol not in previous and rank <= quota)
         ][:quota]
         if len(pool) < quota:
-            pool.extend(symbol for symbol in ranked if symbol not in pool)  # noqa: PERF401
+            pool.extend(symbol for symbol in ranked if symbol not in pool)
             pool = pool[:quota]
         for symbol in pool:
             if symbol not in selected_set:
@@ -137,9 +137,7 @@ def _select_b_leg_for_date(
     entry_rank: int,
     max_replacements: int,
 ) -> list[str]:
-    ranked = day_signals.loc[day_signals["score_b"].notna()].sort_values(
-        "score_b", ascending=False
-    )
+    ranked = day_signals.loc[day_signals["score_b"].notna()].sort_values("score_b", ascending=False)
     selected: list[str] = []
     industry_counts: dict[str, int] = {}
     replacements = 0
@@ -190,7 +188,7 @@ def _resolve_overlap(
     if policy == "deduplicate":
         b_unique = [symbol for symbol in b_unique if symbol not in overlap]
 
-    weights = {symbol: normal_weight for symbol in a_unique}
+    weights = dict.fromkeys(a_unique, normal_weight)
     for symbol in b_unique:
         weights[symbol] = (
             min(max_weight, normal_weight * 2)
