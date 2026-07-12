@@ -1,17 +1,4 @@
-"""StyleReplica-A80B20-v0 — Rule-based AI hardware chain style replication model.
-
-This module implements the first-phase style replica model described in the
-StyleReplica-A80B20-v0 design document. It is a **rule-based** (not ML-trained)
-daily-frequency signal generator that produces two-leg scores:
-
-- **Leg A** (80 slots): AI hardware active-growth style — theme-quota constrained,
-  scored on RESVOL, liquidity, small size, momentum, beta, and industry momentum.
-- **Leg B** (20 slots): low-volatility convergence supplement — industry-capped,
-  scored on volatility convergence, low RESVOL, liquidity, and momentum.
-
-Output: ``signals_style_replica.parquet`` + ``signals_style_replica.meta.json``
-conforming to the ``cstree.signals`` artifact contract.
-"""
+"""Rule-based StyleReplica signal and portfolio construction package."""
 
 from .factors import (
     compute_beta_factor,
@@ -23,17 +10,33 @@ from .factors import (
     compute_vol_convergence_factor,
     compute_volume_activity_factor,
 )
+from .portfolio import (
+    StyleReplicaPortfolioConfig,
+    build_style_replica_positions,
+    compute_daily_changes,
+    compute_daily_exposure,
+    compute_style_exposure_summary,
+)
 from .resvol import compute_resvol_factor
 from .score_a import compute_score_a
 from .score_b import compute_score_b
-from .signal_generator import StyleReplicaSignalGenerator, generate_daily_signals
+from .signal_generator import (
+    StyleReplicaConfig,
+    StyleReplicaSignalGenerator,
+    generate_daily_signals,
+)
 from .theme_map import AI_HARDWARE_THEME_QUOTAS, map_stock_to_theme
 from .universe import filter_style_replica_universe
 
 __all__ = [
     "AI_HARDWARE_THEME_QUOTAS",
+    "StyleReplicaConfig",
+    "StyleReplicaPortfolioConfig",
     "StyleReplicaSignalGenerator",
+    "build_style_replica_positions",
     "compute_beta_factor",
+    "compute_daily_changes",
+    "compute_daily_exposure",
     "compute_hermite_stability_factor",
     "compute_industry_momentum",
     "compute_liquidity_factor",
@@ -42,6 +45,7 @@ __all__ = [
     "compute_score_a",
     "compute_score_b",
     "compute_size_factor",
+    "compute_style_exposure_summary",
     "compute_vol_convergence_factor",
     "compute_volume_activity_factor",
     "filter_style_replica_universe",
