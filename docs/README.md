@@ -1,17 +1,22 @@
 # alpha-research 文档入口
 
-本目录用于承接 alpha 研究层文档。当前仓库的详细说明仍以根目录 [README.md](../README.md) 为入口。
+本目录用于承接 alpha 研究层和模型专用组合规则的文档。当前仓库的详细说明仍以根目录 [README.md](../README.md) 为入口。
 
 ## 文档归属
 
 适合放在本仓库的主题：
 
-- 特征工程、特征窗口、特征证据、单因子 IC 和特征相关性。
-- 模型训练、模型诊断、walk-forward、CPCV、PBO、DSR 和过拟合诊断。
-- `signals.parquet`、`signals.meta.json`、signal artifact 摘要和信号稳定性。
-- promotion gate 中和 alpha 证据直接相关的规则。
+- 特征工程、特征窗口、特征证据、单因子 IC 和特征相关性
+- 模型训练、模型诊断、walk-forward、CPCV、PBO、DSR 和过拟合诊断
+- `signals.parquet`、`signals.meta.json`、signal artifact 摘要和信号稳定性
+- 与具体 alpha 模型绑定的信号到目标持仓规则
+- promotion gate 中和 alpha 证据直接相关的规则
 
-仍留在 `strategy-pipeline` 的文档应聚焦编排、CLI、配置合成、运行目录和执行目标导出。后续从 `strategy-pipeline/docs/` 迁移 alpha 主题时，先在原位置保留跳转说明，再更新相对链接和测试。
+通用组合回测、交易成本和容量分析由 `portfolio-backtester` 维护。运行编排、CLI、配置合成、运行目录和执行目标导出由 `strategy-pipeline` 维护。
+
+## 模型专用文档
+
+- [StyleReplica 信号与组合构造](concepts/style-replica.md)
 
 ## 已承接页面
 
