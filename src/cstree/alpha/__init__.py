@@ -1,11 +1,24 @@
 """Alpha research APIs for factor discovery, modeling, and signal artifacts."""
 
+from .daily_watch20_features import (
+    DAILY_WATCH20_FEATURES,
+    MINUTE_FEATURES,
+    DailyWatch20FeatureConfig,
+    build_daily_watch20_feature_frame,
+)
+
 __all__ = [
+    "DAILY_WATCH20_FEATURES",
+    "MINUTE_FEATURES",
+    "DailyWatch20FeatureConfig",
     "artifact_cpcv",
     "benchmarking",
+    "build_daily_watch20_feature_frame",
     "compat",
     "cpcv",
     "cpcv_audit",
+    "daily_watch20",
+    "daily_watch20_features",
     "dataset",
     "dataset_sampling",
     "date_slices",

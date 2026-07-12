@@ -15,6 +15,8 @@ OWNED_MODULES = (
     "cstree.alpha.benchmarking",
     "cstree.alpha.compat",
     "cstree.alpha.cpcv",
+    "cstree.alpha.daily_watch20",
+    "cstree.alpha.daily_watch20_features",
     "cstree.alpha.dataset",
     "cstree.alpha.dataset_sampling",
     "cstree.alpha.date_slices",
@@ -64,6 +66,13 @@ def test_alpha_public_inventory_lists_smoked_modules() -> None:
 
     for module_name in OWNED_MODULES:
         assert module_name.removeprefix("cstree.alpha.") in public_modules
+
+
+def test_alpha_root_exports_daily_watch20_feature_api() -> None:
+    assert alpha.DAILY_WATCH20_FEATURES
+    assert alpha.MINUTE_FEATURES
+    assert alpha.DailyWatch20FeatureConfig().forward_days == 5
+    assert callable(alpha.build_daily_watch20_feature_frame)
 
 
 def test_owned_alpha_modules_do_not_load_backtesting_or_pipeline() -> None:
