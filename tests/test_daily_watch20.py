@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -294,4 +296,40 @@ def test_restore_rejects_incomplete_metadata_and_invalid_training_summary() -> N
                 "sample_weight_mode": None,
             },
             metadata=ranker.persistence_metadata,
+        )
+
+
+def test_restore_from_path_round_trips_native_model(tmp_path: Path) -> None:
+    panel = _panel(9)
+    trained = DailyWatch20Ranker(_tiny_config()).fit(panel)
+    assert trained.model is not None
+    assert trained.training_summary is not None
+    model_path = tmp_path / "daily_watch20.ubj"
+    trained.model.save_model(model_path)
+    prediction = panel.loc[panel["trade_date"].eq(panel["trade_date"].max())]
+
+    restored = DailyWatch20Ranker(_tiny_config()).restore_from_path(
+        model_path,
+        trained.training_summary,
+        metadata=trained.persistence_metadata,
+    )
+
+    pd.testing.assert_frame_equal(
+        restored.predict_relative(prediction),
+        trained.predict_relative(prediction),
+    )
+
+
+def test_restore_from_path_rejects_incompatible_metadata(tmp_path: Path) -> None:
+    trained = DailyWatch20Ranker(_tiny_config()).fit(_panel(9))
+    assert trained.model is not None
+    assert trained.training_summary is not None
+    model_path = tmp_path / "daily_watch20.ubj"
+    trained.model.save_model(model_path)
+
+    with pytest.raises(ValueError, match="feature_set_id"):
+        DailyWatch20Ranker(_tiny_config(features=("f1",))).restore_from_path(
+            model_path,
+            trained.training_summary,
+            metadata=trained.persistence_metadata,
         )

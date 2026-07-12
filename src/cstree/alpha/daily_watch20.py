@@ -6,6 +6,7 @@ import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from os import PathLike
 from typing import Any, cast
 
 import numpy as np
@@ -351,6 +352,22 @@ class DailyWatch20Ranker:
         self.model = model
         self.training_summary = summary
         return self
+
+    def restore_from_path(
+        self,
+        path: str | PathLike[str],
+        training_summary: DailyWatch20TrainingSummary | Mapping[str, Any],
+        *,
+        metadata: Mapping[str, Any],
+    ) -> DailyWatch20Ranker:
+        """Load a native model file and apply the standard compatibility checks."""
+
+        model = build_model(self.model_type, self.model_params)
+        load_model = getattr(model, "load_model", None)
+        if not callable(load_model):
+            raise ValueError("DailyWatch20 model type does not support load_model().")
+        load_model(path)
+        return self.restore(model, training_summary, metadata=metadata)
 
     def _with_label_metadata(self, frame: pd.DataFrame) -> pd.DataFrame:
         cfg = self.config
