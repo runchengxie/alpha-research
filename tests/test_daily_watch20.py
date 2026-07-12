@@ -8,7 +8,9 @@ import cstree.alpha.daily_watch20 as daily_watch20
 from cstree.alpha.daily_watch20 import (
     DailyWatch20Config,
     DailyWatch20Ranker,
+    DailyWatch20TrainingSummary,
     build_forward_rank_label,
+    build_multi_horizon_forward_rank_label,
 )
 from cstree.alpha.signal_artifact import CANONICAL_SIGNAL_COLUMNS
 
@@ -69,6 +71,21 @@ def test_build_forward_rank_label_uses_five_observed_days_and_date_rank() -> Non
     assert labeled.groupby("symbol", sort=False)["forward_rank_5d"].tail(5).isna().all()
 
 
+def test_multi_horizon_label_requires_all_components_and_uses_weighted_ranks() -> None:
+    panel = _panel()
+
+    labeled = build_multi_horizon_forward_rank_label(panel)
+
+    first = labeled.loc[labeled["trade_date"].eq(panel["trade_date"].min())].set_index("symbol")
+    expected_a = 0.2 * 1.0 + 0.3 * 1.0 + 0.5 * 1.0
+    expected_b = 0.2 * 0.5 + 0.3 * 0.5 + 0.5 * 0.5
+    assert first.loc["A", "forward_rank_blended"] == pytest.approx(expected_a)
+    assert first.loc["B", "forward_rank_blended"] == pytest.approx(expected_b)
+    assert labeled.groupby("symbol", sort=False)["forward_rank_1d"].tail(1).isna().all()
+    assert labeled.groupby("symbol", sort=False)["forward_rank_3d"].tail(3).isna().all()
+    assert labeled.groupby("symbol", sort=False)["forward_rank_blended"].tail(5).isna().all()
+
+
 def test_fit_uses_rolling_queries_date_equal_weights_and_as_of_purge(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -106,6 +123,39 @@ def test_fit_uses_rolling_queries_date_equal_weights_and_as_of_purge(
     assert np.allclose(group_weights.to_numpy(), 1.0)
     assert ranker.training_summary is not None
     assert ranker.training_summary.query_groups == 3
+
+
+def test_fit_purges_blended_next_open_label_until_longest_horizon_is_known(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    panel = _panel(12)
+    dates = pd.Index(panel["trade_date"].unique()).sort_values()
+    date_to_number = {date: number for number, date in enumerate(dates)}
+    panel["forward_rank_blended"] = 0.75
+    panel["forward_label_end_date"] = panel["trade_date"].map(
+        lambda date: (
+            dates[date_to_number[date] + 6] if date_to_number[date] + 6 < len(dates) else pd.NaT
+        )
+    )
+    captured: dict[str, pd.DataFrame] = {}
+    monkeypatch.setattr(daily_watch20, "build_model", lambda *_args: object())
+
+    def _capture_fit(model: object, *_args: object, **_kwargs: object) -> object:
+        captured["data"] = _args[1].copy()
+        return model
+
+    monkeypatch.setattr(daily_watch20, "fit_model", _capture_fit)
+
+    DailyWatch20Ranker(_tiny_config()).fit(panel, as_of_date=dates[-1])
+
+    assert captured["data"]["trade_date"].max() == dates[-7]
+
+
+def test_ranker_config_can_select_legacy_single_five_day_target() -> None:
+    config = _tiny_config(label_horizon_weights=((5, 1.0),))
+
+    assert config.label_col == "forward_rank_5d"
+    assert config.forward_return_col == "forward_return_5d"
 
 
 def test_time_decay_increases_recent_query_weight(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -183,3 +233,65 @@ def test_duplicate_stock_date_rows_are_rejected() -> None:
 
     with pytest.raises(ValueError, match="requires unique"):
         build_forward_rank_label(duplicate)
+
+
+def test_restore_requires_matching_model_and_feature_metadata() -> None:
+    class _PersistedModel:
+        def predict(self, frame: pd.DataFrame) -> np.ndarray:
+            return np.zeros(len(frame))
+
+    ranker = DailyWatch20Ranker(_tiny_config())
+    dates = pd.bdate_range("2026-01-05", periods=3)
+    summary = DailyWatch20TrainingSummary(
+        as_of_date=dates[2],
+        train_start_date=dates[0],
+        train_end_date=dates[1],
+        rows=4,
+        query_groups=2,
+        sample_weight_mode="date_equal",
+    )
+
+    restored = ranker.restore(
+        _PersistedModel(),
+        summary,
+        metadata=ranker.persistence_metadata,
+    )
+
+    assert restored is ranker
+    assert ranker.training_summary == summary
+    with pytest.raises(ValueError, match="model_version"):
+        DailyWatch20Ranker(_tiny_config()).restore(
+            _PersistedModel(),
+            summary,
+            metadata={**ranker.persistence_metadata, "model_version": "other"},
+        )
+    changed_features = DailyWatch20Ranker(_tiny_config(features=("f1",)))
+    with pytest.raises(ValueError, match="feature_set_id"):
+        changed_features.restore(
+            _PersistedModel(),
+            summary,
+            metadata=ranker.persistence_metadata,
+        )
+
+
+def test_restore_rejects_incomplete_metadata_and_invalid_training_summary() -> None:
+    class _PersistedModel:
+        def predict(self, frame: pd.DataFrame) -> np.ndarray:
+            return np.zeros(len(frame))
+
+    ranker = DailyWatch20Ranker(_tiny_config())
+    with pytest.raises(ValueError, match="feature_set_id"):
+        ranker.restore(_PersistedModel(), {}, metadata={"model_version": ranker.model_version})
+    with pytest.raises(ValueError, match="ends after"):
+        ranker.restore(
+            _PersistedModel(),
+            {
+                "as_of_date": "2026-01-05",
+                "train_start_date": "2026-01-05",
+                "train_end_date": "2026-01-06",
+                "rows": 2,
+                "query_groups": 1,
+                "sample_weight_mode": None,
+            },
+            metadata=ranker.persistence_metadata,
+        )

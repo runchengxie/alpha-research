@@ -7,6 +7,8 @@ from pandas.testing import assert_frame_equal
 
 from cstree.alpha.daily_watch20_features import (
     DAILY_WATCH20_FEATURES,
+    DEFAULT_LABEL_HORIZON_WEIGHTS,
+    LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS,
     MINUTE_FEATURES,
     DailyWatch20FeatureConfig,
     build_daily_watch20_feature_frame,
@@ -55,8 +57,15 @@ def _row(frame: pd.DataFrame, date: pd.Timestamp, symbol: str) -> pd.Series:
     return selected.iloc[0]
 
 
-def test_feature_config_has_an_honest_fixed_five_day_contract() -> None:
-    with pytest.raises(ValueError, match="fixed at 5"):
+def test_feature_config_defaults_to_weighted_horizons_and_supports_legacy_five_day() -> None:
+    default = DailyWatch20FeatureConfig()
+    legacy = DailyWatch20FeatureConfig(label_horizon_weights=LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS)
+
+    assert default.label_horizon_weights == DEFAULT_LABEL_HORIZON_WEIGHTS
+    assert default.label_col == "forward_rank_blended"
+    assert default.forward_return_col == "forward_return_blended"
+    assert legacy.label_col == "forward_rank_5d"
+    with pytest.raises(ValueError, match="longest configured"):
         DailyWatch20FeatureConfig(forward_days=3)
     with pytest.raises(ValueError, match="non-negative integer"):
         DailyWatch20FeatureConfig(minute_lag_trade_days=0.5)  # type: ignore[arg-type]
@@ -75,6 +84,9 @@ def test_rolling_features_are_symbol_local_and_input_order_invariant() -> None:
     first_rows = actual.groupby("symbol", sort=False).head(1)
     assert first_rows["ret_1d"].isna().all()
     assert set(DAILY_WATCH20_FEATURES).issubset(actual.columns)
+    assert "low_volatility_pct" in DAILY_WATCH20_FEATURES
+    assert "low_resvol_pct" not in DAILY_WATCH20_FEATURES
+    assert actual["low_volatility_pct"].equals(actual["low_resvol_pct"])
 
 
 @pytest.mark.parametrize(("lag", "source_number", "target_number"), [(0, 4, 4), (1, 4, 5)])
@@ -121,16 +133,36 @@ def test_next_open_label_uses_t_plus_one_to_t_plus_six_and_eligible_universe() -
     bse_share = _row(features, signal_date, "830001.BJ")
     expected_return = (10.0 + signal_number + 6) / (10.0 + signal_number + 1) - 1.0
     assert a_share["forward_return_5d"] == pytest.approx(expected_return)
+    expected_1d = (10.0 + signal_number + 2) / (10.0 + signal_number + 1) - 1.0
+    expected_3d = (10.0 + signal_number + 4) / (10.0 + signal_number + 1) - 1.0
+    assert a_share["forward_return_1d"] == pytest.approx(expected_1d)
+    assert a_share["forward_return_3d"] == pytest.approx(expected_3d)
     assert a_share["liquidity_pct"] == 0.5
     assert a_share["forward_label_start_date"] == dates[signal_number + 1]
     assert a_share["forward_label_end_date"] == dates[signal_number + 6]
     assert a_share["forward_rank_5d"] == 1.0
+    assert a_share["forward_rank_blended"] == 1.0
     assert sh_share["forward_rank_5d"] == 0.5
     assert not bool(bse_share["hard_eligible"])
     assert pd.isna(bse_share["liquidity_pct"])
     assert pd.isna(bse_share["forward_rank_5d"])
+    assert pd.isna(bse_share["forward_rank_blended"])
     trailing = features.loc[features["symbol"].eq("000001.SZ")].tail(6)
     assert trailing["forward_return_5d"].isna().all()
+    assert trailing["forward_rank_blended"].isna().all()
+
+
+def test_legacy_five_day_label_mode_keeps_the_single_horizon_contract() -> None:
+    features = build_daily_watch20_feature_frame(
+        _daily_panel(),
+        config=DailyWatch20FeatureConfig(
+            label_horizon_weights=LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS
+        ),
+    )
+
+    assert "forward_rank_5d" in features
+    assert "forward_rank_blended" not in features
+    assert "forward_return_1d" not in features
 
 
 def test_label_does_not_stretch_across_a_missing_symbol_date() -> None:

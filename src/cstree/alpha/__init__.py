@@ -1,14 +1,24 @@
 """Alpha research APIs for factor discovery, modeling, and signal artifacts."""
 
 from .daily_watch20_features import (
+    BLENDED_FORWARD_RANK_COL,
+    BLENDED_FORWARD_RETURN_COL,
     DAILY_WATCH20_FEATURES,
+    DEFAULT_LABEL_HORIZON_WEIGHTS,
+    LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS,
     MINUTE_FEATURES,
     DailyWatch20FeatureConfig,
     build_daily_watch20_feature_frame,
+    label_columns_for_horizon_weights,
+    normalize_label_horizon_weights,
 )
 
 __all__ = [
+    "BLENDED_FORWARD_RANK_COL",
+    "BLENDED_FORWARD_RETURN_COL",
     "DAILY_WATCH20_FEATURES",
+    "DEFAULT_LABEL_HORIZON_WEIGHTS",
+    "LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS",
     "MINUTE_FEATURES",
     "DailyWatch20FeatureConfig",
     "artifact_cpcv",
@@ -33,8 +43,10 @@ __all__ = [
     "feature_windows",
     "freshness_overlay",
     "fundamentals",
+    "label_columns_for_horizon_weights",
     "metrics",
     "modeling",
+    "normalize_label_horizon_weights",
     "overfitting_diagnostics",
     "pbo",
     "period_evaluation",

@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+
+DEFAULT_LABEL_HORIZON_WEIGHTS = ((1, 0.20), (3, 0.30), (5, 0.50))
+LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS = ((5, 1.0),)
+BLENDED_FORWARD_RANK_COL = "forward_rank_blended"
+BLENDED_FORWARD_RETURN_COL = "forward_return_blended"
 
 DAILY_WATCH20_FEATURES = (
     "ret_1d",
@@ -21,7 +27,7 @@ DAILY_WATCH20_FEATURES = (
     "turnover_20",
     "size_pct",
     "liquidity_pct",
-    "low_resvol_pct",
+    "low_volatility_pct",
     "vol_convergence_pct",
     "mom20_pct",
     "mom120_pct",
@@ -59,13 +65,17 @@ class DailyWatch20FeatureConfig:
     """Feature and label timing for a close-to-next-open daily watchlist."""
 
     forward_days: int = 5
+    label_horizon_weights: Mapping[int, float] | Sequence[tuple[int, float]] = (
+        DEFAULT_LABEL_HORIZON_WEIGHTS
+    )
     minute_lag_trade_days: int = 1
     min_listed_days: int = 60
     liquidity_floor_quantile: float = 0.20
 
     def __post_init__(self) -> None:
-        if self.forward_days != 5:
-            raise ValueError("DailyWatch20 forward_days is fixed at 5 trading days")
+        horizon_weights = normalize_label_horizon_weights(self.label_horizon_weights)
+        if int(self.forward_days) != max(horizon for horizon, _weight in horizon_weights):
+            raise ValueError("forward_days must equal the longest configured label horizon")
         try:
             minute_lag = int(self.minute_lag_trade_days)
             min_listed = int(self.min_listed_days)
@@ -79,6 +89,60 @@ class DailyWatch20FeatureConfig:
             raise ValueError("liquidity_floor_quantile must be in [0, 1)")
         object.__setattr__(self, "minute_lag_trade_days", minute_lag)
         object.__setattr__(self, "min_listed_days", min_listed)
+        object.__setattr__(self, "forward_days", int(self.forward_days))
+        object.__setattr__(self, "label_horizon_weights", horizon_weights)
+
+    @property
+    def label_col(self) -> str:
+        """Training target column implied by the configured horizon mix."""
+
+        return label_columns_for_horizon_weights(self.label_horizon_weights)[0]
+
+    @property
+    def forward_return_col(self) -> str:
+        """Forward-return column implied by the configured horizon mix."""
+
+        return label_columns_for_horizon_weights(self.label_horizon_weights)[1]
+
+
+def normalize_label_horizon_weights(
+    weights: Mapping[int, float] | Sequence[tuple[int, float]],
+) -> tuple[tuple[int, float], ...]:
+    """Validate, sort, and normalize positive trading-day horizon weights."""
+
+    items = tuple(weights.items()) if isinstance(weights, Mapping) else tuple(weights)
+    if not items:
+        raise ValueError("label_horizon_weights must not be empty")
+    normalized: list[tuple[int, float]] = []
+    seen: set[int] = set()
+    for raw_horizon, raw_weight in items:
+        try:
+            horizon = int(raw_horizon)
+            weight = float(raw_weight)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("label horizons and weights must be numeric") from exc
+        if horizon != raw_horizon or horizon <= 0:
+            raise ValueError("label horizons must be positive integers")
+        if horizon in seen:
+            raise ValueError("label horizons must be unique")
+        if not np.isfinite(weight) or weight <= 0:
+            raise ValueError("label horizon weights must be finite and positive")
+        seen.add(horizon)
+        normalized.append((horizon, weight))
+    total = sum(weight for _horizon, weight in normalized)
+    return tuple((horizon, weight / total) for horizon, weight in sorted(normalized))
+
+
+def label_columns_for_horizon_weights(
+    weights: Mapping[int, float] | Sequence[tuple[int, float]],
+) -> tuple[str, str]:
+    """Return canonical rank and return target columns for a horizon mix."""
+
+    normalized = normalize_label_horizon_weights(weights)
+    if len(normalized) == 1:
+        horizon = normalized[0][0]
+        return f"forward_rank_{horizon}d", f"forward_return_{horizon}d"
+    return BLENDED_FORWARD_RANK_COL, BLENDED_FORWARD_RETURN_COL
 
 
 def _require_columns(frame: pd.DataFrame, columns: set[str]) -> None:
@@ -214,17 +278,19 @@ def _add_liquidity_and_style_features(frame: pd.DataFrame) -> pd.DataFrame:
     rank_inputs = {
         "size_pct": "size_log",
         "liquidity_pct": "amount_log_20",
-        "low_resvol_pct": "vol_20",
+        "low_volatility_pct": "vol_20",
         "vol_convergence_pct": "vol_convergence",
         "mom20_pct": "mom_20",
         "mom120_pct": "mom_120",
     }
     target_market = _target_market(out["symbol"])
     for output, source in rank_inputs.items():
-        values = -out[source] if output == "low_resvol_pct" else out[source]
+        values = -out[source] if output == "low_volatility_pct" else out[source]
         out[output] = (
             values.where(target_market).groupby(out["trade_date"], sort=False).rank(pct=True)
         )
+    # Compatibility-only alias. New model contracts must use low_volatility_pct.
+    out["low_resvol_pct"] = out["low_volatility_pct"]
     return out.drop(columns="_log_amount")
 
 
@@ -331,24 +397,54 @@ def _lookup_on_dates(
     return pd.Series(lookup.reindex(keys).to_numpy(), index=frame.index)
 
 
-def _add_next_open_label(frame: pd.DataFrame, *, forward_days: int) -> pd.DataFrame:
+def _weighted_complete_row_sum(
+    frame: pd.DataFrame,
+    columns_and_weights: Sequence[tuple[str, float]],
+) -> pd.Series:
+    weighted = pd.concat(
+        [frame[column].mul(weight) for column, weight in columns_and_weights],
+        axis=1,
+    )
+    return weighted.sum(axis=1, min_count=len(columns_and_weights))
+
+
+def _add_next_open_labels(
+    frame: pd.DataFrame,
+    *,
+    horizon_weights: Mapping[int, float] | Sequence[tuple[int, float]],
+) -> pd.DataFrame:
     out = frame.sort_values(["symbol", "trade_date"], kind="mergesort").copy()
+    normalized_weights = normalize_label_horizon_weights(horizon_weights)
     entry_date = _future_date(out, 1)
-    exit_date = _future_date(out, forward_days + 1)
     entry = pd.to_numeric(_lookup_on_dates(out, out["adj_open"], entry_date), errors="coerce")
-    exit_price = pd.to_numeric(_lookup_on_dates(out, out["adj_open"], exit_date), errors="coerce")
     tradable = _known_false_flag(out["is_suspended"])
     entry_tradable = _lookup_on_dates(out, tradable, entry_date).eq(True)
-    exit_tradable = _lookup_on_dates(out, tradable, exit_date).eq(True)
-    valid = entry.gt(0) & exit_price.gt(0) & entry_tradable & exit_tradable
     out["forward_label_start_date"] = entry_date
-    out["forward_label_end_date"] = exit_date
-    out["forward_return_5d"] = (exit_price / entry - 1.0).where(valid)
-    eligible_return = out["forward_return_5d"].where(out["hard_eligible"])
-    out["forward_rank_5d"] = eligible_return.groupby(out["trade_date"], sort=False).rank(
-        method="average",
-        pct=True,
-    )
+    return_parts: list[tuple[str, float]] = []
+    rank_parts: list[tuple[str, float]] = []
+    for horizon, weight in normalized_weights:
+        exit_date = _future_date(out, horizon + 1)
+        exit_price = pd.to_numeric(
+            _lookup_on_dates(out, out["adj_open"], exit_date), errors="coerce"
+        )
+        exit_tradable = _lookup_on_dates(out, tradable, exit_date).eq(True)
+        valid = entry.gt(0) & exit_price.gt(0) & entry_tradable & exit_tradable
+        return_col = f"forward_return_{horizon}d"
+        rank_col = f"forward_rank_{horizon}d"
+        out[return_col] = (exit_price / entry - 1.0).where(valid)
+        eligible_return = out[return_col].where(out["hard_eligible"])
+        out[rank_col] = eligible_return.groupby(out["trade_date"], sort=False).rank(
+            method="average",
+            pct=True,
+        )
+        return_parts.append((return_col, weight))
+        rank_parts.append((rank_col, weight))
+        if horizon == normalized_weights[-1][0]:
+            out["forward_label_end_date"] = exit_date
+    target_rank_col, target_return_col = label_columns_for_horizon_weights(normalized_weights)
+    if len(normalized_weights) > 1:
+        out[target_return_col] = _weighted_complete_row_sum(out, return_parts)
+        out[target_rank_col] = _weighted_complete_row_sum(out, rank_parts)
     return out
 
 
@@ -408,9 +504,9 @@ def _add_hermite_stability(frame: pd.DataFrame) -> pd.DataFrame:
     out["hermite_stability"] = -np.log1p(energy)
 
     if "minute_feature_available" in out.columns:
-        out["minute_feature_available"] = out["minute_feature_available"] | out[
-            "hermite_stability"
-        ].notna()
+        out["minute_feature_available"] = (
+            out["minute_feature_available"] | out["hermite_stability"].notna()
+        )
 
     return out.drop(columns=["_h3_raw", "_h4_raw"])
 
@@ -445,7 +541,7 @@ def build_daily_watch20_feature_frame(
     *,
     config: DailyWatch20FeatureConfig | None = None,
 ) -> pd.DataFrame:
-    """Build model-ready stock-date features and a next-open five-day rank label."""
+    """Build point-in-time features and next-open multi-horizon rank labels."""
 
     cfg = config or DailyWatch20FeatureConfig()
     out = _prepare_daily_input(daily)
@@ -455,7 +551,7 @@ def build_daily_watch20_feature_frame(
     out = _join_minute_features(out, minute_daily, lag_trade_days=cfg.minute_lag_trade_days)
     out = _add_hermite_stability(out)
     out = _add_eligibility(out, cfg)
-    out = _add_next_open_label(out, forward_days=cfg.forward_days)
+    out = _add_next_open_labels(out, horizon_weights=cfg.label_horizon_weights)
     return out.sort_values(["trade_date", "symbol"], kind="mergesort").reset_index(drop=True)
 
 

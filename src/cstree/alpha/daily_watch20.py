@@ -13,6 +13,11 @@ import pandas as pd
 from xgboost import DMatrix
 from xgboost.core import XGBoostError
 
+from .daily_watch20_features import (
+    DEFAULT_LABEL_HORIZON_WEIGHTS,
+    label_columns_for_horizon_weights,
+    normalize_label_horizon_weights,
+)
 from .modeling import (
     build_model,
     feature_importance_frame,
@@ -39,8 +44,11 @@ class DailyWatch20Config:
     symbol_col: str = "symbol"
     price_col: str = "adj_close"
     forward_days: int = 5
-    label_col: str = "forward_rank_5d"
-    forward_return_col: str = "forward_return_5d"
+    label_horizon_weights: Mapping[int, float] | Sequence[tuple[int, float]] = (
+        DEFAULT_LABEL_HORIZON_WEIGHTS
+    )
+    label_col: str | None = None
+    forward_return_col: str | None = None
     label_end_col: str = "forward_label_end_date"
     train_window_dates: int | None = 252
     sample_weight_mode: str | None = "date_equal"
@@ -56,14 +64,21 @@ class DailyWatch20Config:
             raise ValueError("DailyWatch20Config.features must contain non-empty names.")
         if len(set(features)) != len(features):
             raise ValueError("DailyWatch20Config.features must be unique.")
-        if int(self.forward_days) <= 0:
-            raise ValueError("DailyWatch20Config.forward_days must be positive.")
+        horizon_weights = normalize_label_horizon_weights(self.label_horizon_weights)
+        if int(self.forward_days) != max(horizon for horizon, _weight in horizon_weights):
+            raise ValueError(
+                "DailyWatch20Config.forward_days must equal the longest configured label horizon."
+            )
         if self.train_window_dates is not None and int(self.train_window_dates) <= 0:
             raise ValueError("DailyWatch20Config.train_window_dates must be positive or None.")
         if int(self.min_query_size) < 2:
             raise ValueError("DailyWatch20Config.min_query_size must be at least 2.")
         object.__setattr__(self, "features", features)
         object.__setattr__(self, "forward_days", int(self.forward_days))
+        object.__setattr__(self, "label_horizon_weights", horizon_weights)
+        default_label, default_return = label_columns_for_horizon_weights(horizon_weights)
+        object.__setattr__(self, "label_col", self.label_col or default_label)
+        object.__setattr__(self, "forward_return_col", self.forward_return_col or default_return)
         object.__setattr__(self, "min_query_size", int(self.min_query_size))
         object.__setattr__(self, "sample_weight_params", dict(self.sample_weight_params))
         object.__setattr__(self, "model_params", dict(self.model_params))
@@ -77,6 +92,40 @@ class DailyWatch20TrainingSummary:
     rows: int
     query_groups: int
     sample_weight_mode: str | None
+
+
+def _coerce_training_summary(
+    value: DailyWatch20TrainingSummary | Mapping[str, Any],
+) -> DailyWatch20TrainingSummary:
+    if isinstance(value, DailyWatch20TrainingSummary):
+        summary = value
+    else:
+        required = {
+            "as_of_date",
+            "train_start_date",
+            "train_end_date",
+            "rows",
+            "query_groups",
+            "sample_weight_mode",
+        }
+        missing = sorted(required - set(value))
+        if missing:
+            raise ValueError("DailyWatch20 training summary is missing: " + ", ".join(missing))
+        summary = DailyWatch20TrainingSummary(
+            as_of_date=_as_timestamp(value["as_of_date"], label="as_of_date"),
+            train_start_date=_as_timestamp(value["train_start_date"], label="train_start_date"),
+            train_end_date=_as_timestamp(value["train_end_date"], label="train_end_date"),
+            rows=int(value["rows"]),
+            query_groups=int(value["query_groups"]),
+            sample_weight_mode=cast(str | None, value["sample_weight_mode"]),
+        )
+    if summary.train_start_date > summary.train_end_date:
+        raise ValueError("DailyWatch20 training summary starts after it ends.")
+    if summary.train_end_date > summary.as_of_date:
+        raise ValueError("DailyWatch20 training summary ends after its as-of date.")
+    if summary.rows <= 0 or summary.query_groups <= 0:
+        raise ValueError("DailyWatch20 training summary counts must be positive.")
+    return summary
 
 
 @dataclass(frozen=True)
@@ -177,6 +226,57 @@ def build_forward_rank_label(
     return ordered.drop(columns="_daily_watch20_price").sort_index()
 
 
+def build_multi_horizon_forward_rank_label(
+    frame: pd.DataFrame,
+    *,
+    price_col: str = "adj_close",
+    horizon_weights: Mapping[int, float] | Sequence[tuple[int, float]] = (
+        DEFAULT_LABEL_HORIZON_WEIGHTS
+    ),
+    date_col: str = "trade_date",
+    symbol_col: str = "symbol",
+    label_col: str | None = None,
+    forward_return_col: str | None = None,
+    label_end_col: str = "forward_label_end_date",
+) -> pd.DataFrame:
+    """Build complete-case weighted forward ranks for one or more horizons."""
+
+    normalized = normalize_label_horizon_weights(horizon_weights)
+    target_label, target_return = label_columns_for_horizon_weights(normalized)
+    target_label = label_col or target_label
+    target_return = forward_return_col or target_return
+    out = _validate_keys(frame, date_col=date_col, symbol_col=symbol_col)
+    if price_col not in out.columns:
+        raise ValueError(f"DailyWatch20 missing price column: {price_col}")
+    price = pd.to_numeric(out[price_col], errors="coerce").replace([np.inf, -np.inf], np.nan)
+    price = price.where(price > 0)
+    ordered = out.assign(_daily_watch20_price=price).sort_values(
+        [symbol_col, date_col], kind="mergesort"
+    )
+    grouped = ordered.groupby(symbol_col, sort=False)
+    return_parts: list[pd.Series] = []
+    rank_parts: list[pd.Series] = []
+    for horizon, weight in normalized:
+        return_name = f"forward_return_{horizon}d"
+        rank_name = f"forward_rank_{horizon}d"
+        future_price = grouped["_daily_watch20_price"].shift(-horizon)
+        ordered[return_name] = future_price / ordered["_daily_watch20_price"] - 1.0
+        ordered[rank_name] = ordered.groupby(date_col, sort=False)[return_name].rank(
+            method="average", pct=True
+        )
+        return_parts.append(ordered[return_name].mul(weight))
+        rank_parts.append(ordered[rank_name].mul(weight))
+    if len(normalized) > 1 or target_return not in ordered.columns:
+        ordered[target_return] = pd.concat(return_parts, axis=1).sum(
+            axis=1, min_count=len(normalized)
+        )
+    if len(normalized) > 1 or target_label not in ordered.columns:
+        ordered[target_label] = pd.concat(rank_parts, axis=1).sum(axis=1, min_count=len(normalized))
+    longest_horizon = normalized[-1][0]
+    ordered[label_end_col] = grouped[date_col].shift(-longest_horizon)
+    return ordered.drop(columns="_daily_watch20_price").sort_index()
+
+
 def _coerce_features(frame: pd.DataFrame, features: Sequence[str]) -> pd.DataFrame:
     missing = [feature for feature in features if feature not in frame.columns]
     if missing:
@@ -213,17 +313,53 @@ class DailyWatch20Ranker:
             "features": list(self.config.features),
             "label": self.config.label_col,
             "forward_days": self.config.forward_days,
+            "label_horizon_weights": list(self.config.label_horizon_weights),
         }
         return _stable_id(payload)
+
+    @property
+    def persistence_metadata(self) -> dict[str, str]:
+        """Compatibility identifiers that must accompany a persisted model."""
+
+        return {
+            "model_version": self.model_version,
+            "feature_set_id": self.feature_set_id,
+        }
+
+    def restore(
+        self,
+        model: Any,
+        training_summary: DailyWatch20TrainingSummary | Mapping[str, Any],
+        *,
+        metadata: Mapping[str, Any],
+    ) -> DailyWatch20Ranker:
+        """Attach a trained model only when caller-supplied compatibility IDs match."""
+
+        required = {"model_version", "feature_set_id"}
+        missing = sorted(required - set(metadata))
+        if missing:
+            raise ValueError("DailyWatch20 restore metadata is missing: " + ", ".join(missing))
+        expected = self.persistence_metadata
+        mismatches = [key for key in sorted(required) if str(metadata[key]) != expected[key]]
+        if mismatches:
+            raise ValueError(
+                "DailyWatch20 restore compatibility mismatch: " + ", ".join(mismatches)
+            )
+        if model is None or not callable(getattr(model, "predict", None)):
+            raise ValueError("DailyWatch20 restored model must provide predict().")
+        summary = _coerce_training_summary(training_summary)
+        self.model = model
+        self.training_summary = summary
+        return self
 
     def _with_label_metadata(self, frame: pd.DataFrame) -> pd.DataFrame:
         cfg = self.config
         out = _validate_keys(frame, date_col=cfg.date_col, symbol_col=cfg.symbol_col)
         if cfg.label_col not in out.columns:
-            return build_forward_rank_label(
+            return build_multi_horizon_forward_rank_label(
                 out,
                 price_col=cfg.price_col,
-                forward_days=cfg.forward_days,
+                horizon_weights=cfg.label_horizon_weights,
                 date_col=cfg.date_col,
                 symbol_col=cfg.symbol_col,
                 label_col=cfg.label_col,
@@ -422,4 +558,5 @@ __all__ = [
     "DailyWatch20Ranker",
     "DailyWatch20TrainingSummary",
     "build_forward_rank_label",
+    "build_multi_horizon_forward_rank_label",
 ]
