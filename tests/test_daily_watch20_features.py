@@ -46,6 +46,8 @@ def _daily_panel(
                     "listed_days": 100 + date_number,
                     "is_st": False,
                     "is_suspended": False,
+                    "is_limit_up": False,
+                    "is_limit_down": False,
                 }
             )
     return pd.DataFrame(rows)
@@ -62,6 +64,7 @@ def test_feature_config_defaults_to_weighted_horizons_and_supports_legacy_five_d
     legacy = DailyWatch20FeatureConfig(label_horizon_weights=LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS)
 
     assert default.label_horizon_weights == DEFAULT_LABEL_HORIZON_WEIGHTS
+    assert default.minute_lag_trade_days == 0
     assert default.label_col == "forward_rank_blended"
     assert default.forward_return_col == "forward_return_blended"
     assert legacy.label_col == "forward_rank_5d"
@@ -150,6 +153,35 @@ def test_next_open_label_uses_t_plus_one_to_t_plus_six_and_eligible_universe() -
     trailing = features.loc[features["symbol"].eq("000001.SZ")].tail(6)
     assert trailing["forward_return_5d"].isna().all()
     assert trailing["forward_rank_blended"].isna().all()
+
+
+@pytest.mark.parametrize(
+    ("flag", "offset", "return_column"),
+    [
+        ("is_limit_up", 1, "forward_return_1d"),
+        ("is_limit_down", 2, "forward_return_1d"),
+        ("is_limit_down", 4, "forward_return_3d"),
+        ("is_limit_down", 6, "forward_return_5d"),
+    ],
+)
+def test_next_open_labels_reject_limit_locked_entry_and_exit(
+    flag: str,
+    offset: int,
+    return_column: str,
+) -> None:
+    daily = _daily_panel()
+    dates = pd.Index(daily["trade_date"].unique()).sort_values()
+    signal_number = 25
+    locked = daily["trade_date"].eq(dates[signal_number + offset]) & daily["symbol"].eq("000001.SZ")
+    daily.loc[locked, flag] = True
+
+    features = build_daily_watch20_feature_frame(daily)
+
+    signal = _row(features, pd.Timestamp(dates[signal_number]), "000001.SZ")
+    assert pd.isna(signal[return_column])
+    assert pd.isna(signal[return_column.replace("return", "rank")])
+    assert pd.isna(signal["forward_return_blended"])
+    assert pd.isna(signal["forward_rank_blended"])
 
 
 def test_legacy_five_day_label_mode_keeps_the_single_horizon_contract() -> None:

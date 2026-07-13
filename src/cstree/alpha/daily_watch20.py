@@ -29,11 +29,20 @@ from .signal_artifact import CANONICAL_SIGNAL_COLUMNS, build_signal_artifact_fra
 from .split import build_sample_weight, select_train_window_dates
 
 RELATIVE_PERCENTILE_COL = "relative_percentile"
+PREPARED_FEATURE_POLICY_ID = "prepared_features.v1"
+PRICE_ONLY_LABEL_POLICY_ID = "forward_price_only.v1"
 
 
 def _stable_id(payload: Mapping[str, Any]) -> str:
     encoded = json.dumps(dict(payload), sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
+
+
+def _normalize_policy_id(value: object, *, field: str) -> str:
+    policy_id = str(value).strip()
+    if not policy_id:
+        raise ValueError(f"DailyWatch20Config.{field} must be non-empty.")
+    return policy_id
 
 
 @dataclass(frozen=True)
@@ -51,6 +60,8 @@ class DailyWatch20Config:
     label_col: str | None = None
     forward_return_col: str | None = None
     label_end_col: str = "forward_label_end_date"
+    feature_policy_id: str = PREPARED_FEATURE_POLICY_ID
+    label_policy_id: str = PRICE_ONLY_LABEL_POLICY_ID
     train_window_dates: int | None = 252
     sample_weight_mode: str | None = "date_equal"
     sample_weight_params: Mapping[str, object] = field(default_factory=dict)
@@ -74,6 +85,8 @@ class DailyWatch20Config:
             raise ValueError("DailyWatch20Config.train_window_dates must be positive or None.")
         if int(self.min_query_size) < 2:
             raise ValueError("DailyWatch20Config.min_query_size must be at least 2.")
+        feature_policy_id = _normalize_policy_id(self.feature_policy_id, field="feature_policy_id")
+        label_policy_id = _normalize_policy_id(self.label_policy_id, field="label_policy_id")
         object.__setattr__(self, "features", features)
         object.__setattr__(self, "forward_days", int(self.forward_days))
         object.__setattr__(self, "label_horizon_weights", horizon_weights)
@@ -81,6 +94,8 @@ class DailyWatch20Config:
         object.__setattr__(self, "label_col", self.label_col or default_label)
         object.__setattr__(self, "forward_return_col", self.forward_return_col or default_return)
         object.__setattr__(self, "min_query_size", int(self.min_query_size))
+        object.__setattr__(self, "feature_policy_id", feature_policy_id)
+        object.__setattr__(self, "label_policy_id", label_policy_id)
         object.__setattr__(self, "sample_weight_params", dict(self.sample_weight_params))
         object.__setattr__(self, "model_params", dict(self.model_params))
 
@@ -312,9 +327,11 @@ class DailyWatch20Ranker:
     def feature_set_id(self) -> str:
         payload = {
             "features": list(self.config.features),
+            "feature_policy_id": self.config.feature_policy_id,
             "label": self.config.label_col,
             "forward_days": self.config.forward_days,
             "label_horizon_weights": list(self.config.label_horizon_weights),
+            "label_policy_id": self.config.label_policy_id,
         }
         return _stable_id(payload)
 
@@ -587,6 +604,7 @@ class DailyWatch20Ranker:
 
 
 __all__ = [
+    "PREPARED_FEATURE_POLICY_ID",
     "RELATIVE_PERCENTILE_COL",
     "DailyWatch20Config",
     "DailyWatch20Explanation",

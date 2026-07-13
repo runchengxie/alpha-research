@@ -79,8 +79,8 @@ def test_multi_horizon_label_requires_all_components_and_uses_weighted_ranks() -
     labeled = build_multi_horizon_forward_rank_label(panel)
 
     first = labeled.loc[labeled["trade_date"].eq(panel["trade_date"].min())].set_index("symbol")
-    expected_a = 0.2 * 1.0 + 0.3 * 1.0 + 0.5 * 1.0
-    expected_b = 0.2 * 0.5 + 0.3 * 0.5 + 0.5 * 0.5
+    expected_a = 0.5 * 1.0 + 0.3 * 1.0 + 0.2 * 1.0
+    expected_b = 0.5 * 0.5 + 0.3 * 0.5 + 0.2 * 0.5
     assert first.loc["A", "forward_rank_blended"] == pytest.approx(expected_a)
     assert first.loc["B", "forward_rank_blended"] == pytest.approx(expected_b)
     assert labeled.groupby("symbol", sort=False)["forward_rank_1d"].tail(1).isna().all()
@@ -158,6 +158,39 @@ def test_ranker_config_can_select_legacy_single_five_day_target() -> None:
 
     assert config.label_col == "forward_rank_5d"
     assert config.forward_return_col == "forward_return_5d"
+
+
+def test_label_policy_changes_feature_set_identity() -> None:
+    price_only = DailyWatch20Ranker(_tiny_config(label_policy_id="price_only.v1"))
+    limit_aware = DailyWatch20Ranker(_tiny_config(label_policy_id="limit_aware.v2"))
+
+    assert price_only.feature_set_id != limit_aware.feature_set_id
+
+
+def test_feature_timing_policy_changes_feature_set_identity() -> None:
+    lag0 = DailyWatch20Ranker(_tiny_config(feature_policy_id="minute.close.v2:lag=0"))
+    lag1 = DailyWatch20Ranker(_tiny_config(feature_policy_id="minute.close.v2:lag=1"))
+
+    assert lag0.config.label_policy_id == lag1.config.label_policy_id
+    assert lag0.feature_set_id != lag1.feature_set_id
+    assert lag0.model_version == lag1.model_version
+    assert lag0.training_policy_id == lag1.training_policy_id
+
+
+@pytest.mark.parametrize("field", ["feature_policy_id", "label_policy_id"])
+def test_ranker_config_rejects_blank_policy_identity(field: str) -> None:
+    with pytest.raises(
+        ValueError,
+        match=rf"DailyWatch20Config\.{field} must be non-empty\.",
+    ):
+        _tiny_config(**{field: "  "})
+
+
+def test_ranker_config_normalizes_policy_identity_whitespace() -> None:
+    config = _tiny_config(feature_policy_id=" feature.v2 ", label_policy_id=" label.v2 ")
+
+    assert config.feature_policy_id == "feature.v2"
+    assert config.label_policy_id == "label.v2"
 
 
 def test_time_decay_increases_recent_query_weight(monkeypatch: pytest.MonkeyPatch) -> None:

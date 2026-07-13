@@ -8,8 +8,9 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-DEFAULT_LABEL_HORIZON_WEIGHTS = ((1, 0.20), (3, 0.30), (5, 0.50))
+DEFAULT_LABEL_HORIZON_WEIGHTS = ((1, 0.50), (3, 0.30), (5, 0.20))
 LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS = ((5, 1.0),)
+LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID = "next_open_unsuspended_limit_aware.v2"
 BLENDED_FORWARD_RANK_COL = "forward_rank_blended"
 BLENDED_FORWARD_RETURN_COL = "forward_return_blended"
 
@@ -68,7 +69,7 @@ class DailyWatch20FeatureConfig:
     label_horizon_weights: Mapping[int, float] | Sequence[tuple[int, float]] = (
         DEFAULT_LABEL_HORIZON_WEIGHTS
     )
-    minute_lag_trade_days: int = 1
+    minute_lag_trade_days: int = 0
     min_listed_days: int = 60
     liquidity_floor_quantile: float = 0.20
 
@@ -188,6 +189,8 @@ def _prepare_daily_input(daily: pd.DataFrame) -> pd.DataFrame:
             "listed_days",
             "is_st",
             "is_suspended",
+            "is_limit_up",
+            "is_limit_down",
         },
     )
     out = daily.copy()
@@ -418,7 +421,10 @@ def _add_next_open_labels(
     entry_date = _future_date(out, 1)
     entry = pd.to_numeric(_lookup_on_dates(out, out["adj_open"], entry_date), errors="coerce")
     tradable = _known_false_flag(out["is_suspended"])
-    entry_tradable = _lookup_on_dates(out, tradable, entry_date).eq(True)
+    entry_not_limit_up = _lookup_on_dates(
+        out, _known_false_flag(out["is_limit_up"]), entry_date
+    ).eq(True)
+    entry_tradable = _lookup_on_dates(out, tradable, entry_date).eq(True) & entry_not_limit_up
     out["forward_label_start_date"] = entry_date
     return_parts: list[tuple[str, float]] = []
     rank_parts: list[tuple[str, float]] = []
@@ -427,7 +433,10 @@ def _add_next_open_labels(
         exit_price = pd.to_numeric(
             _lookup_on_dates(out, out["adj_open"], exit_date), errors="coerce"
         )
-        exit_tradable = _lookup_on_dates(out, tradable, exit_date).eq(True)
+        exit_not_limit_down = _lookup_on_dates(
+            out, _known_false_flag(out["is_limit_down"]), exit_date
+        ).eq(True)
+        exit_tradable = _lookup_on_dates(out, tradable, exit_date).eq(True) & exit_not_limit_down
         valid = entry.gt(0) & exit_price.gt(0) & entry_tradable & exit_tradable
         return_col = f"forward_return_{horizon}d"
         rank_col = f"forward_rank_{horizon}d"
@@ -557,6 +566,9 @@ def build_daily_watch20_feature_frame(
 
 __all__ = [
     "DAILY_WATCH20_FEATURES",
+    "DEFAULT_LABEL_HORIZON_WEIGHTS",
+    "LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS",
+    "LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID",
     "MINUTE_FEATURES",
     "DailyWatch20FeatureConfig",
     "build_daily_watch20_feature_frame",
