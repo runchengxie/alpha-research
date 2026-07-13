@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from .backends import FittedModelHandle, TrainerBackend
 from .modeling import feature_importance_frame
 from .split import time_series_cv_ic
 from .train_eval_contracts import TrainEvalData, TrainEvalRequest
@@ -357,6 +358,7 @@ def _run_cv_and_fit_model(request: TrainEvalRequest) -> _TrainFitResult:
         label_horizon_days=int(request.period.label_horizon_effective),
         label_shift_days=request.backtest.label_shift_days,
         all_trade_dates=data.all_dates,
+        trainer_backend=request.services.trainer_backend,
     )
     if cv_scores_raw:
         logger.info(
@@ -391,6 +393,7 @@ def _run_cv_and_fit_model(request: TrainEvalRequest) -> _TrainFitResult:
         model_settings=model_settings,
         signal_settings=signal_settings,
         cv_scores_raw=cv_scores_raw,
+        trainer_backend=request.services.trainer_backend,
     )
     return _TrainFitResult(
         model=fit_state.model,
@@ -404,6 +407,7 @@ def _run_cv_and_fit_model(request: TrainEvalRequest) -> _TrainFitResult:
         train_pearson_ic_stats=fit_state.train_pearson_ic_stats,
         cv_scores_raw=cv_scores_raw,
         cv_scores_adj=fit_state.cv_scores_adj,
+        model_handle=fit_state.model_handle,
     )
 
 
@@ -651,9 +655,16 @@ def _feature_importance_diagnostics(
     model: Any,
     features: list[str],
     eval_scored_data: pd.DataFrame | None,
+    *,
+    trainer_backend: TrainerBackend | None = None,
+    model_handle: FittedModelHandle | None = None,
 ) -> tuple[pd.DataFrame, str, int | None, bool | None, int | None, bool | None]:
     logger.info("Feature importance:")
-    importance_df, importance_source = feature_importance_frame(model, features)
+    if trainer_backend is not None and model_handle is not None:
+        importance = trainer_backend.feature_importance(model_handle, features=features)
+        importance_df, importance_source = importance.frame, importance.source
+    else:
+        importance_df, importance_source = feature_importance_frame(model, features)
     logger.info("Feature importance source: %s", importance_source)
     for _, row in importance_df.iterrows():
         logger.info("  %-20s: %.4f", row["feature"], float(row["importance"]))
@@ -750,6 +761,12 @@ def _run_train_eval_stage_impl(request: TrainEvalRequest) -> dict[str, Any]:
         constant_prediction,
         feature_importance_nonzero,
         zero_feature_importance,
-    ) = _feature_importance_diagnostics(model, features, eval_scored_data)
+    ) = _feature_importance_diagnostics(
+        model,
+        features,
+        eval_scored_data,
+        trainer_backend=request.services.trainer_backend,
+        model_handle=fit_state.model_handle,
+    )
 
     return _build_train_eval_stage_result(locals())

@@ -4,6 +4,7 @@ from cstree.alpha.feature_dataset import (
     _build_rebalance_tail_candidate_dates,
     _prepare_feature_dataset,
 )
+from cstree.alpha.research_dataset import ResearchDataset
 
 
 def test_rebalance_tail_candidate_dates_keep_recent_fallback_dates():
@@ -108,8 +109,11 @@ def test_prepare_feature_dataset_prefilters_engineered_rows_but_keeps_daily_pric
     assert len(state["backtest_pricing_df"]) == len(df)
     assert set(state["df_features"]["trade_date"].unique()) == set(expected_model_dates)
     lifecycle = state["dataset_lifecycle"]
+    assert isinstance(state["research_dataset"], ResearchDataset)
+    assert lifecycle["metadata"]["backend"] == "native"
     assert lifecycle["metadata"]["raw_daily_panel_rows"] == len(df)
     assert lifecycle["metadata"]["engineered_feature_label_rows"] < len(df)
+    assert "future_return" not in state["research_dataset"].fetch_infer().columns
 
 
 def test_prepare_feature_dataset_keeps_extra_passthrough_out_of_model_features():

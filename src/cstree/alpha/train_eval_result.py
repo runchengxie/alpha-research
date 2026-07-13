@@ -11,6 +11,11 @@ def build_train_eval_stage_result(values: Mapping[str, Any]) -> dict[str, Any]:
     live_state = values["live_state"]
     return {
         "model": values["model"],
+        "model_backend": (
+            values["fit_state"].model_handle.to_metadata()
+            if values["fit_state"].model_handle is not None
+            else {"backend_id": "legacy"}
+        ),
         "signal_direction": values["updated_signal_direction"],
         "train_ic_raw_stats": values["train_ic_raw_stats"],
         "train_ic_series": values["train_ic_series"],

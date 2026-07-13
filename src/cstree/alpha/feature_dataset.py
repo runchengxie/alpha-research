@@ -8,6 +8,7 @@ from typing import Any, cast
 
 import numpy as np
 
+from .backends import DatasetBackend, DatasetBuildRequest, NativeDatasetBackend
 from .compat import ensure_numpy_nan_alias
 from .dataset_sampling import (
     _normalize_extra_sample_dates,
@@ -16,7 +17,6 @@ from .dataset_sampling import (
     prepare_backtest_pricing_frame,
 )
 from .feature_engineering import engineer_symbol_features
-from .research_dataset import build_research_dataset_from_modeling_state
 
 ensure_numpy_nan_alias()
 import pandas as pd  # noqa: E402
@@ -439,7 +439,7 @@ def _log_modeling_dataset_summary(
         )
 
 
-def _build_dataset_lifecycle_summary(
+def _build_research_dataset(
     *,
     raw_panel: pd.DataFrame,
     modeling_state: dict[str, Any],
@@ -459,32 +459,38 @@ def _build_dataset_lifecycle_summary(
     sample_on_rebalance_dates: bool,
     min_symbols_per_date: int,
     raw_daily_panel_rows: int,
-) -> dict[str, Any]:
-    research_dataset = build_research_dataset_from_modeling_state(
-        raw_panel=raw_panel,
-        modeling_state=modeling_state,
-        backtest_pricing_frame=backtest_pricing_df,
-        features=features,
-        target=target,
-        train_target=train_target,
-        missing_fill_features=missing_fill_features,
-        feature_missing_method=feature_missing_method,
-        feature_missing_add_indicators=feature_missing_add_indicators,
-        winsorize_pct=winsorize_pct,
-        cs_method=cs_method,
-        cs_winsorize_pct=cs_winsorize_pct,
-        train_target_transform=train_target_transform,
-        train_target_group_cols=train_target_group_cols,
-        universe_by_date_applied=universe_by_date_applied,
-        sample_on_rebalance_dates=sample_on_rebalance_dates,
-        min_symbols_per_date=min_symbols_per_date,
+    dataset_backend: DatasetBackend | None,
+):
+    backend = dataset_backend or NativeDatasetBackend()
+    research_dataset = backend.build(
+        DatasetBuildRequest(
+            raw_panel=raw_panel,
+            modeling_state=modeling_state,
+            backtest_pricing_frame=backtest_pricing_df,
+            features=tuple(features),
+            target=target,
+            train_target=train_target,
+            missing_fill_features=tuple(missing_fill_features),
+            feature_missing_method=feature_missing_method,
+            feature_missing_add_indicators=feature_missing_add_indicators,
+            winsorize_pct=winsorize_pct,
+            cs_method=cs_method,
+            cs_winsorize_pct=cs_winsorize_pct,
+            train_target_transform=train_target_transform,
+            train_target_group_cols=(
+                tuple(train_target_group_cols) if train_target_group_cols is not None else None
+            ),
+            universe_by_date_applied=universe_by_date_applied,
+            sample_on_rebalance_dates=sample_on_rebalance_dates,
+            min_symbols_per_date=min_symbols_per_date,
+        )
     )
     dataset_lifecycle = research_dataset.summary()
     metadata = dataset_lifecycle.setdefault("metadata", {})
+    metadata["backend"] = backend.backend_id
     metadata["raw_daily_panel_rows"] = raw_daily_panel_rows
     metadata["engineered_feature_label_rows"] = len(raw_panel)
-    del research_dataset
-    return dataset_lifecycle
+    return research_dataset, dataset_lifecycle
 
 
 def _prepare_engineered_feature_dataset(
@@ -628,6 +634,7 @@ def _prepare_feature_dataset(
     rebalance_frequency: str,
     min_symbols_per_date: int,
     extra_sample_dates_without_target: list[object] | None = None,
+    dataset_backend: DatasetBackend | None = None,
 ) -> dict[str, Any]:
     logger.info("Engineering features ...")
     config = _build_feature_dataset_config(locals())
@@ -643,7 +650,7 @@ def _prepare_feature_dataset(
         sample_on_rebalance_dates=config.sample_on_rebalance_dates,
         feature_availability_diagnostics=prepared.feature_availability_diagnostics,
     )
-    dataset_lifecycle = _build_dataset_lifecycle_summary(
+    research_dataset, dataset_lifecycle = _build_research_dataset(
         raw_panel=prepared.df,
         modeling_state=modeling_state,
         backtest_pricing_df=prepared.backtest_pricing_df,
@@ -662,6 +669,7 @@ def _prepare_feature_dataset(
         sample_on_rebalance_dates=config.sample_on_rebalance_dates,
         min_symbols_per_date=config.min_symbols_per_date,
         raw_daily_panel_rows=prepared.raw_daily_panel_rows,
+        dataset_backend=dataset_backend,
     )
 
     return {
@@ -672,5 +680,6 @@ def _prepare_feature_dataset(
         "price_passthrough_cols": prepared.price_passthrough_cols,
         "feature_availability_diagnostics": prepared.feature_availability_diagnostics,
         "dataset_lifecycle": dataset_lifecycle,
+        "research_dataset": research_dataset,
         **modeling_state,
     }
