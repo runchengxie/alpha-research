@@ -27,6 +27,7 @@ __all__ = [
     "backends",
     "backends.base",
     "backends.native",
+    "backends.qlib",
     "benchmarking",
     "build_daily_watch20_feature_frame",
     "compat",

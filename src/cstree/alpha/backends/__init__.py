@@ -9,6 +9,14 @@ from .base import (
     TrainerFitRequest,
 )
 from .native import NativeDatasetBackend, NativeTrainerBackend, NullExperimentRecorder
+from .qlib import (
+    QlibDatasetBackend,
+    QlibDatasetParityError,
+    QlibExperimentRecorder,
+    QlibIntegrationUnavailableError,
+    QlibModelUnsupportedError,
+    QlibTrainerBackend,
+)
 
 __all__ = [
     "DatasetBackend",
@@ -20,6 +28,12 @@ __all__ = [
     "NativeDatasetBackend",
     "NativeTrainerBackend",
     "NullExperimentRecorder",
+    "QlibDatasetBackend",
+    "QlibDatasetParityError",
+    "QlibExperimentRecorder",
+    "QlibIntegrationUnavailableError",
+    "QlibModelUnsupportedError",
+    "QlibTrainerBackend",
     "TrainerBackend",
     "TrainerFitRequest",
 ]

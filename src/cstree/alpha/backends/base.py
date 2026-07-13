@@ -45,6 +45,7 @@ class TrainerFitRequest:
     features: tuple[str, ...]
     target_col: str
     date_col: str = "trade_date"
+    symbol_col: str = "symbol"
     sample_weight: Any | None = None
 
 

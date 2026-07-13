@@ -18,6 +18,10 @@
 
 - [StyleReplica 信号与组合构造](concepts/style-replica.md)
 
+## 可选集成
+
+- [Qlib 研究后端](integrations/qlib.md)
+
 ## 已承接页面
 
 这些页面已经从 `strategy-pipeline` 迁入，并由本仓库维护：

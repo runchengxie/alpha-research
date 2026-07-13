@@ -16,6 +16,10 @@
 和普通 metadata，不得序列化第三方框架对象。`ResearchDataset` 仍是 raw / infer /
 learn 数据生命周期的 canonical 内部边界，signal artifact 和公共 CLI 契约保持不变。
 
+可选的 `QlibDatasetBackend`、`QlibTrainerBackend` 和
+`QlibExperimentRecorder` 已在 [Qlib 集成说明](docs/integrations/qlib.md) 中定义。它们只在
+显式安装 `alpha-research[qlib]` 并由调用方选择时启用；native backend 仍是默认路径。
+
 ## 负责的文档
 
 后续新增或迁移文档时，以下主题应优先放在本仓库：
