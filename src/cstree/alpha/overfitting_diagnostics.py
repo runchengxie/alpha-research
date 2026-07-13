@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import json
 import math
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from .metrics import daily_ic_series, summarize_ic
+from .research_artifacts import write_canonical_json_value
 
 
 def _resolve_path(path_text: str | Path | None) -> Path | None:
@@ -40,11 +40,7 @@ def _write_rows(rows: list[dict[str, Any]], output: Path) -> None:
 
 
 def _write_json(payload: Any, output: Path) -> None:
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(payload, ensure_ascii=True, indent=2, default=str),
-        encoding="utf-8",
-    )
+    write_canonical_json_value(output, payload)
 
 
 def _to_float(value: Any) -> float | None:

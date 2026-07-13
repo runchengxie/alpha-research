@@ -5,6 +5,68 @@ import pandas as pd
 import pytest
 
 from cstree.alpha import cpcv
+from cstree.alpha.backends import FeatureImportanceResult, FittedModelHandle
+
+
+class _CPCVTrainer:
+    backend_id = "recording"
+
+    def __init__(self):
+        self.fit_requests = []
+        self.predict_calls = 0
+
+    def fit(self, request):
+        self.fit_requests.append(request)
+        return FittedModelHandle(
+            backend_id=self.backend_id,
+            model_id="split-model",
+            model_type=request.model_type,
+        )
+
+    def predict(self, handle, frame, *, features):
+        assert handle.model_id == "split-model"
+        self.predict_calls += 1
+        return frame[list(features)].sum(axis=1)
+
+    def feature_importance(self, handle, *, features):
+        return FeatureImportanceResult(pd.DataFrame(), "unused")
+
+    def unwrap_legacy_model(self, handle):
+        raise AssertionError("CPCV must not unwrap a live model")
+
+
+def test_cpcv_split_fit_and_score_use_trainer_handle_port():
+    backend = _CPCVTrainer()
+    request = SimpleNamespace(
+        feature_target=SimpleNamespace(features=["f1"], train_target="target"),
+        model=SimpleNamespace(
+            model_type="ridge",
+            model_params={"alpha": 1.0},
+            sample_weight_mode="none",
+            sample_weight_params={},
+        ),
+        services=SimpleNamespace(trainer_backend=backend),
+    )
+    frame = pd.DataFrame({"f1": [1.0, 2.0], "target": [0.0, 1.0]})
+
+    handle = cpcv._fit_split_model(request, frame)
+    scored = cpcv._score_frame(
+        frame,
+        handle,
+        backend,
+        features=["f1"],
+        signal_direction=1.0,
+        backtest_signal_direction=-1.0,
+        score_postprocess_method="none",
+        score_postprocess_columns=None,
+        score_postprocess_strength=1.0,
+        score_postprocess_min_obs=None,
+    )
+
+    assert len(backend.fit_requests) == 1
+    assert backend.predict_calls == 1
+    assert scored["signal_eval"].tolist() == [1.0, 2.0]
+    assert scored["signal_backtest"].tolist() == [-1.0, -2.0]
 
 
 def test_cpcv_group_and_split_counts():

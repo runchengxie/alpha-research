@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
+import weakref
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 import pandas as pd
 
 from ..modeling import build_model, feature_importance_frame, fit_model
+from ..research_artifacts import strict_json_mapping
 from ..research_dataset import (
     ResearchDataset,
     build_research_dataset_from_modeling_state,
@@ -22,7 +25,11 @@ from .base import (
 
 
 def _stable_id(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+    encoded = json.dumps(
+        strict_json_mapping(payload, field="model_identity"),
+        sort_keys=True,
+        allow_nan=False,
+    ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
 
 
@@ -58,6 +65,9 @@ class NativeDatasetBackend:
 class NativeTrainerBackend:
     backend_id = "native"
 
+    def __init__(self) -> None:
+        self._models: dict[str, object] = {}
+
     def fit(self, request: TrainerFitRequest) -> FittedModelHandle:
         model = build_model(request.model_type, dict(request.model_params))
         fit_model(
@@ -78,7 +88,9 @@ class NativeTrainerBackend:
                 "target_col": request.target_col,
             }
         )
-        return FittedModelHandle(
+        runtime_ref = uuid.uuid4().hex
+        self._models[runtime_ref] = model
+        handle = FittedModelHandle(
             backend_id=self.backend_id,
             model_id=model_id,
             model_type=request.model_type,
@@ -86,8 +98,10 @@ class NativeTrainerBackend:
                 "features": list(request.features),
                 "target_col": request.target_col,
             },
-            _opaque_model=model,
+            runtime_ref=runtime_ref,
         )
+        weakref.finalize(handle, self._models.pop, runtime_ref, None)
+        return handle
 
     def predict(
         self,
@@ -118,9 +132,9 @@ class NativeTrainerBackend:
             raise ValueError(
                 f"{self.backend_id} backend cannot unwrap {handle.backend_id!r} model handle"
             )
-        if handle._opaque_model is None:
-            raise ValueError("model handle does not contain an in-process model")
-        return handle._opaque_model
+        if handle.runtime_ref is None or handle.runtime_ref not in self._models:
+            raise ValueError("model handle is not active in this backend process")
+        return self._models[handle.runtime_ref]
 
 
 class NullExperimentRecorder:

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
 
 from .dynamic_signal_ensemble_types import DynamicSignalEnsembleResult
+from .research_artifacts import write_canonical_json_value
 
 
 def stock_scores_to_long(
@@ -54,8 +54,5 @@ def write_dynamic_ensemble_artifacts(
         "summary_file": str(summary_path),
     }
     summary = {**result.summary, "files": paths}
-    summary_path.write_text(
-        json.dumps(summary, ensure_ascii=True, indent=2, default=str),
-        encoding="utf-8",
-    )
+    write_canonical_json_value(summary_path, summary)
     return paths

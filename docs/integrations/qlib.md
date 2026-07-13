@@ -48,7 +48,11 @@ XGBoost 的验证权仍属于 alpha-research 外层 CV。Qlib API 要求 valid s
 现有信号契约。未显式映射的模型会直接报错，不会悄悄回退到 native trainer。
 
 模型句柄只序列化 backend id、model id、model type、特征名和运行时 provenance。
-进程内 Qlib 模型保存在私有字段中，不会出现在 `FittedModelHandle.to_metadata()` 结果里。
+进程内 Qlib 模型保存在 `QlibTrainerBackend` 的私有 registry 中；句柄只携带不落盘的字符串
+lookup token，`FittedModelHandle.to_metadata()` 不包含 token 或 Qlib 对象。
+
+native / Qlib 的一致性晋升流程、显式阈值和 artifact 重放方式见
+[研究后端治理与晋升证据](../concepts/backend-governance.md)。
 
 ## 实验记录
 

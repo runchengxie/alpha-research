@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from .backends import FittedModelHandle, TrainerBackend, TrainerFitRequest
 from .benchmarking import build_benchmark_series
 from .date_slices import _apply_model_train_window, _slice_trade_dates
 from .metrics import (
@@ -22,7 +23,6 @@ from .metrics import (
     summarize_ic,
     topk_positive_ratio,
 )
-from .modeling import build_model, fit_model
 from .rebalance_calendar import get_rebalance_dates
 from .return_metrics import summarize_period_returns
 from .split import build_sample_weight, time_series_cv_ic
@@ -421,7 +421,8 @@ def _frame_for_dates(request_data: Any, dates: tuple[pd.Timestamp, ...]) -> pd.D
 
 def _score_frame(
     frame: pd.DataFrame,
-    model: Any,
+    model_handle: FittedModelHandle,
+    trainer_backend: TrainerBackend,
     *,
     features: list[str],
     signal_direction: float,
@@ -432,7 +433,7 @@ def _score_frame(
     score_postprocess_min_obs: int | None,
 ) -> pd.DataFrame:
     scored = frame.copy()
-    scored["pred"] = model.predict(scored[features])
+    scored["pred"] = trainer_backend.predict(model_handle, scored, features=features)
     if score_postprocess_method != "none":
         scored["pred"] = apply_score_postprocess(
             scored,
@@ -514,6 +515,7 @@ def _resolve_cv_signal_direction(request: Any, train_df: pd.DataFrame) -> float:
         label_horizon_days=int(period_settings.label_horizon_effective),
         label_shift_days=backtest_settings.label_shift_days,
         all_trade_dates=data.all_dates,
+        trainer_backend=request.services.trainer_backend,
     )
     if not cv_scores:
         return direction
@@ -523,30 +525,31 @@ def _resolve_cv_signal_direction(request: Any, train_df: pd.DataFrame) -> float:
     return direction
 
 
-def _fit_split_model(request: Any, train_df: pd.DataFrame) -> Any:
+def _fit_split_model(request: Any, train_df: pd.DataFrame) -> FittedModelHandle:
     feature_target = request.feature_target
     model_settings = request.model
-    model = build_model(model_settings.model_type, model_settings.model_params)
     sample_weight = build_sample_weight(
         train_df,
         model_settings.sample_weight_mode,
         params=model_settings.sample_weight_params,
     )
-    fit_model(
-        model,
-        model_settings.model_type,
-        train_df,
-        features=feature_target.features,
-        target_col=feature_target.train_target,
-        sample_weight=sample_weight,
+    return request.services.trainer_backend.fit(
+        TrainerFitRequest(
+            frame=train_df,
+            model_type=model_settings.model_type,
+            model_params=model_settings.model_params,
+            features=tuple(feature_target.features),
+            target_col=feature_target.train_target,
+            sample_weight=sample_weight,
+        )
     )
-    return model
 
 
 def _resolve_train_ic_signal_direction(
     request: Any,
     train_df: pd.DataFrame,
-    model: Any,
+    model_handle: FittedModelHandle,
+    trainer_backend: TrainerBackend,
     direction: float,
 ) -> float:
     feature_target = request.feature_target
@@ -554,7 +557,8 @@ def _resolve_train_ic_signal_direction(
     if signal_settings.signal_direction_mode == "train_ic":
         train_eval = _score_frame(
             train_df,
-            model,
+            model_handle,
+            trainer_backend,
             features=feature_target.features,
             signal_direction=1.0,
             backtest_signal_direction=1.0,
@@ -578,7 +582,8 @@ def _backtest_direction(request: Any, direction: float) -> float:
 
 def _score_with_request(
     frame: pd.DataFrame,
-    model: Any,
+    model_handle: FittedModelHandle,
+    trainer_backend: TrainerBackend,
     request: Any,
     *,
     direction: float,
@@ -588,7 +593,8 @@ def _score_with_request(
     signal_settings = request.signal
     return _score_frame(
         frame,
-        model,
+        model_handle,
+        trainer_backend,
         features=feature_target.features,
         signal_direction=direction,
         backtest_signal_direction=backtest_direction,
@@ -603,7 +609,8 @@ def _evaluate_split_eval(
     request: Any,
     split: CPCVSplit,
     test_df: pd.DataFrame,
-    model: Any,
+    model_handle: FittedModelHandle,
+    trainer_backend: TrainerBackend,
     *,
     direction: float,
     backtest_direction: float,
@@ -613,7 +620,8 @@ def _evaluate_split_eval(
     period_settings = request.period
     scored_test = _score_with_request(
         test_df,
-        model,
+        model_handle,
+        trainer_backend,
         request,
         direction=direction,
         backtest_direction=backtest_direction,
@@ -681,7 +689,8 @@ def _empty_split_backtest_metrics() -> _SplitBacktestMetrics:
 def _evaluate_split_backtest(
     request: Any,
     split: CPCVSplit,
-    model: Any,
+    model_handle: FittedModelHandle,
+    trainer_backend: TrainerBackend,
     *,
     direction: float,
     backtest_direction: float,
@@ -704,7 +713,8 @@ def _evaluate_split_backtest(
 
     scored_full = _score_with_request(
         test_full,
-        model,
+        model_handle,
+        trainer_backend,
         request,
         direction=direction,
         backtest_direction=backtest_direction,
@@ -787,21 +797,30 @@ def _evaluate_split(context: dict[str, Any], split: CPCVSplit) -> dict[str, Any]
         return {"status": "insufficient_data", "split": split}
 
     direction = _resolve_cv_signal_direction(request, frames.train)
-    model = _fit_split_model(request, frames.train)
-    direction = _resolve_train_ic_signal_direction(request, frames.train, model, direction)
+    trainer_backend = request.services.trainer_backend
+    model_handle = _fit_split_model(request, frames.train)
+    direction = _resolve_train_ic_signal_direction(
+        request,
+        frames.train,
+        model_handle,
+        trainer_backend,
+        direction,
+    )
     backtest_direction = _backtest_direction(request, direction)
     eval_metrics = _evaluate_split_eval(
         request,
         split,
         frames.test,
-        model,
+        model_handle,
+        trainer_backend,
         direction=direction,
         backtest_direction=backtest_direction,
     )
     backtest_metrics = _evaluate_split_backtest(
         request,
         split,
-        model,
+        model_handle,
+        trainer_backend,
         direction=direction,
         backtest_direction=backtest_direction,
     )

@@ -13,6 +13,7 @@ import pandas as pd
 import yaml
 
 from .metrics import daily_ic_series, quantile_returns, summarize_ic
+from .research_artifacts import canonical_research_json_value, write_strict_json_value
 
 
 def _resolve_path(path_text: str | Path | None, *, base_dir: Path | None = None) -> Path | None:
@@ -649,10 +650,14 @@ def _write_rows(
             writer.writeheader()
             writer.writerows(rows)
     if output_json:
-        output_json.parent.mkdir(parents=True, exist_ok=True)
-        output_json.write_text(
-            json.dumps(rows, ensure_ascii=True, indent=2, default=str), encoding="utf-8"
-        )
+        write_strict_json_value(output_json, _canonical_evidence_rows(rows))
+
+
+def _canonical_evidence_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized = canonical_research_json_value(rows, field="feature_evidence")
+    if not isinstance(normalized, list):  # pragma: no cover - rows always project to a list
+        raise TypeError("Feature evidence must serialize as a row list")
+    return [dict(row) for row in normalized if isinstance(row, dict)]
 
 
 def add_feature_evidence_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
@@ -720,7 +725,14 @@ def run(args: argparse.Namespace) -> Any:
         rows = correlation_audit_report(config, config_dir=config_path.parent)
 
     if output_csv is None and output_json is None:
-        print(json.dumps(rows, ensure_ascii=True, indent=2, default=str))
+        print(
+            json.dumps(
+                _canonical_evidence_rows(rows),
+                ensure_ascii=True,
+                indent=2,
+                allow_nan=False,
+            )
+        )
     else:
         _write_rows(rows, output_csv=output_csv, output_json=output_json)
     return rows

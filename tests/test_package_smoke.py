@@ -14,6 +14,7 @@ OWNED_MODULES = (
     "cstree.alpha.backends",
     "cstree.alpha.backends.base",
     "cstree.alpha.backends.native",
+    "cstree.alpha.backend_comparison",
     "cstree.alpha.signal_artifact",
     "cstree.alpha.benchmarking",
     "cstree.alpha.compat",
@@ -35,6 +36,7 @@ OWNED_MODULES = (
     "cstree.alpha.metrics",
     "cstree.alpha.modeling",
     "cstree.alpha.research_dataset",
+    "cstree.alpha.research_artifacts",
     "cstree.alpha.research_model",
     "cstree.alpha.return_metrics",
     "cstree.alpha.signal_stability",
@@ -47,14 +49,16 @@ OWNED_MODULES = (
     "cstree.alpha.walk_forward_windows",
     "cstree.alpha.split",
     "cstree.alpha.transform",
+    "cstree.alpha.tuning_service",
 )
 FORBIDDEN_RUNTIME_PREFIXES = ("cstree.backtesting", "cstree.pipeline")
 
 
 def test_cstree_namespace_includes_alpha_package_root() -> None:
-    namespace_paths = {Path(path).as_posix() for path in cstree.__path__}
+    namespace_paths = {Path(path).resolve() for path in cstree.__path__}
+    expected_package_root = Path(__file__).resolve().parents[1] / "src" / "cstree"
 
-    assert any(path.endswith("alpha-research/src/cstree") for path in namespace_paths)
+    assert expected_package_root.resolve() in namespace_paths
 
 
 @pytest.mark.parametrize("module_name", OWNED_MODULES)

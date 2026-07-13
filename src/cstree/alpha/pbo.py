@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import math
 from itertools import combinations
 from pathlib import Path
@@ -11,6 +10,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
+from .research_artifacts import write_strict_json
 
 
 def _resolve_path(path_text: str | Path | None) -> Path | None:
@@ -291,13 +292,13 @@ def _build_pbo_summary(
         "selected_oos_sharpe_mean": float(np.mean(finite_oos)) if finite_oos else None,
         "selected_oos_sharpe_p25": float(np.quantile(finite_oos, 0.25)) if finite_oos else None,
         "selected_candidate": selected_full,
-        "selected_sharpe": full_sharpes[selected_full],
-        "selected_max_drawdown": _max_drawdown(data[selected_full]),
-        "dsr": dsr["dsr"],
-        "dsr_z": dsr["dsr_z"],
+        "selected_sharpe": _to_float(full_sharpes[selected_full]),
+        "selected_max_drawdown": _to_float(_max_drawdown(data[selected_full])),
+        "dsr": _to_float(dsr["dsr"]),
+        "dsr_z": _to_float(dsr["dsr_z"]),
         "dsr_n_trials": dsr["n_trials"],
         "dsr_n_obs": dsr["n_obs"],
-        "dsr_expected_max_sharpe": dsr["expected_max_sharpe"],
+        "dsr_expected_max_sharpe": _to_float(dsr["expected_max_sharpe"]),
     }
 
 
@@ -345,10 +346,7 @@ def _write_report(report: dict[str, Any], *, out_dir: Path) -> None:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
-    (out_dir / "pbo_summary.json").write_text(
-        json.dumps(report["summary"], ensure_ascii=True, indent=2, default=str),
-        encoding="utf-8",
-    )
+    write_strict_json(out_dir / "pbo_summary.json", report["summary"])
 
 
 def add_pbo_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:

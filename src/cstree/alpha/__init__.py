@@ -24,6 +24,7 @@ __all__ = [
     "MINUTE_FEATURES",
     "DailyWatch20FeatureConfig",
     "artifact_cpcv",
+    "backend_comparison",
     "backends",
     "backends.base",
     "backends.native",
@@ -60,6 +61,7 @@ __all__ = [
     "promotion_gate_thresholds",
     "rebalance_calendar",
     "recency_diagnostics",
+    "research_artifacts",
     "research_dataset",
     "research_model",
     "return_metrics",
@@ -75,6 +77,7 @@ __all__ = [
     "train_eval_result",
     "train_eval_stage",
     "transform",
+    "tuning_service",
     "walk_forward",
     "walk_forward_windows",
 ]

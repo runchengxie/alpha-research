@@ -2,14 +2,16 @@
 
 This module intentionally contains no top-level :mod:`qlib` import.  Importing
 ``cstree.alpha`` and running the native workflow therefore does not require the
-optional runtime.  Qlib objects remain in ``_qlib_runtime`` and are held only in
-the private field of :class:`FittedModelHandle`.
+optional runtime. Qlib objects remain in ``_qlib_runtime`` and in a private
+in-process registry owned by :class:`QlibTrainerBackend`.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import uuid
+import weakref
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime
@@ -62,7 +64,12 @@ def _load_runtime() -> ModuleType:
 
 
 def _stable_id(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    encoded = json.dumps(
+        _json_value(payload),
+        ensure_ascii=False,
+        sort_keys=True,
+        allow_nan=False,
+    ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
 
 
@@ -272,6 +279,7 @@ class QlibTrainerBackend:
 
     def __init__(self) -> None:
         self._runtime = _load_runtime()
+        self._models: dict[str, object] = {}
 
     def fit(self, request: TrainerFitRequest) -> FittedModelHandle:
         supported = {"ridge", "xgb_regressor"}
@@ -291,7 +299,9 @@ class QlibTrainerBackend:
                 "target_col": request.target_col,
             }
         )
-        return FittedModelHandle(
+        runtime_ref = uuid.uuid4().hex
+        self._models[runtime_ref] = opaque_model
+        handle = FittedModelHandle(
             backend_id=self.backend_id,
             model_id=model_id,
             model_type=request.model_type,
@@ -300,8 +310,10 @@ class QlibTrainerBackend:
                 "target_col": request.target_col,
                 "runtime": _json_value(runtime_metadata),
             },
-            _opaque_model=opaque_model,
+            runtime_ref=runtime_ref,
         )
+        weakref.finalize(handle, self._models.pop, runtime_ref, None)
+        return handle
 
     def predict(
         self,
@@ -336,9 +348,9 @@ class QlibTrainerBackend:
             raise ValueError(
                 f"{self.backend_id} backend cannot use {handle.backend_id!r} model handle"
             )
-        if handle._opaque_model is None:
-            raise ValueError("model handle does not contain an in-process Qlib model")
-        return handle._opaque_model
+        if handle.runtime_ref is None or handle.runtime_ref not in self._models:
+            raise ValueError("Qlib model handle is not active in this backend process")
+        return self._models[handle.runtime_ref]
 
 
 class QlibExperimentRecorder:

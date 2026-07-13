@@ -20,6 +20,10 @@ learn 数据生命周期的 canonical 内部边界，signal artifact 和公共 C
 `QlibExperimentRecorder` 已在 [Qlib 集成说明](docs/integrations/qlib.md) 中定义。它们只在
 显式安装 `alpha-research[qlib]` 并由调用方选择时启用；native backend 仍是默认路径。
 
+拟合对象现在由 backend 实例的私有进程内 registry 持有，handle / receipt / governance
+artifact 均为严格 JSON 边界。native / Qlib 的可重放比较、promotion 阈值和 alpha-owned
+调参委托接口见[研究后端治理与晋升证据](docs/concepts/backend-governance.md)。
+
 ## 负责的文档
 
 后续新增或迁移文档时，以下主题应优先放在本仓库：

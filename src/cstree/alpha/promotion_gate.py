@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 from dataclasses import asdict, dataclass, field
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,10 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from .backend_comparison import replay_backend_comparison
+from .promotion_gate_flatten import flatten_promotion_record
 from .promotion_gate_thresholds import soft_failures as _soft_failures
+from .research_artifacts import ArtifactIntegrityError, strict_json_value, write_strict_json
 
 PROMOTION_STATUSES = ("promotable", "reviewable", "rejected", "non-comparable")
 
@@ -96,6 +100,12 @@ class PromotionDynamicEnsembleConfig:
 
 
 @dataclass(frozen=True)
+class PromotionBackendComparisonConfig:
+    candidate_report: Path | None = None
+    require_pass: bool = True
+
+
+@dataclass(frozen=True)
 class PromotionGateConfig:
     baseline_run: Path | None = None
     candidate_run: Path | None = None
@@ -110,6 +120,9 @@ class PromotionGateConfig:
     dsr: PromotionDSRConfig = field(default_factory=PromotionDSRConfig)
     dynamic_ensemble: PromotionDynamicEnsembleConfig = field(
         default_factory=PromotionDynamicEnsembleConfig
+    )
+    backend_comparison: PromotionBackendComparisonConfig = field(
+        default_factory=PromotionBackendComparisonConfig
     )
 
 
@@ -298,6 +311,24 @@ def _load_dynamic_ensemble_config(gate_payload: dict[str, Any]) -> PromotionDyna
     )
 
 
+def _load_backend_comparison_config(
+    gate_payload: dict[str, Any],
+) -> PromotionBackendComparisonConfig:
+    comparison_raw = _mapping_section(gate_payload, "backend_comparison")
+    return PromotionBackendComparisonConfig(
+        candidate_report=_resolve_path(
+            comparison_raw.get(
+                "candidate_report",
+                gate_payload.get("candidate_backend_comparison_report"),
+            )
+        ),
+        require_pass=_coerce_bool(
+            comparison_raw.get("require_pass", True),
+            key="backend_comparison.require_pass",
+        ),
+    )
+
+
 def load_promotion_gate_config(path_or_payload: str | Path | dict[str, Any]) -> PromotionGateConfig:
     gate_payload = _promotion_gate_payload(path_or_payload)
     return PromotionGateConfig(
@@ -328,6 +359,7 @@ def load_promotion_gate_config(path_or_payload: str | Path | dict[str, Any]) -> 
         cpcv=_load_cpcv_config(gate_payload),
         dsr=_load_dsr_config(gate_payload),
         dynamic_ensemble=_load_dynamic_ensemble_config(gate_payload),
+        backend_comparison=_load_backend_comparison_config(gate_payload),
     )
 
 
@@ -562,7 +594,21 @@ def _first_non_empty(*values: Any) -> Any:
 def _norm(value: Any) -> str:
     if value is None:
         return ""
-    return json.dumps(value, ensure_ascii=True, sort_keys=True, default=str)
+
+    def _canonical(item: Any) -> Any:
+        if isinstance(item, Path):
+            return str(item)
+        if isinstance(item, (date, datetime, pd.Timestamp)):
+            return item.isoformat()
+        if isinstance(item, np.generic):
+            return _canonical(item.item())
+        if isinstance(item, dict):
+            return {str(key): _canonical(child) for key, child in item.items()}
+        if isinstance(item, (list, tuple)):
+            return [_canonical(child) for child in item]
+        return strict_json_value(item, field="comparability")
+
+    return json.dumps(_canonical(value), ensure_ascii=True, sort_keys=True, allow_nan=False)
 
 
 def _to_float(value: Any) -> float | None:
@@ -681,6 +727,48 @@ def _recency_diagnostics(summary: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _empty_backend_comparison(path: Path | None, *, error: str | None = None) -> dict[str, Any]:
+    return {
+        "available": False,
+        "path": str(path) if path is not None else None,
+        "replay_verified": False,
+        "status": None,
+        "failures": [],
+        "overlap_rows": None,
+        "overlap_ratio": None,
+        "prediction_pearson": None,
+        "prediction_spearman": None,
+        "prediction_mae": None,
+        "prediction_max_abs_error": None,
+        "error": error,
+    }
+
+
+def _load_backend_comparison(path: Path | None) -> dict[str, Any]:
+    if path is None:
+        return _empty_backend_comparison(None)
+    try:
+        payload = replay_backend_comparison(path)
+    except (ArtifactIntegrityError, KeyError, OSError, TypeError, ValueError) as exc:
+        return _empty_backend_comparison(path, error=str(exc))
+    decision = payload.get("decision") or {}
+    comparison = payload.get("comparison") or {}
+    return {
+        "available": True,
+        "path": str(path),
+        "replay_verified": payload.get("replay_verified") is True,
+        "status": decision.get("status"),
+        "failures": list(decision.get("failures") or []),
+        "overlap_rows": _to_float(comparison.get("overlap_rows")),
+        "overlap_ratio": _to_float(comparison.get("overlap_ratio")),
+        "prediction_pearson": _to_float(comparison.get("prediction_pearson")),
+        "prediction_spearman": _to_float(comparison.get("prediction_spearman")),
+        "prediction_mae": _to_float(comparison.get("prediction_mae")),
+        "prediction_max_abs_error": _to_float(comparison.get("prediction_max_abs_error")),
+        "error": None,
+    }
+
+
 def _backtest_stats(summary: dict[str, Any]) -> dict[str, Any]:
     nested = _get_nested(summary, "backtest.stats")
     if isinstance(nested, dict):
@@ -722,6 +810,7 @@ def _evidence(
     dynamic_ensemble_report: Path | None = None,
     benchmark_report: Path | None = None,
     exposure_screen_report: Path | None = None,
+    backend_comparison_report: Path | None = None,
 ) -> dict[str, Any]:
     bt_stats = _backtest_stats(summary)
     final_bt_stats = _get_nested(summary, "final_oos.backtest.stats") or {}
@@ -778,6 +867,7 @@ def _evidence(
         "dsr": _load_dsr_summary(dsr_report),
         "dynamic_ensemble": _load_dynamic_ensemble_report(dynamic_ensemble_report, summary),
         "exposure_screen": _load_exposure_screen_report(exposure_screen_report),
+        "backend_comparison": _load_backend_comparison(backend_comparison_report),
     }
 
 
@@ -819,6 +909,11 @@ def _is_missing_evidence_category(evidence: dict[str, Any], category: str) -> bo
         )
     if category == "exposure_screen":
         return not evidence["exposure_screen"]["available"]
+    if category == "backend_comparison":
+        return (
+            not evidence["backend_comparison"]["available"]
+            or evidence["backend_comparison"]["replay_verified"] is not True
+        )
     return False
 
 
@@ -838,6 +933,40 @@ def _comparability(
         if _norm(left) != _norm(right):
             mismatches.append(key)
     return not mismatches, mismatches
+
+
+def _path_text(path: Path | None) -> str | None:
+    return str(path) if path is not None else None
+
+
+def _promotion_config_payload(config: PromotionGateConfig) -> dict[str, Any]:
+    return {
+        "baseline_run": _path_text(config.baseline_run),
+        "candidate_run": _path_text(config.candidate_run),
+        "benchmark_report": _path_text(config.benchmark_report),
+        "baseline_exposure_screen_report": _path_text(config.baseline_exposure_screen_report),
+        "candidate_exposure_screen_report": _path_text(config.candidate_exposure_screen_report),
+        "comparability_keys": list(config.comparability_keys),
+        "required_evidence": list(config.required_evidence),
+        "hard_rejections": asdict(config.hard_rejections),
+        "soft_thresholds": asdict(config.soft_thresholds),
+        "cpcv": {
+            "baseline_report": _path_text(config.cpcv.baseline_report),
+            "candidate_report": _path_text(config.cpcv.candidate_report),
+        },
+        "dsr": {
+            "baseline_report": _path_text(config.dsr.baseline_report),
+            "candidate_report": _path_text(config.dsr.candidate_report),
+        },
+        "dynamic_ensemble": {
+            "baseline_report": _path_text(config.dynamic_ensemble.baseline_report),
+            "candidate_report": _path_text(config.dynamic_ensemble.candidate_report),
+        },
+        "backend_comparison": {
+            "candidate_report": _path_text(config.backend_comparison.candidate_report),
+            "require_pass": config.backend_comparison.require_pass,
+        },
+    }
 
 
 def build_promotion_record(config: PromotionGateConfig) -> dict[str, Any]:
@@ -868,6 +997,7 @@ def build_promotion_record(config: PromotionGateConfig) -> dict[str, Any]:
         dynamic_ensemble_report=config.dynamic_ensemble.candidate_report,
         benchmark_report=config.benchmark_report,
         exposure_screen_report=config.candidate_exposure_screen_report,
+        backend_comparison_report=config.backend_comparison.candidate_report,
     )
     missing = _missing_evidence(candidate_evidence, config.required_evidence)
 
@@ -894,6 +1024,15 @@ def build_promotion_record(config: PromotionGateConfig) -> dict[str, Any]:
         dsr_trials = candidate_evidence["dsr"]["n_trials"]
         if dsr_trials is None or dsr_trials < hard.min_dsr_n_trials:
             hard_failures.append("insufficient_dsr_trial_count")
+    comparison_evidence = candidate_evidence["backend_comparison"]
+    if (
+        config.backend_comparison.candidate_report is not None
+        and config.backend_comparison.require_pass
+    ):
+        if not comparison_evidence["available"] or not comparison_evidence["replay_verified"]:
+            hard_failures.append("backend_comparison_unverified")
+        elif comparison_evidence["status"] != "promotable":
+            hard_failures.append("backend_comparison_rejected")
 
     soft_failures = _soft_failures(baseline_evidence, candidate_evidence, config.soft_thresholds)
 
@@ -915,98 +1054,10 @@ def build_promotion_record(config: PromotionGateConfig) -> dict[str, Any]:
         "missing_evidence": missing,
         "hard_failures": hard_failures,
         "soft_failures": soft_failures,
-        "config": {
-            **asdict(config),
-            "baseline_run": str(config.baseline_run),
-            "candidate_run": str(config.candidate_run),
-        },
+        "config": _promotion_config_payload(config),
         "baseline_evidence": baseline_evidence,
         "candidate_evidence": candidate_evidence,
     }
-
-
-def flatten_promotion_record(record: dict[str, Any]) -> dict[str, Any]:
-    cand = record.get("candidate_evidence") or {}
-    base = record.get("baseline_evidence") or {}
-    row = {
-        "baseline_run": record.get("baseline_run"),
-        "candidate_run": record.get("candidate_run"),
-        "promotion_status": record.get("promotion_status"),
-        "is_comparable": record.get("is_comparable"),
-        "comparability_mismatches": "|".join(record.get("comparability_mismatches") or []),
-        "missing_evidence": "|".join(record.get("missing_evidence") or []),
-        "hard_failures": "|".join(record.get("hard_failures") or []),
-        "soft_failures": "|".join(record.get("soft_failures") or []),
-        "baseline_backtest_sharpe": _get_nested(base, "backtest.sharpe"),
-        "candidate_backtest_sharpe": _get_nested(cand, "backtest.sharpe"),
-        "candidate_eval_ic_ir": _get_nested(cand, "main_eval.eval_ic_ir"),
-        "candidate_walk_forward_test_ic_mean": _get_nested(cand, "walk_forward.test_ic_mean"),
-        "candidate_final_oos_ic_mean": _get_nested(cand, "final_oos.ic_mean"),
-        "candidate_final_oos_long_short": _get_nested(cand, "final_oos.long_short"),
-        "candidate_backtest_avg_turnover": _get_nested(cand, "backtest.avg_turnover"),
-        "candidate_backtest_avg_cost_drag": _get_nested(cand, "backtest.avg_cost_drag"),
-        "baseline_benchmark_active_ir": _get_nested(base, "benchmark.active_information_ratio"),
-        "candidate_benchmark_active_ir": _get_nested(cand, "benchmark.active_information_ratio"),
-        "baseline_cpcv_sharpe_median": _get_nested(base, "cpcv.sharpe_median"),
-        "baseline_cpcv_sharpe_p25": _get_nested(base, "cpcv.sharpe_p25"),
-        "candidate_cpcv_path_count": _get_nested(cand, "cpcv.path_count"),
-        "candidate_cpcv_valid_path_count": _get_nested(cand, "cpcv.valid_path_count"),
-        "candidate_cpcv_sharpe_median": _get_nested(cand, "cpcv.sharpe_median"),
-        "candidate_cpcv_sharpe_p25": _get_nested(cand, "cpcv.sharpe_p25"),
-        "candidate_cpcv_sharpe_min": _get_nested(cand, "cpcv.sharpe_min"),
-        "candidate_cpcv_positive_sharpe_ratio": _get_nested(cand, "cpcv.positive_sharpe_ratio"),
-        "candidate_cpcv_ic_median": _get_nested(cand, "cpcv.ic_median"),
-        "candidate_cpcv_long_short_median": _get_nested(cand, "cpcv.long_short_median"),
-        "candidate_cpcv_max_drawdown_p10": _get_nested(cand, "cpcv.max_drawdown_p10"),
-        "candidate_cpcv_turnover_median": _get_nested(cand, "cpcv.turnover_median"),
-        "candidate_cpcv_cost_drag_median": _get_nested(cand, "cpcv.cost_drag_median"),
-        "baseline_dsr": _get_nested(base, "dsr.dsr"),
-        "baseline_dsr_n_trials": _get_nested(base, "dsr.n_trials"),
-        "candidate_dsr": _get_nested(cand, "dsr.dsr"),
-        "candidate_dsr_z": _get_nested(cand, "dsr.dsr_z"),
-        "candidate_dsr_n_trials": _get_nested(cand, "dsr.n_trials"),
-        "candidate_dsr_n_obs": _get_nested(cand, "dsr.n_obs"),
-        "candidate_dsr_selected_candidate": _get_nested(cand, "dsr.selected_candidate"),
-        "candidate_dsr_selected_sharpe": _get_nested(cand, "dsr.selected_sharpe"),
-        "candidate_pbo": _get_nested(cand, "dsr.pbo"),
-        "candidate_dynamic_ensemble_report": _get_nested(cand, "dynamic_ensemble.path"),
-        "candidate_dynamic_ensemble_signal_count": _get_nested(
-            cand, "dynamic_ensemble.signal_count"
-        ),
-        "candidate_dynamic_ensemble_avg_active_factor_count": _get_nested(
-            cand, "dynamic_ensemble.avg_active_factor_count"
-        ),
-        "candidate_dynamic_ensemble_avg_factor_turnover": _get_nested(
-            cand, "dynamic_ensemble.avg_factor_turnover"
-        ),
-        "candidate_dynamic_ensemble_avg_stock_turnover": _get_nested(
-            cand, "dynamic_ensemble.avg_stock_turnover"
-        ),
-        "candidate_exposure_screen_status": _get_nested(cand, "exposure_screen.status"),
-        "candidate_exposure_screen_breach_count": _get_nested(cand, "exposure_screen.breach_count"),
-        "candidate_exposure_screen_report": _get_nested(cand, "exposure_screen.path"),
-    }
-    for scope in ("test", "final_oos"):
-        for window in ("6m", "1m", "1w"):
-            for side, evidence in (("baseline", base), ("candidate", cand)):
-                prefix = f"{side}_recency_{scope}_{window}"
-                row[f"{prefix}_status"] = _get_nested(
-                    evidence,
-                    f"recency_diagnostics.{scope}.{window}.status",
-                )
-                row[f"{prefix}_total_return"] = _get_nested(
-                    evidence,
-                    f"recency_diagnostics.{scope}.{window}.total_return",
-                )
-                row[f"{prefix}_sharpe"] = _get_nested(
-                    evidence,
-                    f"recency_diagnostics.{scope}.{window}.sharpe",
-                )
-                row[f"{prefix}_ic_mean"] = _get_nested(
-                    evidence,
-                    f"recency_diagnostics.{scope}.{window}.ic_mean",
-                )
-    return row
 
 
 def write_promotion_report(
@@ -1019,9 +1070,7 @@ def write_promotion_report(
         path = _resolve_path(output_json)
         assert path is not None
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(record, ensure_ascii=True, indent=2, default=str), encoding="utf-8"
-        )
+        write_strict_json(path, record)
     if output_csv:
         path = _resolve_path(output_csv)
         assert path is not None
@@ -1082,6 +1131,11 @@ def add_promotion_gate_args(parser: argparse.ArgumentParser) -> argparse.Argumen
         default=None,
         help="Override candidate exposure screen JSON report.",
     )
+    parser.add_argument(
+        "--candidate-backend-comparison-report",
+        default=None,
+        help="Override replayable native-vs-candidate backend comparison report.",
+    )
     parser.add_argument("--output-json", default=None, help="Output JSON report path.")
     parser.add_argument("--output-csv", default=None, help="Output CSV report path.")
     return parser
@@ -1089,7 +1143,7 @@ def add_promotion_gate_args(parser: argparse.ArgumentParser) -> argparse.Argumen
 
 def run(args: argparse.Namespace) -> int:
     cfg = load_promotion_gate_config(args.config)
-    payload = asdict(cfg)
+    payload = _promotion_config_payload(cfg)
     if args.baseline_run:
         payload["baseline_run"] = args.baseline_run
     if args.candidate_run:
@@ -1115,11 +1169,14 @@ def run(args: argparse.Namespace) -> int:
         payload["baseline_exposure_screen_report"] = args.baseline_exposure_screen_report
     if args.candidate_exposure_screen_report:
         payload["candidate_exposure_screen_report"] = args.candidate_exposure_screen_report
+    comparison_payload = payload.setdefault("backend_comparison", {})
+    if args.candidate_backend_comparison_report:
+        comparison_payload["candidate_report"] = args.candidate_backend_comparison_report
     cfg = load_promotion_gate_config(payload)
     record = build_promotion_record(cfg)
     write_promotion_report(record, output_json=args.output_json, output_csv=args.output_csv)
     if not args.output_json and not args.output_csv:
-        print(json.dumps(record, ensure_ascii=True, indent=2, default=str))
+        print(json.dumps(record, ensure_ascii=True, indent=2, allow_nan=False))
     return 0
 
 
@@ -1127,6 +1184,7 @@ __all__ = [
     "DEFAULT_COMPARABILITY_KEYS",
     "DEFAULT_REQUIRED_EVIDENCE",
     "PROMOTION_STATUSES",
+    "PromotionBackendComparisonConfig",
     "PromotionCPCVConfig",
     "PromotionDSRConfig",
     "PromotionDynamicEnsembleConfig",

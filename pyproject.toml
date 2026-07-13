@@ -63,6 +63,10 @@ combine-as-imports = true
 include = [
   "src/cstree/__init__.py",
   "src/cstree/alpha/backends",
+  "src/cstree/alpha/backend_comparison.py",
+  "src/cstree/alpha/promotion_gate_flatten.py",
+  "src/cstree/alpha/research_artifacts.py",
+  "src/cstree/alpha/tuning_service.py",
 ]
 exclude = [
   ".venv",
@@ -80,6 +84,7 @@ include = [
   "src/cstree/__init__.py",
   "src/cstree/alpha/cpcv_audit.py",
   "src/cstree/alpha/backends",
+  "src/cstree/alpha/backend_comparison.py",
   "src/cstree/alpha/dataset_sampling.py",
   "src/cstree/alpha/dataset_sampling_core.py",
   "src/cstree/alpha/dynamic_signal_ensemble_types.py",
@@ -88,11 +93,14 @@ include = [
   "src/cstree/alpha/modeling_dataset.py",
   "src/cstree/alpha/period_evaluation.py",
   "src/cstree/alpha/promotion_gate_thresholds.py",
+  "src/cstree/alpha/promotion_gate_flatten.py",
+  "src/cstree/alpha/research_artifacts.py",
   "src/cstree/alpha/signal_artifact.py",
   "src/cstree/alpha/train_eval.py",
   "src/cstree/alpha/train_eval_contracts.py",
   "src/cstree/alpha/train_eval_request_builder.py",
   "src/cstree/alpha/train_eval_result.py",
+  "src/cstree/alpha/tuning_service.py",
   "src/cstree/alpha/walk_forward_windows.py",
 ]
 exclude = [

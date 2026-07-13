@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from cstree.alpha.backends import (
     ExperimentReceipt,
@@ -36,7 +37,6 @@ class RecordingTrainerBackend:
             model_id="recording-model",
             model_type=request.model_type,
             metadata={"feature_count": len(request.features)},
-            _opaque_model={"framework": "private"},
         )
 
     def predict(
@@ -160,6 +160,30 @@ def test_native_trainer_backend_preserves_fit_predict_behavior() -> None:
 
     np.testing.assert_allclose(predictions.to_numpy(), frame["target"].to_numpy(), atol=1e-8)
     assert handle.to_metadata()["backend_id"] == "native"
+
+
+def test_serialized_model_metadata_cannot_rehydrate_live_model() -> None:
+    frame = pd.DataFrame({"f1": [0.0, 1.0], "target": [0.0, 1.0]})
+    backend = NativeTrainerBackend()
+    handle = backend.fit(
+        TrainerFitRequest(
+            frame=frame,
+            model_type="ridge",
+            model_params={"alpha": 0.0},
+            features=("f1",),
+            target_col="target",
+        )
+    )
+    metadata = handle.to_metadata()
+    restored = FittedModelHandle(
+        backend_id=str(metadata["backend_id"]),
+        model_id=str(metadata["model_id"]),
+        model_type=str(metadata["model_type"]),
+        metadata=metadata["metadata"] if isinstance(metadata["metadata"], dict) else {},
+    )
+
+    with pytest.raises(ValueError, match="not active"):
+        backend.predict(restored, frame, features=("f1",))
 
 
 def test_experiment_receipts_are_framework_neutral() -> None:

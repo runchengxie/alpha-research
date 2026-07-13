@@ -21,6 +21,7 @@
 ## 可选集成
 
 - [Qlib 研究后端](integrations/qlib.md)
+- [研究后端治理与晋升证据](concepts/backend-governance.md)
 
 ## 已承接页面
 

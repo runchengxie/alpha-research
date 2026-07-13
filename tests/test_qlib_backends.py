@@ -9,6 +9,12 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
+from cstree.alpha.backend_comparison import (
+    BackendPromotionThresholds,
+    compare_backend_evaluations,
+    replay_backend_comparison,
+    write_backend_evaluation,
+)
 from cstree.alpha.backends import (
     DatasetBuildRequest,
     NativeDatasetBackend,
@@ -131,7 +137,9 @@ def test_qlib_dataset_maps_derived_label_only_at_learn_boundary() -> None:
     assert learn_labels.columns.tolist() == ["future_return", "rank_target"]
 
 
-def test_qlib_ridge_prediction_matches_native_and_builds_canonical_signal() -> None:
+def test_qlib_ridge_prediction_matches_native_and_builds_canonical_signal(
+    tmp_path: Path,
+) -> None:
     frame = _canonical_frame().sample(frac=1.0, random_state=7)
     request = TrainerFitRequest(
         frame=frame,
@@ -163,6 +171,35 @@ def test_qlib_ridge_prediction_matches_native_and_builds_canonical_signal() -> N
     assert signals["symbol"].tolist() == frame["symbol"].tolist()
     assert qlib_handle.to_metadata()["backend_id"] == "qlib"
     assert "_opaque_model" not in json.dumps(qlib_handle.to_metadata())
+
+    native_scored = frame[["trade_date", "symbol"]].copy()
+    native_scored["pred"] = native_pred
+    native_artifact = write_backend_evaluation(
+        tmp_path / "native",
+        backend_id="native",
+        run_id="native-ridge",
+        predictions=native_scored,
+        metrics={"prediction_mean": float(native_pred.mean())},
+        model_handle=native_handle,
+    )
+    qlib_scored = frame[["trade_date", "symbol"]].copy()
+    qlib_scored["pred"] = qlib_pred
+    qlib_artifact = write_backend_evaluation(
+        tmp_path / "qlib",
+        backend_id="qlib",
+        run_id="qlib-ridge",
+        predictions=qlib_scored,
+        metrics={"prediction_mean": float(qlib_pred.mean())},
+        model_handle=qlib_handle,
+    )
+    comparison = compare_backend_evaluations(
+        native_artifact,
+        qlib_artifact,
+        thresholds=BackendPromotionThresholds(metric_abs_tolerances={"prediction_mean": 1e-8}),
+        output_path=tmp_path / "comparison.json",
+    )
+
+    assert replay_backend_comparison(comparison)["decision"]["status"] == "promotable"
 
 
 def test_qlib_trainer_rejects_unmapped_models() -> None:

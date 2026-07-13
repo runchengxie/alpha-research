@@ -6,6 +6,7 @@ from typing import Any, Protocol, runtime_checkable
 
 import pandas as pd
 
+from ..research_artifacts import JsonValue, strict_json_mapping
 from ..research_dataset import ResearchDataset
 
 
@@ -54,15 +55,35 @@ class FittedModelHandle:
     backend_id: str
     model_id: str
     model_type: str
-    metadata: Mapping[str, Any] = field(default_factory=dict)
-    _opaque_model: object = field(repr=False, compare=False, default=None)
+    metadata: Mapping[str, JsonValue] = field(default_factory=dict)
+    runtime_ref: str | None = field(repr=False, compare=False, default=None)
 
-    def to_metadata(self) -> dict[str, Any]:
+    def __post_init__(self) -> None:
+        if not self.backend_id.strip():
+            raise ValueError("backend_id cannot be empty")
+        if not self.model_id.strip():
+            raise ValueError("model_id cannot be empty")
+        if not self.model_type.strip():
+            raise ValueError("model_type cannot be empty")
+        if self.runtime_ref is not None and (
+            not isinstance(self.runtime_ref, str) or not self.runtime_ref.strip()
+        ):
+            raise TypeError("runtime_ref must be a non-empty string or None")
+        object.__setattr__(
+            self,
+            "metadata",
+            strict_json_mapping(self.metadata, field="model_handle.metadata"),
+        )
+
+    def to_metadata(self) -> dict[str, JsonValue]:
         return {
             "backend_id": self.backend_id,
             "model_id": self.model_id,
             "model_type": self.model_type,
-            "metadata": dict(self.metadata),
+            "metadata": strict_json_mapping(
+                self.metadata,
+                field="model_handle.metadata",
+            ),
         }
 
 
@@ -101,14 +122,30 @@ class ExperimentReceipt:
     backend_id: str
     experiment_id: str
     run_id: str
-    metadata: Mapping[str, Any] = field(default_factory=dict)
+    metadata: Mapping[str, JsonValue] = field(default_factory=dict)
 
-    def to_metadata(self) -> dict[str, Any]:
+    def __post_init__(self) -> None:
+        if not self.backend_id.strip():
+            raise ValueError("backend_id cannot be empty")
+        if not self.experiment_id.strip():
+            raise ValueError("experiment_id cannot be empty")
+        if not self.run_id.strip():
+            raise ValueError("run_id cannot be empty")
+        object.__setattr__(
+            self,
+            "metadata",
+            strict_json_mapping(self.metadata, field="experiment_receipt.metadata"),
+        )
+
+    def to_metadata(self) -> dict[str, JsonValue]:
         return {
             "backend_id": self.backend_id,
             "experiment_id": self.experiment_id,
             "run_id": self.run_id,
-            "metadata": dict(self.metadata),
+            "metadata": strict_json_mapping(
+                self.metadata,
+                field="experiment_receipt.metadata",
+            ),
         }
 
 
