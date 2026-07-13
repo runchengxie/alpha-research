@@ -7,8 +7,9 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
 
+from .backends import NativeTrainerBackend, TrainerBackend, TrainerFitRequest
 from .metrics import daily_ic_series
-from .modeling import build_model, fit_model, resolve_model_spec
+from .modeling import resolve_model_spec
 from .transform import apply_score_postprocess
 
 
@@ -164,6 +165,7 @@ class _CVFitConfig:
     score_postprocess_columns: list[str] | None
     score_postprocess_strength: float
     score_postprocess_min_obs: int | None
+    trainer_backend: TrainerBackend
 
 
 def _date_key(date: object) -> pd.Timestamp:
@@ -424,23 +426,28 @@ def _score_cv_fold(
     tr_df = _cv_frame_for_date_indices(slices, train_idx)
     va_df = _cv_frame_for_date_indices(slices, val_idx, copy=True)
 
-    model = build_model(config.model_type, config.model_params)
     sample_weight = build_sample_weight(
         tr_df,
         config.sample_weight_mode,
         date_col=config.date_col,
         params=config.sample_weight_params,
     )
-    fit_model(
-        model,
-        config.model_type,
-        tr_df,
-        features=config.features,
-        target_col=config.fit_target,
-        sample_weight=sample_weight,
-        date_col=config.date_col,
+    handle = config.trainer_backend.fit(
+        TrainerFitRequest(
+            frame=tr_df,
+            model_type=config.model_type,
+            model_params=config.model_params,
+            features=tuple(config.features),
+            target_col=config.fit_target,
+            sample_weight=sample_weight,
+            date_col=config.date_col,
+        )
     )
-    va_df["pred"] = model.predict(va_df[config.features])
+    va_df["pred"] = config.trainer_backend.predict(
+        handle,
+        va_df,
+        features=config.features,
+    )
     va_df["pred"] = apply_score_postprocess(
         va_df,
         "pred",
@@ -490,6 +497,7 @@ def time_series_cv_ic(
     label_shift_days: int = 0,
     all_trade_dates: object | None = None,
     next_rebalance_map: Mapping[object, object] | None = None,
+    trainer_backend: TrainerBackend | None = None,
 ):
     resolved_type, resolved_params = _resolve_cv_model_spec(model_cfg, model_params)
     fit_target = fit_target_col or target_col
@@ -523,6 +531,7 @@ def time_series_cv_ic(
         score_postprocess_columns=score_postprocess_columns,
         score_postprocess_strength=score_postprocess_strength,
         score_postprocess_min_obs=score_postprocess_min_obs,
+        trainer_backend=trainer_backend or NativeTrainerBackend(),
     )
 
     scores = []

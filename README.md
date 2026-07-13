@@ -6,6 +6,16 @@
 
 当前状态：本仓库已经从原研究仓库中拆出，并作为 `research-workspace` 的子模块锁定版本。完整研究运行仍由 `strategy-pipeline` 编排。本仓库负责 alpha 研究层和模型专用规则，要求能够在不导入 `cstree.pipeline` 和 `cstree.backtesting` 内部实现的情况下完成训练、诊断、信号产物和模型专用目标持仓输出。
 
+## 研究后端边界
+
+`cstree.alpha.backends` 定义框架无关的 `DatasetBackend`、`TrainerBackend` 和
+`ExperimentRecorder` 端口。现有实现由 `NativeDatasetBackend`、
+`NativeTrainerBackend` 和 `NullExperimentRecorder` 包装，默认行为不变。
+
+后续 Qlib 等可选实现只能存在于 adapter 内部：跨模块结果只记录 backend id、模型 id
+和普通 metadata，不得序列化第三方框架对象。`ResearchDataset` 仍是 raw / infer /
+learn 数据生命周期的 canonical 内部边界，signal artifact 和公共 CLI 契约保持不变。
+
 ## 负责的文档
 
 后续新增或迁移文档时，以下主题应优先放在本仓库：

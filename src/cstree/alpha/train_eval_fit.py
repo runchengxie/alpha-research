@@ -7,8 +7,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from .backends import FittedModelHandle, NativeTrainerBackend, TrainerBackend, TrainerFitRequest
 from .metrics import daily_ic_series, summarize_ic
-from .modeling import build_model, fit_model
 from .split import build_sample_weight
 from .train_eval_contracts import (
     TrainEvalFeatureTarget,
@@ -33,6 +33,7 @@ class _TrainFitResult:
     train_pearson_ic_stats: dict[str, Any]
     cv_scores_raw: list[float] | None = None
     cv_scores_adj: list[float] | None = None
+    model_handle: FittedModelHandle | None = None
 
 
 def _fit_stage_model(
@@ -40,34 +41,41 @@ def _fit_stage_model(
     *,
     feature_target: TrainEvalFeatureTarget,
     model_settings: TrainEvalModelSettings,
-) -> Any:
+    trainer_backend: TrainerBackend,
+) -> FittedModelHandle:
     logger.info("Fitting model (%s) ...", model_settings.model_type)
-    model = build_model(model_settings.model_type, model_settings.model_params)
     train_weights = build_sample_weight(
         train_df,
         model_settings.sample_weight_mode,
         params=model_settings.sample_weight_params,
     )
-    fit_model(
-        model,
-        model_settings.model_type,
-        train_df,
-        features=feature_target.features,
-        target_col=feature_target.train_target,
-        sample_weight=train_weights,
+    return trainer_backend.fit(
+        TrainerFitRequest(
+            frame=train_df,
+            model_type=model_settings.model_type,
+            model_params=model_settings.model_params,
+            features=tuple(feature_target.features),
+            target_col=feature_target.train_target,
+            date_col="trade_date",
+            sample_weight=train_weights,
+        )
     )
-    return model
 
 
 def _score_train_frame(
     train_df: pd.DataFrame,
-    model: Any,
+    model_handle: FittedModelHandle,
     *,
     feature_target: TrainEvalFeatureTarget,
     signal_settings: TrainEvalSignalSettings,
+    trainer_backend: TrainerBackend,
 ) -> pd.DataFrame:
     train_eval_df = train_df.copy()
-    train_eval_df["pred"] = model.predict(train_eval_df[feature_target.features])
+    train_eval_df["pred"] = trainer_backend.predict(
+        model_handle,
+        train_eval_df,
+        features=feature_target.features,
+    )
     train_eval_df["pred"] = apply_score_postprocess(
         train_eval_df,
         "pred",
@@ -186,18 +194,22 @@ def fit_model_and_score_train(
     model_settings: TrainEvalModelSettings,
     signal_settings: TrainEvalSignalSettings,
     cv_scores_raw: list[float],
+    trainer_backend: TrainerBackend | None = None,
 ) -> _TrainFitResult:
+    backend = trainer_backend or NativeTrainerBackend()
     target = feature_target.target
-    model = _fit_stage_model(
+    model_handle = _fit_stage_model(
         train_df,
         feature_target=feature_target,
         model_settings=model_settings,
+        trainer_backend=backend,
     )
     train_eval_df = _score_train_frame(
         train_df,
-        model,
+        model_handle,
         feature_target=feature_target,
         signal_settings=signal_settings,
+        trainer_backend=backend,
     )
     updated_signal_direction, train_ic_raw_stats = _resolve_train_signal_direction(
         train_eval_df,
@@ -216,7 +228,7 @@ def fit_model_and_score_train(
     )
 
     return _TrainFitResult(
-        model=model,
+        model=backend.unwrap_legacy_model(model_handle),
         train_eval_df=train_eval_df,
         updated_signal_direction=updated_signal_direction,
         train_signal_col=train_signal_col,
@@ -226,4 +238,5 @@ def fit_model_and_score_train(
         train_pearson_ic_series=train_pearson_ic_series,
         train_pearson_ic_stats=train_pearson_ic_stats,
         cv_scores_adj=cv_scores_adj,
+        model_handle=model_handle,
     )

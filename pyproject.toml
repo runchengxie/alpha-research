@@ -55,7 +55,10 @@ max-complexity = 18
 combine-as-imports = true
 
 [tool.ty.src]
-include = ["src/cstree/__init__.py"]
+include = [
+  "src/cstree/__init__.py",
+  "src/cstree/alpha/backends",
+]
 exclude = [
   ".venv",
   "artifacts",
@@ -71,6 +74,7 @@ market-data-platform = { path = "../market-data-platform", editable = true }
 include = [
   "src/cstree/__init__.py",
   "src/cstree/alpha/cpcv_audit.py",
+  "src/cstree/alpha/backends",
   "src/cstree/alpha/dataset_sampling.py",
   "src/cstree/alpha/dataset_sampling_core.py",
   "src/cstree/alpha/dynamic_signal_ensemble_types.py",

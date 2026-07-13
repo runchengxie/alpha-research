@@ -1,10 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
+from .backends import (
+    ExperimentRecorder,
+    NativeTrainerBackend,
+    NullExperimentRecorder,
+    TrainerBackend,
+)
 
 
 @dataclass(frozen=True)
@@ -160,6 +167,8 @@ class TrainEvalServices:
     walk_forward_backtest_fn: Any
     period_eval_fn: Any
     live_snapshot_fn: Any
+    trainer_backend: TrainerBackend = field(default_factory=NativeTrainerBackend)
+    experiment_recorder: ExperimentRecorder = field(default_factory=NullExperimentRecorder)
 
 
 def _data_window_kwargs(data: TrainEvalData) -> dict[str, Any]:
@@ -314,6 +323,8 @@ def _backtest_reporting_kwargs(
         "walk_forward_backtest_fn": services.walk_forward_backtest_fn,
         "period_eval_fn": services.period_eval_fn,
         "live_snapshot_fn": services.live_snapshot_fn,
+        "trainer_backend": services.trainer_backend,
+        "experiment_recorder": services.experiment_recorder,
     }
 
 

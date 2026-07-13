@@ -11,6 +11,9 @@ import cstree
 from cstree import alpha
 
 OWNED_MODULES = (
+    "cstree.alpha.backends",
+    "cstree.alpha.backends.base",
+    "cstree.alpha.backends.native",
     "cstree.alpha.signal_artifact",
     "cstree.alpha.benchmarking",
     "cstree.alpha.compat",

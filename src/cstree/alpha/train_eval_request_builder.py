@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .backends import NativeTrainerBackend, NullExperimentRecorder
 from .train_eval_contracts import (
     TrainEvalBacktestSettings,
     TrainEvalData,
@@ -243,4 +244,6 @@ def _services_from_kwargs(reader: _TrainEvalKwargReader) -> TrainEvalServices:
         walk_forward_backtest_fn=get("walk_forward_backtest_fn"),
         period_eval_fn=get("period_eval_fn"),
         live_snapshot_fn=get("live_snapshot_fn"),
+        trainer_backend=reader.optional("trainer_backend", NativeTrainerBackend()),
+        experiment_recorder=reader.optional("experiment_recorder", NullExperimentRecorder()),
     )
