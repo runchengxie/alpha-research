@@ -24,7 +24,7 @@ import pandas as pd
 
 _B_WEIGHTS: dict[str, float] = {
     "vol_convergence": 0.25,
-    "hermite_stability": 0.10,  # Hermite closeness: higher = more stable/Gaussian
+    "hermite_stability": 0.10,  # Cross-day volume-activity stability; higher is steadier.
     "resvol": 0.20,  # note: RESVOL itself is negated for B-leg internally
     "liquidity": 0.20,
     "mom20": 0.15,

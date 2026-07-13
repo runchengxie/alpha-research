@@ -18,7 +18,7 @@ Factors computed:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -116,7 +116,7 @@ def compute_size_factor(
     Returns:
         Wide DataFrame of -log(market_cap).
     """
-    size = np.log(market_cap_panel.replace(0, np.nan))
+    size = cast(pd.DataFrame, np.log(market_cap_panel.replace(0, np.nan)))
     return -size  # negate: smaller stocks → higher values
 
 
@@ -137,7 +137,10 @@ def compute_liquidity_factor(
     Returns:
         Wide DataFrame of average turnover.
     """
-    return turnover_panel.rolling(window=window, min_periods=max(5, window // 2)).mean()
+    return cast(
+        pd.DataFrame,
+        turnover_panel.rolling(window=window, min_periods=max(5, window // 2)).mean(),
+    )
 
 
 # ── Factor: Momentum ───────────────────────────────────────────────────────────
@@ -191,7 +194,8 @@ def compute_industry_momentum(
     industry_returns: dict[str, pd.Series] = {}
 
     for industry_name in industry_map.dropna().unique():
-        members = industry_map[industry_map == industry_name].index
+        matching = cast(pd.Series, industry_map.loc[industry_map.eq(industry_name)])
+        members = matching.index
         member_cols = [s for s in members if s in returns.columns]
         if not member_cols:
             continue
@@ -313,12 +317,14 @@ def compute_hermite_stability_factor(
     window: int = 60,
     min_periods: int = 36,
     variant: str = "closeness",
+    ddof: int = 0,
 ) -> pd.DataFrame | None:
-    """Compute Hermite stability from a volume activity panel.
+    """Compute cross-day Hermite stability from a daily volume-activity panel.
 
-    Hermite stability measures how "Gaussian" (stable) the distribution of
-    a factor is over a rolling window:
-    - ``closeness``: -log(1 + h3² + h4²) — HIGHER = more stable/Gaussian
+    The index is expected to be trade dates and each cell one stock-day's
+    aggregated volume-activity value. Rolling moments therefore describe the
+    cross-day time series, not the distribution of minute bars within one day:
+    - ``closeness``: -log(1 + h3² + h4²) — HIGHER = more stable over time
     - ``compression``: log(1+E_long) - log(1+E_short) — POSITIVE = getting less stable
 
     B-leg prefers HIGH closeness (stable behavior).
@@ -329,6 +335,8 @@ def compute_hermite_stability_factor(
         window: Rolling window for Hermite transform.
         min_periods: Minimum observations required.
         variant: "closeness" or "compression".
+        ddof: Rolling standard-deviation convention. StyleReplica retains its
+            historical population default (0); DailyWatch20 currently uses 1.
 
     Returns:
         Wide DataFrame of Hermite stability values, or None.
@@ -341,7 +349,9 @@ def compute_hermite_stability_factor(
 
     # Rolling z-score
     roll_mean = panel.rolling(window, min_periods=min_periods).mean()
-    roll_std = panel.rolling(window, min_periods=min_periods).std(ddof=0)
+    if ddof not in {0, 1}:
+        raise ValueError("ddof must be 0 or 1")
+    roll_std = panel.rolling(window, min_periods=min_periods).std(ddof=ddof)
     roll_std = roll_std.where(roll_std > 1e-8, np.nan)
     z = ((panel - roll_mean) / roll_std).clip(-8.0, 8.0)
 
@@ -358,7 +368,7 @@ def compute_hermite_stability_factor(
         w_short = max(20, window // 3)
         mp_short = max(12, min_periods // 3)
         rs_mean = panel.rolling(w_short, min_periods=mp_short).mean()
-        rs_std = panel.rolling(w_short, min_periods=mp_short).std(ddof=0)
+        rs_std = panel.rolling(w_short, min_periods=mp_short).std(ddof=ddof)
         rs_std = rs_std.where(rs_std > 1e-8, np.nan)
         zs = ((panel - rs_mean) / rs_std).clip(-8.0, 8.0)
         zs2 = zs * zs
@@ -369,7 +379,7 @@ def compute_hermite_stability_factor(
         return np.log1p(energy) - np.log1p(energy_short)  # positive = getting less stable
 
     # Default: closeness = -log(1 + energy)
-    return -np.log1p(energy)  # higher = more Gaussian/stable
+    return -np.log1p(energy)  # higher = more stable across daily observations
 
 
 # ── Composite factorization ────────────────────────────────────────────────────

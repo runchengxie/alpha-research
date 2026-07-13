@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -9,10 +11,24 @@ from cstree.alpha.daily_watch20_features import (
     DAILY_WATCH20_FEATURES,
     DEFAULT_LABEL_HORIZON_WEIGHTS,
     LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS,
+    LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID,
     MINUTE_FEATURES,
     DailyWatch20FeatureConfig,
     build_daily_watch20_feature_frame,
 )
+from cstree.alpha.style_replica.factors import compute_hermite_stability_factor
+
+
+def _series(frame: pd.DataFrame, column: str) -> pd.Series:
+    return cast(pd.Series, frame[column])
+
+
+def _timestamp(value: object) -> pd.Timestamp:
+    return cast(pd.Timestamp, pd.Timestamp(cast(Any, value)))
+
+
+def _is_missing(value: object) -> bool:
+    return bool(pd.isna(value))
 
 
 def _daily_panel(
@@ -33,7 +49,10 @@ def _daily_panel(
                 {
                     "trade_date": trade_date,
                     "symbol": symbol,
+                    "open": price,
                     "adj_open": price,
+                    "up_limit": price + 1.0,
+                    "down_limit": price - 1.0,
                     "tr_close": price * (1.0 + 0.002 * ((date_number % 3) - 1)),
                     "high": price * 1.01,
                     "low": price * 0.99,
@@ -67,6 +86,7 @@ def test_feature_config_defaults_to_weighted_horizons_and_supports_legacy_five_d
     assert default.minute_lag_trade_days == 0
     assert default.label_col == "forward_rank_blended"
     assert default.forward_return_col == "forward_return_blended"
+    assert LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID.endswith("open_limit_aware.v3")
     assert legacy.label_col == "forward_rank_5d"
     with pytest.raises(ValueError, match="longest configured"):
         DailyWatch20FeatureConfig(forward_days=3)
@@ -85,7 +105,7 @@ def test_rolling_features_are_symbol_local_and_input_order_invariant() -> None:
     columns = ["trade_date", "symbol", "ret_1d", "mom_5", "vol_5", "amount_log_20"]
     assert_frame_equal(actual[columns], expected[columns])
     first_rows = actual.groupby("symbol", sort=False).head(1)
-    assert first_rows["ret_1d"].isna().all()
+    assert bool(_series(first_rows, "ret_1d").isna().all())
     assert set(DAILY_WATCH20_FEATURES).issubset(actual.columns)
     assert "low_volatility_pct" in DAILY_WATCH20_FEATURES
     assert "low_resvol_pct" not in DAILY_WATCH20_FEATURES
@@ -99,7 +119,7 @@ def test_minute_features_carry_an_explicit_nonfuture_source_date(
     target_number: int,
 ) -> None:
     daily = _daily_panel()
-    dates = pd.Index(daily["trade_date"].unique()).sort_values()
+    dates = pd.Index(_series(daily, "trade_date").unique()).sort_values()
     minute = pd.DataFrame(
         {
             "source_trade_date": dates,
@@ -114,7 +134,7 @@ def test_minute_features_carry_an_explicit_nonfuture_source_date(
         config=DailyWatch20FeatureConfig(minute_lag_trade_days=lag),
     )
 
-    selected = _row(features, pd.Timestamp(dates[target_number]), "000001.SZ")
+    selected = _row(features, _timestamp(dates[target_number]), "000001.SZ")
     assert selected["minute_source_date"] == dates[source_number]
     assert selected["minute_realized_vol"] == float(source_number)
     assert selected["minute_source_date"] <= selected["trade_date"]
@@ -122,15 +142,39 @@ def test_minute_features_carry_an_explicit_nonfuture_source_date(
     assert set(MINUTE_FEATURES).issubset(features.columns)
 
 
+def test_daily_watch20_hermite_matches_style_replica_reference() -> None:
+    daily = _daily_panel(n_dates=140)
+    dates = pd.Index(_series(daily, "trade_date").unique()).sort_values()
+    symbols = tuple(_series(daily, "symbol").drop_duplicates())
+    rng = np.random.default_rng(19)
+    panel = pd.DataFrame(
+        rng.lognormal(mean=0.0, sigma=0.35, size=(len(dates), len(symbols))),
+        index=dates,
+        columns=symbols,
+    )
+    stacked = cast(
+        pd.Series,
+        panel.rename_axis(index="trade_date", columns="symbol").stack(),
+    )
+    minute = stacked.rename("minute_volume_activity").reset_index()
+
+    features = build_daily_watch20_feature_frame(daily, minute)
+    actual = features.pivot(index="trade_date", columns="symbol", values="hermite_stability")
+    expected = compute_hermite_stability_factor(panel, ddof=1)
+
+    assert expected is not None
+    assert_frame_equal(actual, expected, check_names=False, atol=1e-12, rtol=1e-12)
+
+
 def test_next_open_label_uses_t_plus_one_to_t_plus_six_and_eligible_universe() -> None:
     symbols = ("000001.SZ", "600000.SH", "830001.BJ")
     daily = _daily_panel(symbols=symbols)
-    dates = pd.Index(daily["trade_date"].unique()).sort_values()
+    dates = pd.Index(_series(daily, "trade_date").unique()).sort_values()
 
     features = build_daily_watch20_feature_frame(daily)
 
     signal_number = 25
-    signal_date = pd.Timestamp(dates[signal_number])
+    signal_date = _timestamp(dates[signal_number])
     a_share = _row(features, signal_date, "000001.SZ")
     sh_share = _row(features, signal_date, "600000.SH")
     bse_share = _row(features, signal_date, "830001.BJ")
@@ -147,41 +191,68 @@ def test_next_open_label_uses_t_plus_one_to_t_plus_six_and_eligible_universe() -
     assert a_share["forward_rank_blended"] == 1.0
     assert sh_share["forward_rank_5d"] == 0.5
     assert not bool(bse_share["hard_eligible"])
-    assert pd.isna(bse_share["liquidity_pct"])
-    assert pd.isna(bse_share["forward_rank_5d"])
-    assert pd.isna(bse_share["forward_rank_blended"])
+    assert _is_missing(bse_share["liquidity_pct"])
+    assert _is_missing(bse_share["forward_rank_5d"])
+    assert _is_missing(bse_share["forward_rank_blended"])
     trailing = features.loc[features["symbol"].eq("000001.SZ")].tail(6)
-    assert trailing["forward_return_5d"].isna().all()
-    assert trailing["forward_rank_blended"].isna().all()
+    assert bool(_series(trailing, "forward_return_5d").isna().all())
+    assert bool(_series(trailing, "forward_rank_blended").isna().all())
 
 
 @pytest.mark.parametrize(
-    ("flag", "offset", "return_column"),
+    ("side", "offset", "return_column"),
     [
-        ("is_limit_up", 1, "forward_return_1d"),
-        ("is_limit_down", 2, "forward_return_1d"),
-        ("is_limit_down", 4, "forward_return_3d"),
-        ("is_limit_down", 6, "forward_return_5d"),
+        ("buy", 1, "forward_return_1d"),
+        ("sell", 2, "forward_return_1d"),
+        ("sell", 4, "forward_return_3d"),
+        ("sell", 6, "forward_return_5d"),
     ],
 )
 def test_next_open_labels_reject_limit_locked_entry_and_exit(
-    flag: str,
+    side: str,
     offset: int,
     return_column: str,
 ) -> None:
     daily = _daily_panel()
-    dates = pd.Index(daily["trade_date"].unique()).sort_values()
+    dates = pd.Index(_series(daily, "trade_date").unique()).sort_values()
     signal_number = 25
     locked = daily["trade_date"].eq(dates[signal_number + offset]) & daily["symbol"].eq("000001.SZ")
-    daily.loc[locked, flag] = True
+    limit_column = "up_limit" if side == "buy" else "down_limit"
+    daily.loc[locked, "open"] = daily.loc[locked, limit_column]
 
     features = build_daily_watch20_feature_frame(daily)
 
-    signal = _row(features, pd.Timestamp(dates[signal_number]), "000001.SZ")
-    assert pd.isna(signal[return_column])
-    assert pd.isna(signal[return_column.replace("return", "rank")])
-    assert pd.isna(signal["forward_return_blended"])
-    assert pd.isna(signal["forward_rank_blended"])
+    signal = _row(features, _timestamp(dates[signal_number]), "000001.SZ")
+    assert _is_missing(signal[return_column])
+    assert _is_missing(signal[return_column.replace("return", "rank")])
+    assert _is_missing(signal["forward_return_blended"])
+    assert _is_missing(signal["forward_rank_blended"])
+
+
+def test_next_open_label_ignores_close_limit_flags_and_fails_closed_on_missing_raw_limit() -> None:
+    daily = _daily_panel()
+    dates = pd.Index(_series(daily, "trade_date").unique()).sort_values()
+    signal_number = 25
+    entry = daily["trade_date"].eq(dates[signal_number + 1]) & daily["symbol"].eq("000001.SZ")
+    daily.loc[entry, "is_limit_up"] = True
+
+    close_flag_features = build_daily_watch20_feature_frame(daily)
+    close_flag_signal = _row(
+        close_flag_features,
+        _timestamp(dates[signal_number]),
+        "000001.SZ",
+    )
+    assert not _is_missing(close_flag_signal["forward_return_1d"])
+
+    daily.loc[entry, "up_limit"] = np.nan
+    missing_limit_features = build_daily_watch20_feature_frame(daily)
+    missing_limit_signal = _row(
+        missing_limit_features,
+        _timestamp(dates[signal_number]),
+        "000001.SZ",
+    )
+    assert _is_missing(missing_limit_signal["forward_return_1d"])
+    assert _is_missing(missing_limit_signal["forward_return_blended"])
 
 
 def test_legacy_five_day_label_mode_keeps_the_single_horizon_contract() -> None:
@@ -199,7 +270,7 @@ def test_legacy_five_day_label_mode_keeps_the_single_horizon_contract() -> None:
 
 def test_label_does_not_stretch_across_a_missing_symbol_date() -> None:
     daily = _daily_panel()
-    dates = pd.Index(daily["trade_date"].unique()).sort_values()
+    dates = pd.Index(_series(daily, "trade_date").unique()).sort_values()
     signal_number = 25
     missing_entry = daily["trade_date"].eq(dates[signal_number + 1]) & daily["symbol"].eq(
         "000001.SZ"
@@ -207,11 +278,11 @@ def test_label_does_not_stretch_across_a_missing_symbol_date() -> None:
 
     features = build_daily_watch20_feature_frame(daily.loc[~missing_entry])
 
-    signal = _row(features, pd.Timestamp(dates[signal_number]), "000001.SZ")
+    signal = _row(features, _timestamp(dates[signal_number]), "000001.SZ")
     assert signal["forward_label_start_date"] == dates[signal_number + 1]
     assert signal["forward_label_end_date"] == dates[signal_number + 6]
-    assert pd.isna(signal["forward_return_5d"])
-    assert pd.isna(signal["forward_rank_5d"])
+    assert _is_missing(signal["forward_return_5d"])
+    assert _is_missing(signal["forward_rank_5d"])
 
 
 def test_hard_eligibility_fails_closed_for_status_market_and_data_gaps() -> None:
@@ -253,5 +324,5 @@ def test_hard_eligibility_fails_closed_for_status_market_and_data_gaps() -> None
         "600006.SH",
         "830001.BJ",
     }
-    assert not cross_section.loc[list(excluded), "hard_eligible"].any()
-    assert cross_section.loc[list(excluded), "forward_rank_5d"].isna().all()
+    assert not bool(cast(pd.Series, cross_section.loc[list(excluded), "hard_eligible"]).any())
+    assert bool(cast(pd.Series, cross_section.loc[list(excluded), "forward_rank_5d"]).isna().all())

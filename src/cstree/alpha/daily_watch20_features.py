@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 import pandas as pd
 
 DEFAULT_LABEL_HORIZON_WEIGHTS = ((1, 0.50), (3, 0.30), (5, 0.20))
 LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS = ((5, 1.0),)
-LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID = "next_open_unsuspended_limit_aware.v2"
+LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID = "next_open_unsuspended_open_limit_aware.v3"
 BLENDED_FORWARD_RANK_COL = "forward_rank_blended"
 BLENDED_FORWARD_RETURN_COL = "forward_return_blended"
 
@@ -152,6 +153,16 @@ def _require_columns(frame: pd.DataFrame, columns: set[str]) -> None:
         raise ValueError(f"DailyWatch20 daily input is missing columns: {missing}")
 
 
+def _series(frame: pd.DataFrame, column: str) -> pd.Series:
+    """Narrow pandas' overloaded column access to this module's Series contract."""
+
+    return cast(pd.Series, frame[column])
+
+
+def _numeric_series(values: pd.Series) -> pd.Series:
+    return cast(pd.Series, pd.to_numeric(values, errors="coerce"))
+
+
 def _target_market(symbols: pd.Series) -> pd.Series:
     return symbols.astype("string").str.fullmatch(r"\d{6}\.(?:SH|SZ)", na=False)
 
@@ -177,6 +188,9 @@ def _prepare_daily_input(daily: pd.DataFrame) -> pd.DataFrame:
             "trade_date",
             "symbol",
             "adj_open",
+            "open",
+            "up_limit",
+            "down_limit",
             "tr_close",
             "high",
             "low",
@@ -194,13 +208,13 @@ def _prepare_daily_input(daily: pd.DataFrame) -> pd.DataFrame:
         },
     )
     out = daily.copy()
-    dates = pd.to_datetime(out["trade_date"], errors="coerce")
+    dates = cast(pd.Series, pd.to_datetime(_series(out, "trade_date"), errors="coerce"))
     if dates.isna().any():
         raise ValueError("DailyWatch20 daily input contains invalid trade_date values")
     if dates.dt.tz is not None:
         dates = dates.dt.tz_localize(None)
     out["trade_date"] = dates.dt.normalize()
-    symbols = out["symbol"].astype("string").str.strip().str.upper()
+    symbols = _series(out, "symbol").astype("string").str.strip().str.upper()
     if symbols.isna().any() or symbols.eq("").any():
         raise ValueError("DailyWatch20 daily input contains empty symbols")
     out["symbol"] = symbols.astype(str)
@@ -208,6 +222,9 @@ def _prepare_daily_input(daily: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("DailyWatch20 daily input contains duplicate stock-date rows")
     numeric = [
         "adj_open",
+        "open",
+        "up_limit",
+        "down_limit",
         "tr_close",
         "high",
         "low",
@@ -222,9 +239,7 @@ def _prepare_daily_input(daily: pd.DataFrame) -> pd.DataFrame:
     ]
     for column in numeric:
         if column in out.columns:
-            out[column] = pd.to_numeric(out[column], errors="coerce").replace(
-                [np.inf, -np.inf], np.nan
-            )
+            out[column] = _numeric_series(_series(out, column)).replace([np.inf, -np.inf], np.nan)
     return out.sort_values(["symbol", "trade_date"], kind="mergesort").reset_index(drop=True)
 
 
@@ -286,11 +301,14 @@ def _add_liquidity_and_style_features(frame: pd.DataFrame) -> pd.DataFrame:
         "mom20_pct": "mom_20",
         "mom120_pct": "mom_120",
     }
-    target_market = _target_market(out["symbol"])
+    target_market = _target_market(_series(out, "symbol"))
     for output, source in rank_inputs.items():
-        values = -out[source] if output == "low_volatility_pct" else out[source]
+        source_values = _series(out, source)
+        values = -source_values if output == "low_volatility_pct" else source_values
         out[output] = (
-            values.where(target_market).groupby(out["trade_date"], sort=False).rank(pct=True)
+            values.where(target_market)
+            .groupby(_series(out, "trade_date"), sort=False)
+            .rank(pct=True)
         )
     # Compatibility-only alias. New model contracts must use low_volatility_pct.
     out["low_resvol_pct"] = out["low_volatility_pct"]
@@ -298,7 +316,7 @@ def _add_liquidity_and_style_features(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def _add_market_regime_features(frame: pd.DataFrame) -> pd.DataFrame:
-    target = frame.loc[_target_market(frame["symbol"])]
+    target = frame.loc[_target_market(_series(frame, "symbol"))]
     daily_market = (
         target.groupby("trade_date", sort=True)
         .agg(
@@ -328,10 +346,13 @@ def _lag_minute_features(
         rename["source_trade_date"] = "trade_date"
     minute = minute.rename(columns=rename)
     _require_columns(minute, {"trade_date", "symbol"})
-    minute_dates = pd.to_datetime(minute["trade_date"], errors="coerce")
+    minute_dates = cast(
+        pd.Series,
+        pd.to_datetime(_series(minute, "trade_date"), errors="coerce"),
+    )
     if minute_dates.dt.tz is not None:
         minute_dates = minute_dates.dt.tz_localize(None)
-    minute_symbols = minute["symbol"].astype("string").str.strip().str.upper()
+    minute_symbols = _series(minute, "symbol").astype("string").str.strip().str.upper()
     valid_keys = minute_dates.notna() & minute_symbols.notna() & minute_symbols.ne("")
     if not valid_keys.all():
         raise ValueError("DailyWatch20 minute input contains invalid stock-date keys")
@@ -341,14 +362,17 @@ def _lag_minute_features(
         raise ValueError("DailyWatch20 minute input contains duplicate stock-date rows")
     for feature in MINUTE_FEATURES:
         if feature in minute.columns:
-            minute[feature] = pd.to_numeric(minute[feature], errors="coerce").replace(
+            minute[feature] = _numeric_series(_series(minute, feature)).replace(
                 [np.inf, -np.inf], np.nan
             )
     ordered_dates = pd.Index(pd.to_datetime(trade_dates).unique()).sort_values()
     minute["minute_source_date"] = minute["trade_date"]
     if lag_trade_days:
-        effective = pd.Series(ordered_dates, index=ordered_dates).shift(-lag_trade_days)
-        minute["trade_date"] = minute["trade_date"].map(effective)
+        effective = cast(
+            pd.Series,
+            pd.Series(ordered_dates, index=ordered_dates).shift(-lag_trade_days),
+        )
+        minute["trade_date"] = _series(minute, "trade_date").map(effective)
         minute = minute.dropna(subset=["trade_date"])
     return minute
 
@@ -384,9 +408,9 @@ def _join_minute_features(
 
 
 def _future_date(frame: pd.DataFrame, offset: int) -> pd.Series:
-    trade_dates = pd.Index(frame["trade_date"].unique()).sort_values()
-    shifted = pd.Series(trade_dates, index=trade_dates).shift(-offset)
-    return frame["trade_date"].map(shifted)
+    trade_dates = pd.Index(_series(frame, "trade_date").unique()).sort_values()
+    shifted = cast(pd.Series, pd.Series(trade_dates, index=trade_dates).shift(-offset))
+    return _series(frame, "trade_date").map(shifted)
 
 
 def _lookup_on_dates(
@@ -394,8 +418,9 @@ def _lookup_on_dates(
     values: pd.Series,
     dates: pd.Series,
 ) -> pd.Series:
-    index = pd.MultiIndex.from_frame(frame[["symbol", "trade_date"]])
-    keys = pd.MultiIndex.from_arrays([frame["symbol"], dates], names=index.names)
+    key_frame = cast(pd.DataFrame, frame.loc[:, ["symbol", "trade_date"]])
+    index = pd.MultiIndex.from_frame(key_frame)
+    keys = pd.MultiIndex.from_arrays([_series(frame, "symbol"), dates], names=index.names)
     lookup = pd.Series(values.to_numpy(), index=index)
     return pd.Series(lookup.reindex(keys).to_numpy(), index=frame.index)
 
@@ -405,10 +430,36 @@ def _weighted_complete_row_sum(
     columns_and_weights: Sequence[tuple[str, float]],
 ) -> pd.Series:
     weighted = pd.concat(
-        [frame[column].mul(weight) for column, weight in columns_and_weights],
+        [_series(frame, column).mul(weight) for column, weight in columns_and_weights],
         axis=1,
     )
     return weighted.sum(axis=1, min_count=len(columns_and_weights))
+
+
+def _open_is_away_from_limit(
+    open_price: pd.Series,
+    limit_price: pd.Series,
+    *,
+    side: str,
+) -> pd.Series:
+    raw_open = _numeric_series(open_price)
+    raw_limit = _numeric_series(limit_price)
+    finite = (
+        raw_open.notna()
+        & raw_limit.notna()
+        & np.isfinite(raw_open)
+        & np.isfinite(raw_limit)
+        & raw_open.gt(0)
+        & raw_limit.gt(0)
+    )
+    tolerance = np.maximum(raw_limit.abs() * 1e-8, 1e-8)
+    if side == "buy":
+        away = raw_open < raw_limit - tolerance
+    elif side == "sell":
+        away = raw_open > raw_limit + tolerance
+    else:
+        raise ValueError("side must be 'buy' or 'sell'")
+    return finite & away
 
 
 def _add_next_open_labels(
@@ -419,10 +470,16 @@ def _add_next_open_labels(
     out = frame.sort_values(["symbol", "trade_date"], kind="mergesort").copy()
     normalized_weights = normalize_label_horizon_weights(horizon_weights)
     entry_date = _future_date(out, 1)
-    entry = pd.to_numeric(_lookup_on_dates(out, out["adj_open"], entry_date), errors="coerce")
-    tradable = _known_false_flag(out["is_suspended"])
+    entry = _numeric_series(_lookup_on_dates(out, _series(out, "adj_open"), entry_date))
+    tradable = _known_false_flag(_series(out, "is_suspended"))
     entry_not_limit_up = _lookup_on_dates(
-        out, _known_false_flag(out["is_limit_up"]), entry_date
+        out,
+        _open_is_away_from_limit(
+            _series(out, "open"),
+            _series(out, "up_limit"),
+            side="buy",
+        ),
+        entry_date,
     ).eq(True)
     entry_tradable = _lookup_on_dates(out, tradable, entry_date).eq(True) & entry_not_limit_up
     out["forward_label_start_date"] = entry_date
@@ -430,19 +487,23 @@ def _add_next_open_labels(
     rank_parts: list[tuple[str, float]] = []
     for horizon, weight in normalized_weights:
         exit_date = _future_date(out, horizon + 1)
-        exit_price = pd.to_numeric(
-            _lookup_on_dates(out, out["adj_open"], exit_date), errors="coerce"
-        )
+        exit_price = _numeric_series(_lookup_on_dates(out, _series(out, "adj_open"), exit_date))
         exit_not_limit_down = _lookup_on_dates(
-            out, _known_false_flag(out["is_limit_down"]), exit_date
+            out,
+            _open_is_away_from_limit(
+                _series(out, "open"),
+                _series(out, "down_limit"),
+                side="sell",
+            ),
+            exit_date,
         ).eq(True)
         exit_tradable = _lookup_on_dates(out, tradable, exit_date).eq(True) & exit_not_limit_down
         valid = entry.gt(0) & exit_price.gt(0) & entry_tradable & exit_tradable
         return_col = f"forward_return_{horizon}d"
         rank_col = f"forward_rank_{horizon}d"
         out[return_col] = (exit_price / entry - 1.0).where(valid)
-        eligible_return = out[return_col].where(out["hard_eligible"])
-        out[rank_col] = eligible_return.groupby(out["trade_date"], sort=False).rank(
+        eligible_return = _series(out, return_col).where(_series(out, "hard_eligible"))
+        out[rank_col] = eligible_return.groupby(_series(out, "trade_date"), sort=False).rank(
             method="average",
             pct=True,
         )
@@ -458,7 +519,7 @@ def _add_next_open_labels(
 
 
 def _known_false_flag(values: pd.Series) -> pd.Series:
-    numeric = pd.to_numeric(values, errors="coerce")
+    numeric = _numeric_series(values)
     text = values.astype("string").str.strip().str.lower()
     return numeric.eq(0).fillna(False) | text.isin({"false", "f", "no", "n"})
 
@@ -468,18 +529,21 @@ _HERMITE_MIN_PERIODS: int = 36
 
 
 def _add_hermite_stability(frame: pd.DataFrame) -> pd.DataFrame:
-    """Compute Hermite stability from minute_volume_activity.
+    """Compute cross-day stability of the daily minute-volume-activity series.
 
-    Hermite stability measures how Gaussian (stable) the distribution of
-    intraday volume activity is over a rolling window.
+    Each input is one stock-day's already-aggregated ``minute_volume_activity``.
+    The two 60-trade-day rolling transforms describe the time-series shape of
+    those daily values; this is not a Gaussianity test on one day's minute bars.
 
-    ``closeness = -log(1 + h3² + h4²)``  —  HIGHER = more stable/Gaussian
+    ``closeness = -log(1 + h3² + h4²)``; higher is more stable over time.
 
-    Matches StyleReplica ``compute_hermite_stability_factor`` variant="closeness",
-    applied in long format per symbol.
+    This production contract uses pandas' sample rolling standard deviation
+    (``ddof=1``). StyleReplica defaults to ``ddof=0``; pass ``ddof=1`` there for
+    a bit-for-bit long/wide comparison. Changing this requires a feature-policy
+    version bump because Hermite also participates in the B-sleeve guard.
     """
     va_col = "minute_volume_activity"
-    if va_col not in frame.columns or frame[va_col].isna().all():
+    if va_col not in frame.columns or bool(_series(frame, va_col).isna().all()):
         frame["hermite_stability"] = np.nan
         return frame
 
@@ -493,7 +557,7 @@ def _add_hermite_stability(frame: pd.DataFrame) -> pd.DataFrame:
     )
     roll_std = roll_std.where(roll_std > 1e-8, np.nan)
 
-    z = ((out[va_col] - roll_mean) / roll_std).clip(-8.0, 8.0)
+    z = ((_series(out, va_col) - roll_mean) / roll_std).clip(-8.0, 8.0)
     z2 = z * z
 
     # Hermite polynomials h3 (skewness proxy) and h4 (kurtosis proxy)
@@ -514,7 +578,7 @@ def _add_hermite_stability(frame: pd.DataFrame) -> pd.DataFrame:
 
     if "minute_feature_available" in out.columns:
         out["minute_feature_available"] = (
-            out["minute_feature_available"] | out["hermite_stability"].notna()
+            _series(out, "minute_feature_available") | _series(out, "hermite_stability").notna()
         )
 
     return out.drop(columns=["_h3_raw", "_h4_raw"])
@@ -522,8 +586,10 @@ def _add_hermite_stability(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _add_eligibility(frame: pd.DataFrame, config: DailyWatch20FeatureConfig) -> pd.DataFrame:
     out = frame.copy()
-    market_ok = _target_market(out["symbol"])
-    status_ok = _known_false_flag(out["is_st"]) & _known_false_flag(out["is_suspended"])
+    market_ok = _target_market(_series(out, "symbol"))
+    status_ok = _known_false_flag(_series(out, "is_st")) & _known_false_flag(
+        _series(out, "is_suspended")
+    )
     core_columns = ["tr_close", "mom_20", "vol_20", "amount_log_20", "size_log"]
     core_values = out[core_columns].to_numpy(dtype=float)
     core_ok = pd.Series(
@@ -531,13 +597,13 @@ def _add_eligibility(frame: pd.DataFrame, config: DailyWatch20FeatureConfig) -> 
         index=out.index,
         dtype=bool,
     )
-    liquid = out["liquidity_pct"].ge(config.liquidity_floor_quantile).fillna(False)
+    liquid = _series(out, "liquidity_pct").ge(config.liquidity_floor_quantile).fillna(False)
     out["hard_eligible"] = (
         market_ok
         & status_ok
-        & out["listed_days"].ge(config.min_listed_days)
-        & out["tr_close"].gt(0)
-        & out["amount"].gt(0)
+        & _series(out, "listed_days").ge(config.min_listed_days)
+        & _series(out, "tr_close").gt(0)
+        & _series(out, "amount").gt(0)
         & core_ok
         & liquid
     ).fillna(False)
