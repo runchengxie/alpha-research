@@ -319,12 +319,30 @@ class DailyWatch20Ranker:
         return _stable_id(payload)
 
     @property
+    def training_policy_id(self) -> str:
+        """Stable identity for settings that determine the fitted training sample."""
+
+        return _stable_id(self.training_policy)
+
+    @property
+    def training_policy(self) -> dict[str, Any]:
+        """Return the auditable inputs used to derive ``training_policy_id``."""
+
+        return {
+            "train_window_dates": self.config.train_window_dates,
+            "sample_weight_mode": self.config.sample_weight_mode,
+            "sample_weight_params": dict(self.config.sample_weight_params),
+            "min_query_size": self.config.min_query_size,
+        }
+
+    @property
     def persistence_metadata(self) -> dict[str, str]:
         """Compatibility identifiers that must accompany a persisted model."""
 
         return {
             "model_version": self.model_version,
             "feature_set_id": self.feature_set_id,
+            "training_policy_id": self.training_policy_id,
         }
 
     def restore(
@@ -336,7 +354,7 @@ class DailyWatch20Ranker:
     ) -> DailyWatch20Ranker:
         """Attach a trained model only when caller-supplied compatibility IDs match."""
 
-        required = {"model_version", "feature_set_id"}
+        required = {"model_version", "feature_set_id", "training_policy_id"}
         missing = sorted(required - set(metadata))
         if missing:
             raise ValueError("DailyWatch20 restore metadata is missing: " + ", ".join(missing))

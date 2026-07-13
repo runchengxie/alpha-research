@@ -276,6 +276,77 @@ def test_restore_requires_matching_model_and_feature_metadata() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"train_window_dates": 126},
+        {"sample_weight_mode": "date_equal"},
+        {
+            "sample_weight_mode": "exp_decay",
+            "sample_weight_params": {"halflife": 63.0, "min_weight": 0.05},
+        },
+        {
+            "sample_weight_mode": "exp_decay",
+            "sample_weight_params": {"halflife": 126.0, "min_weight": 0.10},
+        },
+    ],
+)
+def test_training_policy_identity_rejects_changed_fit_policy(
+    overrides: dict[str, object],
+) -> None:
+    class _PersistedModel:
+        def predict(self, frame: pd.DataFrame) -> np.ndarray:
+            return np.zeros(len(frame))
+
+    base = DailyWatch20Ranker(
+        _tiny_config(
+            train_window_dates=252,
+            sample_weight_mode="exp_decay",
+            sample_weight_params={"min_weight": 0.05, "halflife": 126.0},
+        )
+    )
+    changed_policy: dict[str, object] = {
+        "train_window_dates": 252,
+        "sample_weight_mode": "exp_decay",
+        "sample_weight_params": {"min_weight": 0.05, "halflife": 126.0},
+    }
+    changed_policy.update(overrides)
+    changed = DailyWatch20Ranker(_tiny_config(**changed_policy))
+    summary = DailyWatch20TrainingSummary(
+        as_of_date=pd.Timestamp("2026-07-10"),
+        train_start_date=pd.Timestamp("2025-01-02"),
+        train_end_date=pd.Timestamp("2026-07-03"),
+        rows=100,
+        query_groups=50,
+        sample_weight_mode="exp_decay",
+    )
+
+    assert changed.training_policy_id != base.training_policy_id
+    with pytest.raises(ValueError, match="training_policy_id"):
+        changed.restore(
+            _PersistedModel(),
+            summary,
+            metadata=base.persistence_metadata,
+        )
+
+
+def test_training_policy_identity_is_stable_across_parameter_order() -> None:
+    left = DailyWatch20Ranker(
+        _tiny_config(
+            sample_weight_mode="exp_decay",
+            sample_weight_params={"halflife": 126.0, "min_weight": 0.05},
+        )
+    )
+    right = DailyWatch20Ranker(
+        _tiny_config(
+            sample_weight_mode="exp_decay",
+            sample_weight_params={"min_weight": 0.05, "halflife": 126.0},
+        )
+    )
+
+    assert left.training_policy_id == right.training_policy_id
+
+
 def test_restore_rejects_incomplete_metadata_and_invalid_training_summary() -> None:
     class _PersistedModel:
         def predict(self, frame: pd.DataFrame) -> np.ndarray:
@@ -284,6 +355,15 @@ def test_restore_rejects_incomplete_metadata_and_invalid_training_summary() -> N
     ranker = DailyWatch20Ranker(_tiny_config())
     with pytest.raises(ValueError, match="feature_set_id"):
         ranker.restore(_PersistedModel(), {}, metadata={"model_version": ranker.model_version})
+    with pytest.raises(ValueError, match="training_policy_id"):
+        ranker.restore(
+            _PersistedModel(),
+            {},
+            metadata={
+                "model_version": ranker.model_version,
+                "feature_set_id": ranker.feature_set_id,
+            },
+        )
     with pytest.raises(ValueError, match="ends after"):
         ranker.restore(
             _PersistedModel(),
