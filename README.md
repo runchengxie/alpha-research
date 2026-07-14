@@ -1,50 +1,76 @@
 # alpha-research
 
-量化研究中的 alpha 层包。
+`alpha-research` 是量化研究工作区的 alpha 研究包，权威 Python 包是 `alpha_research`。
 
-本仓库负责 `alpha_research.*`。它承载特征数据集、特征证据、模型训练辅助、walk-forward、CPCV、PBO、过拟合诊断、信号产物和动态信号组合工具。它也包含研究特征派生、近期表现诊断、滚动窗口诊断、候选晋升证据评分，以及与具体 alpha 模型绑定的目标持仓构造规则。
+本仓库维护：
 
-当前状态：本仓库已经从原研究仓库中拆出，并作为 `research-workspace` 的子模块锁定版本。完整研究运行仍由 `strategy-pipeline` 编排。本仓库负责 alpha 研究层和模型专用规则，要求能够在不导入 `strategy_pipeline.pipeline` 和 `portfolio_backtester` 内部实现的情况下完成训练、诊断、信号产物和模型专用目标持仓输出。
+- 特征工程和研究数据集
+- 特征证据和单因子诊断
+- 模型训练辅助
+- walk-forward、CPCV、PBO 和过拟合诊断
+- 信号产物与稳定性分析
+- 与具体 alpha 模型绑定的目标持仓规则
+- 候选晋升证据评分
 
-## 研究后端边界
+完整研究流程由 `strategy-pipeline` 编排。通用组合构造和回测由 `portfolio-backtester` 维护。
 
-`alpha_research.backends` 定义框架无关的 `DatasetBackend`、`TrainerBackend` 和
-`ExperimentRecorder` 端口。现有实现由 `NativeDatasetBackend`、
-`NativeTrainerBackend` 和 `NullExperimentRecorder` 包装，默认行为不变。
+## 仓库边界
 
-后续 Qlib 等可选实现只能存在于 adapter 内部：跨模块结果只记录 backend id、模型 id
-和普通 metadata，不得序列化第三方框架对象。`ResearchDataset` 仍是 raw / infer /
-learn 数据生命周期的 canonical 内部边界，signal artifact 和公共 CLI 契约保持不变。
+本仓库可以读取外部数据资产和研究配置，不应在运行时依赖：
 
-## 负责的文档
+- `strategy_pipeline.pipeline`
+- `portfolio_backtester` 内部实现
+- 券商执行代码
 
-后续新增或迁移文档时，以下主题应优先放在本仓库：
+跨仓库交接使用稳定文件契约和公开 API。
 
-- 特征工程、特征窗口、特征证据和单因子证据
-- 模型训练、模型评估、Rank IC、final OOS、walk-forward、CPCV、PBO 和过拟合诊断
-- `signals.parquet`、`signals.meta.json` 和 signal artifact 相关契约
-- 与具体 alpha 模型绑定的信号打分、组合腿和目标持仓规则
-- promotion gate 中属于 alpha 证据的部分
+`alpha_research.backends` 提供框架无关的 `DatasetBackend`、`TrainerBackend` 和 `ExperimentRecorder` 接口。可选框架实现留在 adapter 内部，跨模块结果只保存普通元数据和本工作区定义的产物。
 
-`strategy-pipeline` 文档中仍保留的研究编排页可以链接到这里，具体 alpha 方法说明应逐步迁入本仓库。通用组合回测、成本和执行模拟文档仍由 `portfolio-backtester` 维护。
+历史 `cstree.alpha` 路径由 `strategy-pipeline` 在工作区 1.x 期间提供兼容入口。新代码只使用 `alpha_research`。
 
-## 本地检查
-
-```bash
-uv run --extra dev ruff check .
-uv run --extra dev ruff format --check .
-uv run --extra dev ty check
-uv run --extra dev pytest
-```
-
-发布前或需要诊断类型债时，再运行：
+## 安装和测试
 
 ```bash
-uv run --extra dev basedpyright
+uv sync --extra dev
+scripts/dev/run_tests.sh lint
+scripts/dev/run_tests.sh format
+scripts/dev/run_tests.sh typecheck
+scripts/dev/run_tests.sh all
+scripts/dev/run_tests.sh maintainability
 ```
 
-## Python namespace
+`fast` 和 `unit` 是 `all` 的兼容别名，都会运行完整测试集。
 
-The canonical package is `alpha_research`. New code must not add
-`cstree.alpha` imports. The coordinated `strategy-pipeline` compatibility
-facade owns the old path during workspace 1.x; removal is scheduled for 2.0.
+BasedPyright 用于发布前诊断：
+
+```bash
+scripts/dev/run_tests.sh basedpyright
+```
+
+详细范围见 [docs/testing.md](docs/testing.md)。
+
+## 产物
+
+本仓库主要维护以下研究产物和约定：
+
+```text
+signals.parquet
+signals.meta.json
+feature evidence
+model diagnostics
+promotion evidence
+```
+
+修改信号产物契约时，应同步更新代码、测试、README 和相关文档。
+
+## 文档入口
+
+- [文档首页](docs/README.md)
+- [模型选择](docs/concepts/model-selection.md)
+- [模型版图](docs/concepts/model-landscape.md)
+- [过拟合控制](docs/concepts/overfitting-controls.md)
+- [StyleReplica 信号与组合构造](docs/concepts/style-replica.md)
+- [研究模板设计](docs/playbooks/research-template-design.md)
+- [测试和质量检查](docs/testing.md)
+
+后续从 `strategy-pipeline` 迁入的 alpha 方法说明应放在本仓库。编排、配置合成、运行目录和 `targets.json` 导出继续由 `strategy-pipeline` 维护。
