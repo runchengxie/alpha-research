@@ -1,0 +1,12 @@
+{
+  "canonical_package": "alpha_research",
+  "compatibility_owner": "strategy-pipeline",
+  "distribution": "alpha-research",
+  "legacy_package": "cstree.alpha",
+  "legacy_source_tree_present": false,
+  "namespace_boundary_gate": "scripts/dev/namespace_boundary.py",
+  "pkgutil_extend_path_present": false,
+  "removal_release": "workspace-2.0",
+  "schema": "owner_native_namespace_evidence.v1",
+  "status": "migrated"
+}
