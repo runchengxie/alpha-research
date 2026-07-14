@@ -1,63 +1,83 @@
 # AGENTS.md
 
-本文件给维护者、外部贡献者和代码代理使用。它描述 `alpha-research` 的本仓协作规则，工作区层面的规则仍以顶层 `research-workspace/AGENTS.md` 为准。
+本文件说明 `alpha-research` 的协作边界。工作区级规则见顶层 `research-workspace/AGENTS.md`。
 
-## 仓库范围
+## 仓库职责
 
-本仓库负责 alpha 研究与特征工程模块（`alpha_research.*`），维护特征、模型、walk-forward、CPCV、PBO、过拟合诊断、feature evidence、signal artifact、alpha 诊断工具，以及与具体 alpha 模型绑定的目标持仓构造规则。
+本仓库维护 `alpha_research` 包，负责：
 
-本仓库可以消费外部数据资产和研究配置，但不应在运行时导入策略编排（`strategy_pipeline.pipeline`）、通用组合回测（`portfolio_backtester`）或交易执行实现。完整研究编排仍由 `strategy-pipeline` 负责。
+- 特征工程、特征窗口和特征证据
+- 模型训练与模型诊断
+- walk-forward、CPCV、PBO 和过拟合控制
+- signal artifact 和信号稳定性
+- 与具体 alpha 模型绑定的目标持仓规则
+- 候选晋升中的 alpha 证据
+
+完整研究编排由 `strategy-pipeline` 负责。通用组合回测由 `portfolio-backtester` 负责。
+
+## 依赖边界
+
+- 保持仓库可以独立安装和测试。
+- 不通过同级仓库源码路径补齐导入。
+- 不在运行时导入 `strategy_pipeline.pipeline`。
+- 不依赖 `portfolio_backtester` 内部实现。
+- 跨仓库交接使用公开 API 或稳定产物契约。
+- 修改 signal artifact 契约时，同步检查顶层工作区文件约定。
 
 ## 常用命令
 
-日常阻塞检查：
-
 ```bash
-uv run --extra dev ruff check .
-uv run --extra dev ruff format --check .
-uv run --extra dev ty check
-uv run --extra dev pytest
-```
-
-统一脚本入口：
-
-```bash
+uv sync --extra dev
 scripts/dev/run_tests.sh lint
 scripts/dev/run_tests.sh format
 scripts/dev/run_tests.sh typecheck
 scripts/dev/run_tests.sh all
+scripts/dev/run_tests.sh maintainability
 ```
 
-发布前或诊断类型债时运行 BasedPyright：
+`fast` 和 `unit` 是 `all` 的兼容别名。
+
+发布前类型诊断：
 
 ```bash
 scripts/dev/run_tests.sh basedpyright
 ```
 
-GitHub Actions 中 Ruff、format、`ty check` 和维护性 ratchet 是阻塞检查，BasedPyright 是非阻塞建议项。
+定点测试可以直接运行：
 
-## GitHub 发布偏好
+```bash
+uv run --extra dev python -m pytest tests/test_signal_artifact.py -q
+```
 
-- 用户明确要求 commit、push 或发布本仓改动时，默认直接在 `main` 上提交并推送到 `origin/main`
-- 不要默认新建 `codex/*` 分支或 draft PR，只有用户明确要求 PR、远端规则阻止直接推送、工作区存在难以拆分的混杂改动，或改动风险需要人工 review 时才走分支和 PR
-- 本仓作为 `research-workspace` 子模块使用时，推送本仓后还要回到顶层仓库提交更新后的 submodule gitlink
+## 文档分工
 
-## 文档归属
+本仓库文档优先覆盖：
 
-新增 alpha 研究说明时，优先放在本仓 `docs/`：
+- 特征工程和特征证据
+- 模型训练、评估和稳健性诊断
+- walk-forward、CPCV、PBO、DSR 和过拟合控制
+- `signals.parquet` 与 `signals.meta.json`
+- 模型专用目标持仓规则
+- alpha 证据和候选晋升规则
 
-- 特征工程、特征窗口、特征证据、单因子 IC 和特征相关性
-- 模型训练、模型诊断、walk-forward、CPCV、PBO、DSR 和过拟合诊断
-- `signals.parquet`、`signals.meta.json`、signal artifact 摘要和信号稳定性
-- 与具体 alpha 模型绑定的组合腿、缓冲、配额和目标持仓规则
-- promotion gate 中和 alpha 证据直接相关的规则
+以下内容由其他仓库维护：
 
-留在 `strategy-pipeline` 的说明应聚焦编排、CLI、配置合成、运行目录和执行目标导出。通用组合回测、交易成本和容量分析说明由 `portfolio-backtester` 维护。
+- 通用回测、成本和容量分析：`portfolio-backtester`
+- 编排、CLI、配置和运行目录：`strategy-pipeline`
+- 数据生产和当前数据契约：`market-data-platform`
+- 券商执行和审计：`quant-execution-engine`
 
 ## 编辑规则
 
-- 保持本仓可独立安装和测试，不通过 sibling source path 补齐 import
-- 不提交 `.pytest_cache/`、`__pycache__/`、`artifacts/`、`outputs/`、provider 凭证或本地 `.env*`
-- 修改 signal artifact 契约时，同步更新 README、docs 和对应测试
-- 修改模型专用持仓规则时，同步更新模型文档、行为测试和调用方配置
-- 涉及跨仓库文件约定时，同步检查顶层 `research-workspace` 的 contract 文档和 submodule gitlink
+- 中文说明使用自然、直接的表达。
+- 中文正文使用中文标点。
+- 保留必要的命令、路径、配置键和 API 名称。
+- 用户指南聚焦当前能力和使用方式。
+- 历史迁移材料放在归档或 PR 中。
+- 修改公开入口时补充导入测试。
+- 修改模型规则时补充正常路径和边界路径测试。
+- 不提交 `artifacts/`、`outputs/`、缓存、凭证或本地环境文件。
+
+## Git
+
+大范围文档、契约或跨仓库调整使用短期分支和 PR。修改本仓后，如需让工作区采用新版本，再更新顶层子模块指针。
