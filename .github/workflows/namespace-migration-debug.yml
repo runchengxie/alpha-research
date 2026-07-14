@@ -1,57 +1,10 @@
-name: namespace migration debug
+name: retired namespace migration debug
 
 on:
-  pull_request:
-    branches: [main]
-
-permissions:
-  contents: read
+  workflow_dispatch:
 
 jobs:
-  debug:
-    if: github.head_ref == 'refactor/owner-native-namespace'
+  retired:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - name: Capture migration traceback
-        shell: bash
-        run: |
-          set +e
-          git show 3a23e49efc62e307a2a898281c6fc66024642910:.github/workflows/owner-native-namespace-migration-v2.yml > /tmp/migration.yml 2> /tmp/extract.log
-          python - <<'PY' >> /tmp/extract.log 2>&1
-          from pathlib import Path
-          text = Path('/tmp/migration.yml').read_text(encoding='utf-8')
-          marker = "          python - <<'PY'\n"
-          start = text.index(marker) + len(marker)
-          end = text.index("\n          PY", start)
-          body = text[start:end]
-          lines = [line[10:] if line.startswith('          ') else line for line in body.splitlines()]
-          Path('/tmp/migrate.py').write_text('\n'.join(lines) + '\n', encoding='utf-8')
-          PY
-          extract_status=$?
-          if [ "$extract_status" -eq 0 ]; then
-            python /tmp/migrate.py > /tmp/migration.log 2>&1
-            migration_status=$?
-          else
-            migration_status=99
-            cp /tmp/extract.log /tmp/migration.log
-          fi
-          printf 'extract_status=%s\nmigration_status=%s\n' "$extract_status" "$migration_status" > /tmp/status.txt
-          cp /tmp/migrate.py /tmp/migrate-captured.py 2>/dev/null || true
-          exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: alpha-namespace-migration-debug
-          path: |
-            /tmp/status.txt
-            /tmp/extract.log
-            /tmp/migration.log
-            /tmp/migrate-captured.py
-          if-no-files-found: error
+      - run: echo 'Root cause captured; superseded by owner-native-namespace-migration-v4.yml'
