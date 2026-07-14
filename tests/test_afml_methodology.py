@@ -15,6 +15,7 @@ from alpha_research.sample_weighting import (
     build_indicator_matrix,
     sequential_bootstrap,
 )
+from alpha_research.split import build_sample_weight
 from alpha_research.structural_breaks import sadf_series, symmetric_cusum_filter
 
 
@@ -80,6 +81,52 @@ def test_uniqueness_weights_and_sequential_bootstrap_are_deterministic() -> None
     assert np.isclose(weighted["sample_weight"].mean(), 1.0)
     assert receipt.effective_sample_size < len(events)
     assert receipt.events_sha256
+
+
+def test_panel_uniqueness_does_not_mix_independent_symbols() -> None:
+    events = pd.DataFrame(
+        {
+            "event_id": ["a", "b"],
+            "symbol": ["A", "B"],
+            "label_start": pd.to_datetime(["2024-01-01", "2024-01-01"]),
+            "label_end": pd.to_datetime(["2024-01-03", "2024-01-03"]),
+        }
+    )
+    weighted, receipt = build_event_sample_weights(
+        events,
+        bar_index=pd.date_range("2024-01-01", "2024-01-03"),
+        config=SampleWeightConfig(mode="uniqueness"),
+    )
+
+    assert weighted["average_uniqueness"].tolist() == [1.0, 1.0]
+    assert receipt.group_count == 2
+
+
+def test_uniqueness_mode_is_wired_into_training_weight_builder() -> None:
+    dates = pd.date_range("2024-01-01", periods=5)
+    frame = pd.DataFrame(
+        {
+            "trade_date": [dates[0], dates[1], dates[0], dates[1]],
+            "symbol": ["A", "A", "B", "B"],
+            "feature": [1.0, 2.0, 3.0, 4.0],
+        }
+    )
+    weights = build_sample_weight(
+        frame,
+        "uniqueness_time_decay",
+        params={
+            "all_trade_dates": dates,
+            "label_horizon_days": 2,
+            "label_shift_days": 0,
+            "halflife": 2,
+            "equalize_dates": False,
+        },
+    )
+
+    assert weights is not None
+    assert len(weights) == len(frame)
+    assert np.isclose(np.mean(weights), 1.0)
+    assert np.all(np.isfinite(weights))
 
 
 def test_fixed_width_fractional_difference_has_stable_warmup() -> None:
