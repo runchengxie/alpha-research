@@ -758,7 +758,7 @@ def _summary(
                 style_dominated += 1
     return {
         "schema_version": 1,
-        "artifact_type": "cstree.factor_diagnostics",
+        "artifact_type": "alpha_research.factor_diagnostics",
         "status": status,
         "rows": len(scored),
         "dates": int(scored["trade_date"].nunique()),

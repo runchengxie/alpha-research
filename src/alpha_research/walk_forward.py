@@ -22,7 +22,7 @@ from .modeling import build_model, feature_importance_frame, fit_model
 from .rebalance_calendar import _sample_rebalance_frame
 from .split import build_sample_weight, time_series_cv_ic
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 def _prepare_walk_forward_data(

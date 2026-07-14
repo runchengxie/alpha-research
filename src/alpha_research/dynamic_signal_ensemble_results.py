@@ -77,7 +77,7 @@ def _build_dynamic_ensemble_summary(
     cfg = inputs.cfg
     return {
         "schema_version": 1,
-        "artifact_type": "cstree.dynamic_signal_ensemble",
+        "artifact_type": "alpha_research.dynamic_signal_ensemble",
         "no_level2": True,
         "rolling_metrics_shifted": True,
         "date_count": len(inputs.returns.index),

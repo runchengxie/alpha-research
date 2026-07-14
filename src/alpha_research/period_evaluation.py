@@ -21,7 +21,7 @@ from .rebalance_calendar import (
     get_rebalance_dates,
 )
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 def _score_period_frame(

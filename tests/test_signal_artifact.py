@@ -39,6 +39,7 @@ def test_signal_artifact_normalizes_and_validates_frame() -> None:
         eligible_for_live=False,
     )
 
+    assert SIGNAL_CONTRACT_NAME == "alpha_research.signals"
     assert SIGNAL_CONTRACT.name == SIGNAL_CONTRACT_NAME
     assert SIGNAL_CONTRACT.required_columns == CANONICAL_SIGNAL_COLUMNS
     assert validate_signal_artifact_frame(signals) == []

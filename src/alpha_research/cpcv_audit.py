@@ -11,7 +11,7 @@ import pandas as pd
 from . import cpcv as cpcv_module
 from .date_slices import _build_trade_date_slices
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 @dataclass(frozen=True)

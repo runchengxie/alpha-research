@@ -54,6 +54,7 @@ def test_compute_factor_diagnostics_profiles_top_features() -> None:
     )
 
     assert result.summary["status"] == "ok"
+    assert result.summary["artifact_type"] == "alpha_research.factor_diagnostics"
     assert result.summary["factors"] == 3
     assert result.summary["residual_ic_available"] is True
     assert result.summary["size_bucket_available"] is True

@@ -28,7 +28,7 @@ run_ruff() {
 }
 
 run_ty() {
-  if [[ "${ALPHA_RESEARCH_NO_PROJECT_TOOLS:-${CSTREE_NO_PROJECT_TOOLS:-0}}" == "1" ]]; then
+  if [[ "${ALPHA_RESEARCH_NO_PROJECT_TOOLS:-0}" == "1" ]]; then
     uv run --no-project --with "ty>=0.0.55" ty check "$@"
     return
   fi
@@ -36,7 +36,7 @@ run_ty() {
 }
 
 run_basedpyright() {
-  if [[ "${ALPHA_RESEARCH_NO_PROJECT_TOOLS:-${CSTREE_NO_PROJECT_TOOLS:-0}}" == "1" ]]; then
+  if [[ "${ALPHA_RESEARCH_NO_PROJECT_TOOLS:-0}" == "1" ]]; then
     uv run --no-project --with "basedpyright>=1.39.9" basedpyright "$@"
     return
   fi

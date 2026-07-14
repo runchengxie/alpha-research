@@ -14,7 +14,7 @@ import pandas as pd
 
 from alpha_research.metrics import daily_ic_series, summarize_ic
 from alpha_research.research_dataset import ResearchDataset
-from alpha_research.research_model import CSTreeModel
+from alpha_research.research_model import ResearchModel
 from alpha_research.signal_artifact import (
     SIGNAL_CONTRACT_NAME,
     load_signal_metadata,
@@ -51,7 +51,7 @@ dataset = ResearchDataset(
     target_col="target",
     train_target_col="target",
 )
-model = CSTreeModel.from_config(
+model = ResearchModel.from_config(
     {"type": "ridge", "params": {"alpha": 0.1}},
     features=["f1", "f2"],
     target_col="target",
@@ -117,8 +117,8 @@ def test_alpha_can_train_diagnose_and_write_signal_artifact_without_backtester(
 
     assert result.returncode == 0, result.stderr + result.stdout
     payload = json.loads(result.stdout)
-    assert payload["contract"] == "cstree.signals"
-    assert payload["signal_contract"] == "cstree.signals"
+    assert payload["contract"] == "alpha_research.signals"
+    assert payload["signal_contract"] == "alpha_research.signals"
     assert payload["rows"] == 2
     assert payload["summary_rows"] == 2
     assert payload["metadata_rows"] == 2

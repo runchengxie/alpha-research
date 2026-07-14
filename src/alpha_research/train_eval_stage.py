@@ -29,7 +29,7 @@ from .train_eval_result import build_train_eval_stage_result as _build_train_eva
 from .walk_forward import _evaluate_walk_forward_window
 from .walk_forward_windows import build_walk_forward_windows
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 _PIT_METADATA_COLUMNS = {"report_period", "disclosure_date", "available_date"}
 _PREFERRED_INDUSTRY_COLUMNS = (

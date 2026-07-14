@@ -22,7 +22,7 @@ def _stable_id(payload: dict[str, Any]) -> str:
 
 
 @dataclass
-class CSTreeModel:
+class ResearchModel:
     model_type: str
     model_params: dict[str, Any]
     features: list[str]
@@ -41,7 +41,7 @@ class CSTreeModel:
         features: list[str],
         target_col: str,
         date_col: str = "trade_date",
-    ) -> CSTreeModel:
+    ) -> ResearchModel:
         model_type, model_params = resolve_model_spec(model_cfg)
         return cls(
             model_type=model_type,
@@ -60,7 +60,7 @@ class CSTreeModel:
     def feature_set_id(self) -> str:
         return _stable_id({"features": self.features, "target": self.target_col})
 
-    def fit(self, dataset: ResearchDataset, segment: str = "all") -> CSTreeModel:
+    def fit(self, dataset: ResearchDataset, segment: str = "all") -> ResearchModel:
         train_frame = dataset.fetch_learn(segment)
         self.model = build_model(self.model_type, self.model_params)
         fit_model(
@@ -76,7 +76,7 @@ class CSTreeModel:
 
     def predict(self, dataset: ResearchDataset, segment: str = "all") -> pd.DataFrame:
         if self.model is None:
-            raise ValueError("CSTreeModel.predict requires fit() first.")
+            raise ValueError("ResearchModel.predict requires fit() first.")
         infer_frame = dataset.fetch_infer(segment, audit=True)
         pred = self.model.predict(infer_frame[self.features])
         out = infer_frame[[self.date_col, "symbol"]].copy()

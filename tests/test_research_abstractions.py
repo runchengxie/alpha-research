@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from alpha_research.research_dataset import ResearchDataset
-from alpha_research.research_model import CSTreeModel
+from alpha_research.research_model import ResearchModel
 
 
 def _dataset() -> ResearchDataset:
@@ -44,7 +44,7 @@ def test_research_dataset_fetch_infer_hides_targets() -> None:
 
 def test_research_model_facade_fit_predict_detail() -> None:
     dataset = _dataset()
-    model = CSTreeModel.from_config(
+    model = ResearchModel.from_config(
         {"type": "ridge", "params": {"alpha": 0.1}},
         features=["f1", "f2"],
         target_col="target",

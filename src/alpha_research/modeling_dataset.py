@@ -17,7 +17,7 @@ from .dataset_sampling_core import (
 from .date_slices import _build_trade_date_slices, _slice_trade_dates
 from .transform import apply_cross_sectional_series_transform, apply_cross_sectional_transform
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 def _apply_target_winsorization(

@@ -11,7 +11,7 @@ from market_data_platform.symbols import canonicalize_symbol_columns
 
 from .rebalance_calendar import get_rebalance_dates
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 @dataclass(frozen=True)

@@ -17,7 +17,7 @@ from .train_eval_contracts import (
 )
 from .transform import apply_score_postprocess
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 @dataclass(frozen=True)

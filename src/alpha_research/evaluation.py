@@ -21,7 +21,7 @@ from .modeling import build_model, fit_model
 from .split import build_sample_weight
 from .transform import apply_score_postprocess
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 def _postprocess_pred_column(

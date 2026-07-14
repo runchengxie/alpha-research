@@ -78,6 +78,7 @@ def test_dynamic_signal_ensemble_filters_correlated_factors_and_writes_artifacts
     )
 
     assert result.summary["no_level2"] is True
+    assert result.summary["artifact_type"] == "alpha_research.dynamic_signal_ensemble"
     assert result.summary["rolling_metrics_shifted"] is True
     assert not result.factor_monitor.empty
     assert "correlation_filtered" in set(result.factor_monitor["drop_reason"])

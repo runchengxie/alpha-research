@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 def warn_if_delay_exit_lag(

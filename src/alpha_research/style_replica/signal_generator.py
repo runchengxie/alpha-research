@@ -8,7 +8,7 @@ Orchestrates the full daily signal generation pipeline:
 4. Map themes
 5. Output canonical signal artifact DataFrame
 
-Output schema (extends cstree.signals):
+Output schema (extends alpha_research.signals):
     signal_date, symbol, raw_pred, signal_eval, signal_backtest,
     signal_direction, rank, model_version, feature_set_id,
     eligible_for_backtest, eligible_for_live
@@ -28,6 +28,7 @@ import pandas as pd
 
 from ..signal_artifact import (
     CANONICAL_SIGNAL_COLUMNS,
+    SIGNAL_CONTRACT_NAME,
     SIGNAL_SCHEMA_VERSION,
     build_signal_artifact_frame,
     signal_artifact_summary,
@@ -356,7 +357,7 @@ class StyleReplicaSignalGenerator:
         self,
         signals: pd.DataFrame,
     ) -> pd.DataFrame:
-        """Normalize signals into the canonical cstree.signals artifact format."""
+        """Normalize signals into the canonical alpha_research.signals artifact format."""
         if signals is None or signals.empty:
             return pd.DataFrame(columns=pd.Index(CANONICAL_SIGNAL_COLUMNS))
         return build_signal_artifact_frame(
@@ -395,7 +396,7 @@ class StyleReplicaSignalGenerator:
 
         summary = signal_artifact_summary(canonical, path=signal_path)
         meta_payload = {
-            "artifact_type": "cstree.signals",
+            "artifact_type": SIGNAL_CONTRACT_NAME,
             "schema_version": SIGNAL_SCHEMA_VERSION,
             "model_version": self.config.model_version,
             "config": {

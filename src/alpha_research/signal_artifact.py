@@ -9,7 +9,7 @@ from typing import Any, cast
 import pandas as pd
 from pandas.api.types import is_bool_dtype, is_integer_dtype, is_numeric_dtype
 
-SIGNAL_CONTRACT_NAME = "cstree.signals"
+SIGNAL_CONTRACT_NAME = "alpha_research.signals"
 SIGNAL_SCHEMA_VERSION = 1
 CANONICAL_SIGNAL_FILE = "signals.parquet"
 CANONICAL_SIGNAL_META_FILE = "signals.meta.json"

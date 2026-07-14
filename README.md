@@ -45,6 +45,6 @@ uv run --extra dev basedpyright
 
 ## Python namespace
 
-The canonical package is `alpha_research`. New code must not add
-`cstree.alpha` imports. The coordinated `strategy-pipeline` compatibility
-facade owns the old path during workspace 1.x; removal is scheduled for 2.0.
+The canonical package is `alpha_research`. Workspace 2.0 has removed the 1.x
+compatibility namespace and facade; all imports, contracts, artifact types,
+logger names, and environment variables are now owner-native.

@@ -23,7 +23,7 @@ import pandas as pd  # noqa: E402
 
 from .rebalance_calendar import get_rebalance_dates  # noqa: E402
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 _REBALANCE_CANDIDATE_TAIL_DAYS = 5
 

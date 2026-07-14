@@ -312,7 +312,7 @@ def _write_dynamic_ensemble(path, *, shifted=True, no_level2=True):
         json.dumps(
             {
                 "schema_version": 1,
-                "artifact_type": "cstree.dynamic_signal_ensemble",
+                "artifact_type": "alpha_research.dynamic_signal_ensemble",
                 "rolling_metrics_shifted": shifted,
                 "no_level2": no_level2,
                 "signal_count": 3,

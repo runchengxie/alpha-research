@@ -28,7 +28,7 @@ from .return_metrics import summarize_period_returns
 from .split import build_sample_weight, time_series_cv_ic
 from .transform import apply_score_postprocess
 
-logger = logging.getLogger("cstree")
+logger = logging.getLogger("alpha_research")
 
 
 @dataclass(frozen=True)
