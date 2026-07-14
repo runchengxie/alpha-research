@@ -7,8 +7,7 @@ from pathlib import Path
 
 import pytest
 
-import cstree
-from cstree import alpha
+import alpha_research as alpha
 
 OWNED_MODULES = (
     "alpha_research.backends",
@@ -51,10 +50,10 @@ OWNED_MODULES = (
 FORBIDDEN_RUNTIME_PREFIXES = ("portfolio_backtester", "strategy_pipeline.pipeline")
 
 
-def test_cstree_namespace_includes_alpha_package_root() -> None:
-    namespace_paths = {Path(path).as_posix() for path in cstree.__path__}
+def test_alpha_package_uses_owner_native_root() -> None:
+    package_root = Path(alpha.__file__).resolve().parent
 
-    assert any(path.endswith("alpha-research/src/cstree") for path in namespace_paths)
+    assert package_root.as_posix().endswith("alpha-research/src/alpha_research")
 
 
 @pytest.mark.parametrize("module_name", OWNED_MODULES)
