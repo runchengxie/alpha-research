@@ -57,6 +57,7 @@ __all__ = [
     "overfitting_diagnostics",
     "pbo",
     "period_evaluation",
+    "probability_calibration",
     "promotion_gate",
     "promotion_gate_thresholds",
     "rebalance_calendar",
