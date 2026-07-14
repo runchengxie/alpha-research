@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cstree.alpha import cpcv
+from alpha_research import cpcv
 
 
 def test_cpcv_group_and_split_counts():

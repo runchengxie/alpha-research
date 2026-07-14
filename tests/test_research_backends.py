@@ -6,7 +6,7 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
-from cstree.alpha.backends import (
+from alpha_research.backends import (
     ExperimentReceipt,
     FeatureImportanceResult,
     FittedModelHandle,
@@ -14,12 +14,12 @@ from cstree.alpha.backends import (
     NullExperimentRecorder,
     TrainerFitRequest,
 )
-from cstree.alpha.train_eval_contracts import (
+from alpha_research.train_eval_contracts import (
     TrainEvalFeatureTarget,
     TrainEvalModelSettings,
     TrainEvalSignalSettings,
 )
-from cstree.alpha.train_eval_fit import fit_model_and_score_train
+from alpha_research.train_eval_fit import fit_model_and_score_train
 
 
 class RecordingTrainerBackend:

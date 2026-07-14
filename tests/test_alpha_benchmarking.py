@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from cstree.alpha.benchmarking import build_benchmark_series
+from alpha_research.benchmarking import build_benchmark_series
 
 
 def test_build_benchmark_series_compounds_daily_returns_over_periods() -> None:

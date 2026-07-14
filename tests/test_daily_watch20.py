@@ -6,15 +6,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import cstree.alpha.daily_watch20 as daily_watch20
-from cstree.alpha.daily_watch20 import (
+import alpha_research.daily_watch20 as daily_watch20
+from alpha_research.daily_watch20 import (
     DailyWatch20Config,
     DailyWatch20Ranker,
     DailyWatch20TrainingSummary,
     build_forward_rank_label,
     build_multi_horizon_forward_rank_label,
 )
-from cstree.alpha.signal_artifact import CANONICAL_SIGNAL_COLUMNS
+from alpha_research.signal_artifact import CANONICAL_SIGNAL_COLUMNS
 
 
 def _panel(n_dates: int = 9) -> pd.DataFrame:

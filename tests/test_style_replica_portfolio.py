@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from cstree.alpha.style_replica import (
+from alpha_research.style_replica import (
     StyleReplicaConfig,
     StyleReplicaPortfolioConfig,
     build_style_replica_positions,

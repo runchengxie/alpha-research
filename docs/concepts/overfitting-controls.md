@@ -60,7 +60,7 @@
 | 层级 | 机制 | 当前状态 | 主要入口 | 作用 |
 | --- | --- | --- | --- | --- |
 | 数据 | PIT 股票池、current contract 资产契约 | 已有 | `configs/presets/a_share.yml`、`strategy-pipeline/docs/playbooks/a-share-baseline.md` | 降低未来成分、幸存者偏差和资产口径漂移 |
-| 切分 | TimeSeriesSplit、日期间隔、事件窗口样本清理 | 已有，可配置 | `../alpha-research/src/cstree/alpha/split.py`、`eval.cv_purge_mode`、`eval.purge_days`、`eval.embargo_days` | 避免随机切分和重叠标签窗口造成泄漏 |
+| 切分 | TimeSeriesSplit、日期间隔、事件窗口样本清理 | 已有，可配置 | `../alpha-research/src/alpha_research/split.py`、`eval.cv_purge_mode`、`eval.purge_days`、`eval.embargo_days` | 避免随机切分和重叠标签窗口造成泄漏 |
 | 训练窗口 | 滚动或扩展训练窗口 | 已有 | `model.train_window` | 降低过久历史和行情状态混杂对训练的影响 |
 | 验证 | Walk-forward 前推验证 | 已有 | `eval.walk_forward` | 检查信号是否跨时间窗口稳定 |
 | 留出 | 最终样本外留出段 | 已有，需显式启用或提供替代证据 | `eval.final_oos` | 保留最后一段样本不参与训练、调参和候选选择 |

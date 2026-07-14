@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 
-from cstree.alpha import pbo
+from alpha_research import pbo
 
 
 def test_compute_pbo_report_outputs_summary_and_split_rows(tmp_path):

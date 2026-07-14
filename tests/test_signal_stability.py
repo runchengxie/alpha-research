@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from cstree.alpha.signal_stability import compute_signal_stability_diagnostics
+from alpha_research.signal_stability import compute_signal_stability_diagnostics
 
 
 def test_compute_signal_stability_diagnostics_explains_churn_and_buffers() -> None:

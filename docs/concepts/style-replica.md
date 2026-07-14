@@ -1,15 +1,15 @@
 # StyleReplica 信号与组合构造
 
-`cstree.alpha.style_replica` 实现 StyleReplica-A80B20-v0 的信号计算和目标持仓构造。该策略采用日频规则打分，把候选证券分为 A、B 两个组合腿。
+`alpha_research.style_replica` 实现 StyleReplica-A80B20-v0 的信号计算和目标持仓构造。该策略采用日频规则打分，把候选证券分为 A、B 两个组合腿。
 
 本页说明模型输入、信号产物、组合规则和当前限制。运行编排、数据目录、日报和 `targets.json` 导出由 `strategy-pipeline` 负责。通用持仓回放、成本估算和容量分析由 `portfolio-backtester` 负责。
 
 ## 模块入口
 
-可以从 `cstree.alpha.style_replica` 导入：
+可以从 `alpha_research.style_replica` 导入：
 
 ```python
-from cstree.alpha.style_replica import (
+from alpha_research.style_replica import (
     StyleReplicaConfig,
     StyleReplicaPortfolioConfig,
     StyleReplicaSignalGenerator,

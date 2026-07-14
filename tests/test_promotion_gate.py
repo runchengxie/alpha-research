@@ -2,7 +2,7 @@ import json
 
 import yaml
 
-from cstree.alpha import promotion_gate
+from alpha_research import promotion_gate
 
 
 def _summary(*, sharpe=1.0, wf=0.03, final_ic=0.02, constant=False):

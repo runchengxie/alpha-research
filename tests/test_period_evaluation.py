@@ -1,6 +1,6 @@
 import pandas as pd
 
-from cstree.alpha.period_evaluation import _build_scored_data
+from alpha_research.period_evaluation import _build_scored_data
 
 
 def test_build_scored_data_can_retain_model_feature_columns() -> None:

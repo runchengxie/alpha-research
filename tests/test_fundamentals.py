@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from cstree.alpha.fundamentals import (
+from alpha_research.fundamentals import (
     derive_requested_fundamental_fields,
     fundamental_source_fields,
 )

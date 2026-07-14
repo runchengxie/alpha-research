@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from cstree.alpha.research_dataset import ResearchDataset
-from cstree.alpha.research_model import CSTreeModel
+from alpha_research.research_dataset import ResearchDataset
+from alpha_research.research_model import CSTreeModel
 
 
 def _dataset() -> ResearchDataset:

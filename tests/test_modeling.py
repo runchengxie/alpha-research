@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cstree.alpha.modeling import (
+from alpha_research.modeling import (
     SUPPORTED_MODEL_TYPES,
     build_model,
     feature_importance_frame,

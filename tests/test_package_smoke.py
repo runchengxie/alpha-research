@@ -11,44 +11,44 @@ import cstree
 from cstree import alpha
 
 OWNED_MODULES = (
-    "cstree.alpha.backends",
-    "cstree.alpha.backends.base",
-    "cstree.alpha.backends.native",
-    "cstree.alpha.signal_artifact",
-    "cstree.alpha.benchmarking",
-    "cstree.alpha.compat",
-    "cstree.alpha.cpcv",
-    "cstree.alpha.daily_watch20",
-    "cstree.alpha.daily_watch20_features",
-    "cstree.alpha.dataset",
-    "cstree.alpha.dataset_sampling",
-    "cstree.alpha.date_slices",
-    "cstree.alpha.pbo",
-    "cstree.alpha.overfitting_diagnostics",
-    "cstree.alpha.promotion_gate",
-    "cstree.alpha.promotion_gate_thresholds",
-    "cstree.alpha.recency_diagnostics",
-    "cstree.alpha.feature_evidence",
-    "cstree.alpha.feature_windows",
-    "cstree.alpha.fundamentals",
-    "cstree.alpha.freshness_overlay",
-    "cstree.alpha.metrics",
-    "cstree.alpha.modeling",
-    "cstree.alpha.research_dataset",
-    "cstree.alpha.research_model",
-    "cstree.alpha.return_metrics",
-    "cstree.alpha.signal_stability",
-    "cstree.alpha.style_replica",
-    "cstree.alpha.train_eval_contracts",
-    "cstree.alpha.train_eval_diagnostics",
-    "cstree.alpha.train_eval_request_builder",
-    "cstree.alpha.train_eval_result",
-    "cstree.alpha.train_eval_stage",
-    "cstree.alpha.walk_forward_windows",
-    "cstree.alpha.split",
-    "cstree.alpha.transform",
+    "alpha_research.backends",
+    "alpha_research.backends.base",
+    "alpha_research.backends.native",
+    "alpha_research.signal_artifact",
+    "alpha_research.benchmarking",
+    "alpha_research.compat",
+    "alpha_research.cpcv",
+    "alpha_research.daily_watch20",
+    "alpha_research.daily_watch20_features",
+    "alpha_research.dataset",
+    "alpha_research.dataset_sampling",
+    "alpha_research.date_slices",
+    "alpha_research.pbo",
+    "alpha_research.overfitting_diagnostics",
+    "alpha_research.promotion_gate",
+    "alpha_research.promotion_gate_thresholds",
+    "alpha_research.recency_diagnostics",
+    "alpha_research.feature_evidence",
+    "alpha_research.feature_windows",
+    "alpha_research.fundamentals",
+    "alpha_research.freshness_overlay",
+    "alpha_research.metrics",
+    "alpha_research.modeling",
+    "alpha_research.research_dataset",
+    "alpha_research.research_model",
+    "alpha_research.return_metrics",
+    "alpha_research.signal_stability",
+    "alpha_research.style_replica",
+    "alpha_research.train_eval_contracts",
+    "alpha_research.train_eval_diagnostics",
+    "alpha_research.train_eval_request_builder",
+    "alpha_research.train_eval_result",
+    "alpha_research.train_eval_stage",
+    "alpha_research.walk_forward_windows",
+    "alpha_research.split",
+    "alpha_research.transform",
 )
-FORBIDDEN_RUNTIME_PREFIXES = ("cstree.backtesting", "cstree.pipeline")
+FORBIDDEN_RUNTIME_PREFIXES = ("portfolio_backtester", "strategy_pipeline.pipeline")
 
 
 def test_cstree_namespace_includes_alpha_package_root() -> None:
@@ -68,7 +68,7 @@ def test_alpha_public_inventory_lists_smoked_modules() -> None:
     public_modules = set(alpha.__all__)
 
     for module_name in OWNED_MODULES:
-        assert module_name.removeprefix("cstree.alpha.") in public_modules
+        assert module_name.removeprefix("alpha_research.") in public_modules
 
 
 def test_alpha_root_exports_daily_watch20_feature_api() -> None:

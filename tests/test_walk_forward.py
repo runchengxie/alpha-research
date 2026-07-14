@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from cstree.alpha.walk_forward import _evaluate_injected_walk_forward_backtest
+from alpha_research.walk_forward import _evaluate_injected_walk_forward_backtest
 
 
 def test_walk_forward_backtest_requires_injected_evaluator() -> None:

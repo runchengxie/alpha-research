@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alpha-research"
-version = "0.1.0"
+version = "0.2.0"
 description = "Alpha research, factor diagnostics, and signal artifact tooling for research-workspace"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -32,7 +32,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["cstree", "cstree.alpha*"]
+include = ["alpha_research", "alpha_research.*"]
 
 [tool.ruff]
 target-version = "py312"
@@ -53,11 +53,11 @@ max-complexity = 18
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+known-first-party = ["alpha_research"]
 
 [tool.ty.src]
 include = [
-  "src/cstree/__init__.py",
-  "src/cstree/alpha/backends",
+  "src/alpha_research/backends",
 ]
 exclude = [
   ".venv",
@@ -72,23 +72,22 @@ market-data-platform = { path = "../market-data-platform", editable = true }
 
 [tool.basedpyright]
 include = [
-  "src/cstree/__init__.py",
-  "src/cstree/alpha/cpcv_audit.py",
-  "src/cstree/alpha/backends",
-  "src/cstree/alpha/dataset_sampling.py",
-  "src/cstree/alpha/dataset_sampling_core.py",
-  "src/cstree/alpha/dynamic_signal_ensemble_types.py",
-  "src/cstree/alpha/evaluation.py",
-  "src/cstree/alpha/feature_windows.py",
-  "src/cstree/alpha/modeling_dataset.py",
-  "src/cstree/alpha/period_evaluation.py",
-  "src/cstree/alpha/promotion_gate_thresholds.py",
-  "src/cstree/alpha/signal_artifact.py",
-  "src/cstree/alpha/train_eval.py",
-  "src/cstree/alpha/train_eval_contracts.py",
-  "src/cstree/alpha/train_eval_request_builder.py",
-  "src/cstree/alpha/train_eval_result.py",
-  "src/cstree/alpha/walk_forward_windows.py",
+  "src/alpha_research/cpcv_audit.py",
+  "src/alpha_research/backends",
+  "src/alpha_research/dataset_sampling.py",
+  "src/alpha_research/dataset_sampling_core.py",
+  "src/alpha_research/dynamic_signal_ensemble_types.py",
+  "src/alpha_research/evaluation.py",
+  "src/alpha_research/feature_windows.py",
+  "src/alpha_research/modeling_dataset.py",
+  "src/alpha_research/period_evaluation.py",
+  "src/alpha_research/promotion_gate_thresholds.py",
+  "src/alpha_research/signal_artifact.py",
+  "src/alpha_research/train_eval.py",
+  "src/alpha_research/train_eval_contracts.py",
+  "src/alpha_research/train_eval_request_builder.py",
+  "src/alpha_research/train_eval_result.py",
+  "src/alpha_research/walk_forward_windows.py",
 ]
 exclude = [
   ".venv",

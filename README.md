@@ -2,13 +2,13 @@
 
 量化研究中的 alpha 层包。
 
-本仓库负责 `cstree.alpha.*`。它承载特征数据集、特征证据、模型训练辅助、walk-forward、CPCV、PBO、过拟合诊断、信号产物和动态信号组合工具。它也包含研究特征派生、近期表现诊断、滚动窗口诊断、候选晋升证据评分，以及与具体 alpha 模型绑定的目标持仓构造规则。
+本仓库负责 `alpha_research.*`。它承载特征数据集、特征证据、模型训练辅助、walk-forward、CPCV、PBO、过拟合诊断、信号产物和动态信号组合工具。它也包含研究特征派生、近期表现诊断、滚动窗口诊断、候选晋升证据评分，以及与具体 alpha 模型绑定的目标持仓构造规则。
 
-当前状态：本仓库已经从原研究仓库中拆出，并作为 `research-workspace` 的子模块锁定版本。完整研究运行仍由 `strategy-pipeline` 编排。本仓库负责 alpha 研究层和模型专用规则，要求能够在不导入 `cstree.pipeline` 和 `cstree.backtesting` 内部实现的情况下完成训练、诊断、信号产物和模型专用目标持仓输出。
+当前状态：本仓库已经从原研究仓库中拆出，并作为 `research-workspace` 的子模块锁定版本。完整研究运行仍由 `strategy-pipeline` 编排。本仓库负责 alpha 研究层和模型专用规则，要求能够在不导入 `strategy_pipeline.pipeline` 和 `portfolio_backtester` 内部实现的情况下完成训练、诊断、信号产物和模型专用目标持仓输出。
 
 ## 研究后端边界
 
-`cstree.alpha.backends` 定义框架无关的 `DatasetBackend`、`TrainerBackend` 和
+`alpha_research.backends` 定义框架无关的 `DatasetBackend`、`TrainerBackend` 和
 `ExperimentRecorder` 端口。现有实现由 `NativeDatasetBackend`、
 `NativeTrainerBackend` 和 `NullExperimentRecorder` 包装，默认行为不变。
 
@@ -42,3 +42,9 @@ uv run --extra dev pytest
 ```bash
 uv run --extra dev basedpyright
 ```
+
+## Python namespace
+
+The canonical package is `alpha_research`. New code must not add
+`cstree.alpha` imports. The coordinated `strategy-pipeline` compatibility
+facade owns the old path during workspace 1.x; removal is scheduled for 2.0.
