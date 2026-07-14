@@ -16,7 +16,7 @@
 
 本仓库读取外部数据资产和研究配置，不在运行时依赖 `strategy_pipeline.pipeline`、`portfolio_backtester` 内部实现或券商执行代码。
 
-跨仓库交接使用公开 API 和稳定文件契约。工作区 2.0 已删除旧共享 namespace 和 facade；新代码只使用 `alpha_research`。
+跨仓库交接使用公开 API 和稳定文件契约。工作区 2.0 已删除旧共享 namespace 和 facade。新代码只使用 `alpha_research`。
 
 `alpha_research.backends` 提供框架无关的 `DatasetBackend`、`TrainerBackend` 和 `ExperimentRecorder` 接口。可选框架实现留在 adapter 内部，跨模块结果只保存普通元数据和本工作区定义的产物。
 
