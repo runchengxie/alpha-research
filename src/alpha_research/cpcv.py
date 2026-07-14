@@ -1030,7 +1030,7 @@ def run(args: argparse.Namespace) -> int:
     if prepare_research_context is None:
         raise SystemExit(
             "Pipeline-backed CPCV requires a prepare_research_context adapter. "
-            "Use the cstree CLI entrypoint or an artifact_cpcv config."
+            "Use the strategy CLI provided by strategy-pipeline or an artifact_cpcv config."
         )
     context = prepare_research_context(
         args.config,

@@ -103,31 +103,33 @@ model:
 
 ## 线性模型搜索（sweep-linear）
 
-如果你想做 `ridge` 或 `elasticnet` 的超参数搜索，用 `cstree alpha sweep-linear`：
+下面的 `strategy` 命令由 `strategy-pipeline` 提供；`alpha-research` 提供命令调用的研究实现。
+
+如果你想做 `ridge` 或 `elasticnet` 的超参数搜索，用 `strategy alpha sweep-linear`：
 
 ```bash
-cstree alpha sweep-linear --config default --tag a_share_linear_probe --dry-run
+strategy alpha sweep-linear --config default --tag a_share_linear_probe --dry-run
 ```
 
 这个命令会：
 1. 批量生成不同 `alpha`（对 ridge）或 `alpha` + `l1_ratio`（对 elasticnet）的配置
-2. 逐个执行 `cstree run`
+2. 逐个执行 `strategy run`
 3. 自动汇总结果
 
 注意：这里的线性模型搜索只覆盖 `ridge` 和 `elasticnet`，不包括普通的最小二乘回归。
 
 ## XGB / 训练结构调参（tune）
 
-如果你想对 `xgb_regressor`、`xgb_ranker`，或者它们外层的训练结构参数做自动化搜索，用 `cstree alpha tune`：
+如果你想对 `xgb_regressor`、`xgb_ranker`，或者它们外层的训练结构参数做自动化搜索，用 `strategy alpha tune`：
 
 ```bash
-cstree alpha tune --tune-config path/to/tune.yml
+strategy alpha tune --tune-config path/to/tune.yml
 ```
 
 这个命令会：
 
 1. 从 `base_config` 出发，按 `search_space` 生成 trial config
-2. 逐个执行 `cstree run`
+2. 逐个执行 `strategy run`
 3. 读取每个 trial 的 `summary.json` 算 objective score
 4. 写出 `best_trial.json` 和 `best_config.yml`
 
@@ -135,8 +137,8 @@ cstree alpha tune --tune-config path/to/tune.yml
 
 更推荐的边界是：
 
-1. 用 `cstree alpha tune` 扫 `model.params`、`sample_weight`、`train_window` 这类训练侧参数
-2. 再用 `cstree backtest grid` 在 best signal 上扫 `top_k / cost / buffer / weighting`
+1. 用 `strategy alpha tune` 扫 `model.params`、`sample_weight`、`train_window` 这类训练侧参数
+2. 再用 `strategy backtest grid` 在 best signal 上扫 `top_k / cost / buffer / weighting`
 
 不要一开始就把模型参数和 construction 参数混在同一锅里做大网格；这两层在仓库里本来就是分开的。
 
@@ -152,7 +154,7 @@ cstree alpha tune --tune-config path/to/tune.yml
 如果出现退化 run，汇总时记得排除：
 
 ```bash
-cstree summarize \
+strategy summarize \
   --runs-dir artifacts/runs \
   --exclude-flag-constant-prediction \
   --exclude-flag-zero-feature-importance

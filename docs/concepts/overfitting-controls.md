@@ -57,6 +57,8 @@
 
 ## 已有机制
 
+下表中的 `strategy` 命令由 `strategy-pipeline` 提供；`alpha-research` 提供相应的研究实现。
+
 | 层级 | 机制 | 当前状态 | 主要入口 | 作用 |
 | --- | --- | --- | --- | --- |
 | 数据 | PIT 股票池、current contract 资产契约 | 已有 | `configs/presets/a_share.yml`、`strategy-pipeline/docs/playbooks/a-share-baseline.md` | 降低未来成分、幸存者偏差和资产口径漂移 |
@@ -64,36 +66,36 @@
 | 训练窗口 | 滚动或扩展训练窗口 | 已有 | `model.train_window` | 降低过久历史和行情状态混杂对训练的影响 |
 | 验证 | Walk-forward 前推验证 | 已有 | `eval.walk_forward` | 检查信号是否跨时间窗口稳定 |
 | 留出 | 最终样本外留出段 | 已有，需显式启用或提供替代证据 | `eval.final_oos` | 保留最后一段样本不参与训练、调参和候选选择 |
-| 样本清理 | 事件窗口样本清理、禁入期 | CPCV 和普通交叉验证均可用 | `cstree alpha cpcv`、`eval.cv_purge_mode=event_window` | 移除与测试标签窗口重叠或靠得太近的训练样本 |
-| 多路径验证 | CPCV | 已有，强防线 | `cstree alpha cpcv`、`promotion_gate.cpcv` | 用多条样本外路径分布替代单条前推验证结果 |
-| 特征证据 | 特征族消融 | 已有 | `cstree alpha feature-evidence generate-ablation`、`summarize-ablation` | 判断某组特征是否有边际贡献 |
-| 特征证据 | 单因子 IC | 已有 | `cstree alpha feature-evidence factor-ic` | 在单因子层面检查 Rank IC、Pearson IC、覆盖率和分位收益 |
-| 特征证据 | 置换重要度 | 已有 | `cstree alpha feature-evidence permutation-importance` | 检查特征或特征族被打乱后的收益代理变化 |
-| 特征证据 | 相关性审计、SFI、drop-column importance | 已有辅助命令 | `cstree alpha feature-evidence correlation-audit`、`sfi`、`drop-column-importance` | 检查高相关特征簇、单特征证据和移除特征族后的边际损失 |
+| 样本清理 | 事件窗口样本清理、禁入期 | CPCV 和普通交叉验证均可用 | `strategy alpha cpcv`、`eval.cv_purge_mode=event_window` | 移除与测试标签窗口重叠或靠得太近的训练样本 |
+| 多路径验证 | CPCV | 已有，强防线 | `strategy alpha cpcv`、`promotion_gate.cpcv` | 用多条样本外路径分布替代单条前推验证结果 |
+| 特征证据 | 特征族消融 | 已有 | `strategy alpha feature-evidence generate-ablation`、`summarize-ablation` | 判断某组特征是否有边际贡献 |
+| 特征证据 | 单因子 IC | 已有 | `strategy alpha feature-evidence factor-ic` | 在单因子层面检查 Rank IC、Pearson IC、覆盖率和分位收益 |
+| 特征证据 | 置换重要度 | 已有 | `strategy alpha feature-evidence permutation-importance` | 检查特征或特征族被打乱后的收益代理变化 |
+| 特征证据 | 相关性审计、SFI、drop-column importance | 已有辅助命令 | `strategy alpha feature-evidence correlation-audit`、`sfi`、`drop-column-importance` | 检查高相关特征簇、单特征证据和移除特征族后的边际损失 |
 | 稳定性 | 前推验证特征稳定性 | 已有 | walk-forward 产物、晋升门 | 检查重要度是否只在少数窗口出现 |
 | 负控制 | 标签置换检验 | 已有 | `eval.permutation_test` | 验证模型是否能在打乱标签后仍产生异常表现 |
-| 负控制 | 错位标签 / 随机特征 / 随机股票池 / 哨兵特征 | 已有辅助命令 | `cstree alpha overfitting-diagnostics negative-controls` | 检查无意义任务或未来哨兵特征是否也产生异常 IC |
+| 负控制 | 错位标签 / 随机特征 / 随机股票池 / 哨兵特征 | 已有辅助命令 | `strategy alpha overfitting-diagnostics negative-controls` | 检查无意义任务或未来哨兵特征是否也产生异常 IC |
 | 模型复杂度 | 浅树、行抽样、列抽样、正则 | 已有 | `model.params` | 限制 XGBoost 复杂度和特征共适应 |
 | 弱模型基线 | Ridge、elasticnet | 已有 | `model.type` | 提供低复杂度基础校验 |
-| 晋升治理 | 晋升门 | 已有 | `cstree promotion-gate` | 防止候选只凭单个 summary 指标替换 baseline |
-| 夏普校正 | DSR 汇总与晋升门证据 | 已有 | `cstree summarize --sort-by dsr`、`cstree alpha pbo`、`promotion_gate.dsr` | 在可比试验组内修正夏普膨胀 |
-| 多重测试 | 实验台账、PBO、CSCV | 已有辅助命令 | `cstree trial-registry`、`cstree alpha pbo` | 记录完整试验集合并检查样本内赢家、样本外输家的概率 |
-| 样本重叠 | 样本唯一性、sequential bootstrap ids | 已有辅助命令 | `cstree alpha overfitting-diagnostics uniqueness` | 估计标签事件并发度、average uniqueness 和可选 bootstrap event ids |
-| 路径压力 | 场景回测 | 已有辅助命令 | `cstree alpha overfitting-diagnostics scenario-backtest` | 用 block bootstrap 检查收益路径脆弱性 |
-| 生命周期 | Candidate freeze / paper trading manifest | 已有辅助命令 | `cstree alpha overfitting-diagnostics candidate-freeze` | 冻结候选 run、targets 和 gate report，用于 paper / shadow 期 |
-| 风险复核 | 成本、换手、暴露筛查 | 已有 | `cstree backtest exposure-screen`、晋升门 | 检查收益是否来自不可执行换手或未解释暴露 |
+| 晋升治理 | 晋升门 | 已有 | `strategy promotion-gate` | 防止候选只凭单个 summary 指标替换 baseline |
+| 夏普校正 | DSR 汇总与晋升门证据 | 已有 | `strategy summarize --sort-by dsr`、`strategy alpha pbo`、`promotion_gate.dsr` | 在可比试验组内修正夏普膨胀 |
+| 多重测试 | 实验台账、PBO、CSCV | 已有辅助命令 | `strategy trial-registry`、`strategy alpha pbo` | 记录完整试验集合并检查样本内赢家、样本外输家的概率 |
+| 样本重叠 | 样本唯一性、sequential bootstrap ids | 已有辅助命令 | `strategy alpha overfitting-diagnostics uniqueness` | 估计标签事件并发度、average uniqueness 和可选 bootstrap event ids |
+| 路径压力 | 场景回测 | 已有辅助命令 | `strategy alpha overfitting-diagnostics scenario-backtest` | 用 block bootstrap 检查收益路径脆弱性 |
+| 生命周期 | Candidate freeze / paper trading manifest | 已有辅助命令 | `strategy alpha overfitting-diagnostics candidate-freeze` | 冻结候选 run、targets 和 gate report，用于 paper / shadow 期 |
+| 风险复核 | 成本、换手、暴露筛查 | 已有 | `strategy backtest exposure-screen`、晋升门 | 检查收益是否来自不可执行换手或未解释暴露 |
 
 ## 金融机器学习思想与项目落点
 
 | 思路 | 项目已有落点 | 使用边界 |
 | --- | --- | --- |
-| 移除会泄漏测试标签的训练样本，并设置禁入期 | `cstree alpha cpcv` 的事件窗口样本清理和禁入期；普通交叉验证可设 `eval.cv_purge_mode=event_window` | 不同标签模式下会有覆盖率差异，报告里需要查看有效路径数量 |
-| 用多条样本外路径观察稳定性 | `cstree alpha cpcv`、CPCV 摘要、晋升门的 CPCV 证据 | 适合候选短名单的压力复核，不需要每次普通训练都运行 |
-| 用修正后的夏普降低多次试验偏差 | `cstree summarize --sort-by dsr`、`cstree alpha pbo`、`promotion_gate.dsr` | DSR 依赖可比试验组，实验台账越完整，解释力越强 |
+| 移除会泄漏测试标签的训练样本，并设置禁入期 | `strategy alpha cpcv` 的事件窗口样本清理和禁入期；普通交叉验证可设 `eval.cv_purge_mode=event_window` | 不同标签模式下会有覆盖率差异，报告里需要查看有效路径数量 |
+| 用多条样本外路径观察稳定性 | `strategy alpha cpcv`、CPCV 摘要、晋升门的 CPCV 证据 | 适合候选短名单的压力复核，不需要每次普通训练都运行 |
+| 用修正后的夏普降低多次试验偏差 | `strategy summarize --sort-by dsr`、`strategy alpha pbo`、`promotion_gate.dsr` | DSR 依赖可比试验组，实验台账越完整，解释力越强 |
 | 多角度检查特征是否真的有贡献 | 特征证据、特征族消融、单因子 IC、SFI、置换重要度、相关性审计、drop-column importance | 高相关特征会互相替代，读结果时要结合相关性审计和消融结果 |
-| 检查样本内赢家在样本外失效的概率 | `cstree trial-registry`、`cstree alpha pbo`、晋升门和 DSR | 需要研究侧提供同步收益矩阵和完整试验集合 |
-| 检查重叠标签造成的样本重复 | `date_equal`、`time_decay`、`cstree alpha overfitting-diagnostics uniqueness` | 当前用于生成诊断权重和 bootstrap event ids，训练采样是否采用需单独评估 |
-| 用改造后的历史路径做压力复核 | `cstree alpha overfitting-diagnostics scenario-backtest` | 当前提供 block bootstrap 分块重采样版本，适合先做路径脆弱性检查 |
+| 检查样本内赢家在样本外失效的概率 | `strategy trial-registry`、`strategy alpha pbo`、晋升门和 DSR | 需要研究侧提供同步收益矩阵和完整试验集合 |
+| 检查重叠标签造成的样本重复 | `date_equal`、`time_decay`、`strategy alpha overfitting-diagnostics uniqueness` | 当前用于生成诊断权重和 bootstrap event ids，训练采样是否采用需单独评估 |
+| 用改造后的历史路径做压力复核 | `strategy alpha overfitting-diagnostics scenario-backtest` | 当前提供 block bootstrap 分块重采样版本，适合先做路径脆弱性检查 |
 | 把研究候选安全交给执行流程 | 晋升门、snapshot、export-targets、candidate freeze manifest | paper trading 和 shadow period 的审批规则由研究协议和执行侧治理决定 |
 
 ## 正式研究流程怎么使用这些机制
@@ -104,7 +106,7 @@
 
 ### 记录完整实验台账
 
-`cstree trial-registry` 可以从历史 run 构建实验台账。它至少记录：
+`strategy trial-registry` 可以从历史 run 构建实验台账。它至少记录：
 
 - 配置 hash
 - 数据资产 hash 或 current asset pointer
@@ -137,7 +139,7 @@ promotion_gate:
 
 ### 用 PBO 检查样本内赢家能否延续
 
-`cstree alpha pbo` 已能读取一组可比试验的同步收益矩阵，输出：
+`strategy alpha pbo` 已能读取一组可比试验的同步收益矩阵，输出：
 
 - PBO
 - logit lambda 分布
@@ -149,13 +151,13 @@ promotion_gate:
 
 ### 让调参阶段使用更严格的标签窗口过滤
 
-普通 `time_series_cv_ic()` 默认使用日期 gap。设为 `eval.cv_purge_mode=event_window` 后，会改用标签事件窗口样本清理。`cstree alpha tune` 和 `sweep-linear` 复用主流程，因此会继承该配置。
+普通 `time_series_cv_ic()` 默认使用日期 gap。设为 `eval.cv_purge_mode=event_window` 后，会改用标签事件窗口样本清理。`strategy alpha tune` 和 `sweep-linear` 复用主流程，因此会继承该配置。
 
 目标是避免调参阶段使用比最终 CPCV 更宽松的验证口径。
 
 ### 检查特征是否互相替代
 
-`cstree alpha feature-evidence correlation-audit` 已经能输出高相关特征对和特征簇；`sfi` 与 `drop-column-importance` 用于补充单特征证据，以及移除特征族后的边际证据。当前主线证据覆盖以下问题：
+`strategy alpha feature-evidence correlation-audit` 已经能输出高相关特征对和特征簇；`sfi` 与 `drop-column-importance` 用于补充单特征证据，以及移除特征族后的边际证据。当前主线证据覆盖以下问题：
 
 - 哪些特征高度相似。
 - 单个特征是否有稳定证据。
@@ -166,7 +168,7 @@ promotion_gate:
 
 ### 检查重叠标签带来的样本重复
 
-`cstree alpha overfitting-diagnostics uniqueness` 已能基于标签事件窗口输出：
+`strategy alpha overfitting-diagnostics uniqueness` 已能基于标签事件窗口输出：
 
 - average uniqueness
 - uniqueness 加权样本权重
@@ -176,14 +178,14 @@ promotion_gate:
 
 ### 做负控制和场景压力测试
 
-现有标签置换检验会继续保留。`cstree alpha overfitting-diagnostics negative-controls` 已经覆盖：
+现有标签置换检验会继续保留。`strategy alpha overfitting-diagnostics negative-controls` 已经覆盖：
 
 - 错位标签检验。
 - 未来特征哨兵检验。
 - 随机特征检验。
 - 随机股票池检验。
 
-`cstree alpha overfitting-diagnostics scenario-backtest` 已提供 block bootstrap 分块重采样版本。它会重新拼接收益区块，观察候选在不同历史路径组合下的收益、夏普和回撤。更复杂的季度分块、市场状态分层、因子场景和流动性压力通常放在专项复核里，不作为基础晋升证据。
+`strategy alpha overfitting-diagnostics scenario-backtest` 已提供 block bootstrap 分块重采样版本。它会重新拼接收益区块，观察候选在不同历史路径组合下的收益、夏普和回撤。更复杂的季度分块、市场状态分层、因子场景和流动性压力通常放在专项复核里，不作为基础晋升证据。
 
 ## 候选晋升证据清单
 
@@ -193,16 +195,16 @@ promotion_gate:
 | --- | --- | --- | --- |
 | 1 | PIT 和 data contract 检查 | `configs/presets/a_share.yml`、平台 current contract | 先确认历史数据口径可靠 |
 | 2 | Baseline run 可复现 | `summary.json`、`config.used.yml` | 候选必须和可复现 baseline 比较 |
-| 3 | 特征证据 | `cstree alpha feature-evidence ...` | 覆盖特征族消融、单因子 IC、置换重要度、相关性审计 |
+| 3 | 特征证据 | `strategy alpha feature-evidence ...` | 覆盖特征族消融、单因子 IC、置换重要度、相关性审计 |
 | 4 | 弱模型基础校验 | `model.type=ridge` 或 `model.type=elasticnet` | 检查复杂模型是否真的提供额外价值 |
 | 5 | 主模型结果 | XGBoost 回归器或排序器 | 读取 IC、多空收益、回测和换手等指标 |
 | 6 | Walk-forward 前推验证 | `eval.walk_forward` | 检查不同时间窗口的稳定性 |
 | 7 | 最终样本外留出段 | `eval.final_oos` | 保留一段干净样本，用于最后复核 |
-| 8 | CPCV | `cstree alpha cpcv`、`promotion_gate.cpcv` | 用多条样本外路径看结果分布 |
-| 9 | DSR 和试验数量 | `cstree summarize --sort-by dsr`、`promotion_gate.dsr` | 校正多次试验后的夏普乐观偏差 |
-| 10 | PBO | `cstree alpha pbo` | 需要足够多可比试验的同步收益矩阵 |
-| 11 | 基准阶梯 | `cstree backtest benchmark-ladder` | 检查候选是否真正优于逐层基准 |
-| 12 | 暴露筛查 | `cstree backtest exposure-screen` | 检查收益是否来自未解释暴露 |
+| 8 | CPCV | `strategy alpha cpcv`、`promotion_gate.cpcv` | 用多条样本外路径看结果分布 |
+| 9 | DSR 和试验数量 | `strategy summarize --sort-by dsr`、`promotion_gate.dsr` | 校正多次试验后的夏普乐观偏差 |
+| 10 | PBO | `strategy alpha pbo` | 需要足够多可比试验的同步收益矩阵 |
+| 11 | 基准阶梯 | `strategy backtest benchmark-ladder` | 检查候选是否真正优于逐层基准 |
+| 12 | 暴露筛查 | `strategy backtest exposure-screen` | 检查收益是否来自未解释暴露 |
 | 13 | 换手、成本和容量压力 | backtest 摘要、晋升门 | 检查收益是否被交易成本或容量约束吃掉 |
 | 14 | 模拟交易或实盘影子观察 | candidate freeze manifest、执行侧审计 | 研究候选进入执行前的隔离观察 |
 
