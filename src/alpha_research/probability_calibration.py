@@ -55,7 +55,10 @@ def expanding_probability_calibration(
             continue
         if method == "isotonic":
             model = IsotonicRegression(out_of_bounds="clip")
-            model.fit(train[score_col].to_numpy(dtype=float), train[outcome_col].to_numpy(dtype=float))
+            model.fit(
+                train[score_col].to_numpy(dtype=float),
+                train[outcome_col].to_numpy(dtype=float),
+            )
             predicted = model.predict(test_scores.loc[valid].to_numpy(dtype=float))
         else:
             model = LogisticRegression(solver="lbfgs")

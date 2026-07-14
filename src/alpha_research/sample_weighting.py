@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal, Mapping, Sequence
+from typing import Literal
 
 import numpy as np
 import pandas as pd
-
 
 WeightMode = Literal[
     "uniqueness",
@@ -184,30 +184,14 @@ def build_event_sample_weights(
     if resolved_group_col is not None and resolved_group_col not in normalized.columns:
         raise ValueError(f"group column not found: {resolved_group_col}")
 
-    uniqueness = pd.Series(0.0, index=normalized.index, dtype=float)
-    attribution = pd.Series(0.0, index=normalized.index, dtype=float)
-    total_bars = 0
-    groups = (
-        normalized.groupby(resolved_group_col, sort=False, dropna=False)
-        if resolved_group_col is not None
-        else [(None, normalized)]
+    uniqueness, attribution, total_bars, group_count = _grouped_interval_weights(
+        normalized,
+        bar_index=bar_index,
+        returns=returns,
+        group_col=resolved_group_col,
+        start_col=start_col,
+        end_col=end_col,
     )
-    group_count = 0
-    for group_value, group in groups:
-        group_count += 1
-        group_bars = _group_bar_index(bar_index, group_value)
-        bars = _resolve_bars(group, group_bars, start_col=start_col, end_col=end_col)
-        total_bars += len(bars)
-        group_uniqueness, group_attribution = _interval_weights(
-            group,
-            bars,
-            returns=_group_returns(returns, group_value, resolved_group_col),
-            start_col=start_col,
-            end_col=end_col,
-        )
-        uniqueness.loc[group.index] = group_uniqueness
-        if group_attribution is not None:
-            attribution.loc[group.index] = group_attribution
 
     weighted_uniqueness = uniqueness.pow(cfg.uniqueness_power)
     mode = cfg.mode
@@ -339,7 +323,7 @@ def _interval_weights(
     right = np.searchsorted(bar_values, ends, side="right") - 1
     valid = (left >= 0) & (right >= left) & (right < len(bars))
     difference = np.zeros(len(bars) + 1, dtype=float)
-    for start, end, is_valid in zip(left, right, valid):
+    for start, end, is_valid in zip(left, right, valid, strict=True):
         if not is_valid:
             continue
         difference[int(start)] += 1.0
@@ -353,12 +337,10 @@ def _interval_weights(
     )
     inverse_prefix = np.concatenate([[0.0], np.cumsum(inverse)])
     uniqueness = np.zeros(len(events), dtype=float)
-    for index, (start, end, is_valid) in enumerate(zip(left, right, valid)):
+    for index, (start, end, is_valid) in enumerate(zip(left, right, valid, strict=True)):
         if is_valid:
             count = int(end - start + 1)
-            uniqueness[index] = (
-                inverse_prefix[int(end) + 1] - inverse_prefix[int(start)]
-            ) / count
+            uniqueness[index] = (inverse_prefix[int(end) + 1] - inverse_prefix[int(start)]) / count
 
     if returns is None:
         return uniqueness, None
@@ -366,12 +348,46 @@ def _interval_weights(
     attributed = aligned_returns.abs().to_numpy(dtype=float) * inverse
     attributed_prefix = np.concatenate([[0.0], np.cumsum(attributed)])
     attribution = np.zeros(len(events), dtype=float)
-    for index, (start, end, is_valid) in enumerate(zip(left, right, valid)):
+    for index, (start, end, is_valid) in enumerate(zip(left, right, valid, strict=True)):
         if is_valid:
-            attribution[index] = (
-                attributed_prefix[int(end) + 1] - attributed_prefix[int(start)]
-            )
+            attribution[index] = attributed_prefix[int(end) + 1] - attributed_prefix[int(start)]
     return uniqueness, attribution
+
+
+def _grouped_interval_weights(
+    events: pd.DataFrame,
+    *,
+    bar_index: Sequence[object] | pd.Index | Mapping[object, Sequence[object]] | None,
+    returns: pd.Series | None,
+    group_col: str | None,
+    start_col: str,
+    end_col: str,
+) -> tuple[pd.Series, pd.Series, int, int]:
+    uniqueness = pd.Series(0.0, index=events.index, dtype=float)
+    attribution = pd.Series(0.0, index=events.index, dtype=float)
+    groups = (
+        events.groupby(group_col, sort=False, dropna=False)
+        if group_col is not None
+        else [(None, events)]
+    )
+    total_bars = 0
+    group_count = 0
+    for group_value, group in groups:
+        group_count += 1
+        group_bars = _group_bar_index(bar_index, group_value)
+        bars = _resolve_bars(group, group_bars, start_col=start_col, end_col=end_col)
+        total_bars += len(bars)
+        group_uniqueness, group_attribution = _interval_weights(
+            group,
+            bars,
+            returns=_group_returns(returns, group_value, group_col),
+            start_col=start_col,
+            end_col=end_col,
+        )
+        uniqueness.loc[group.index] = group_uniqueness
+        if group_attribution is not None:
+            attribution.loc[group.index] = group_attribution
+    return uniqueness, attribution, total_bars, group_count
 
 
 def _resolve_bars(

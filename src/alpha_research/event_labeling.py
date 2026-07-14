@@ -14,7 +14,6 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-
 BarrierName = Literal["profit_taking", "stop_loss", "vertical"]
 
 
@@ -154,73 +153,20 @@ def label_triple_barrier(
     }
     records: list[dict[str, object]] = []
     for event in event_data.to_dict("records"):
-        target = float(event[target_col])
-        if not np.isfinite(target) or target < cfg.min_target or target <= 0:
-            continue
-        symbol = event[symbol_col]
-        panel = grouped_prices.get(symbol)
-        if panel is None or panel.empty:
-            continue
-        event_time = pd.Timestamp(event[event_time_col])
-        times = pd.DatetimeIndex(panel[price_time_col])
-        start_idx = int(times.searchsorted(event_time, side="left"))
-        if start_idx >= len(panel):
-            continue
-        end_idx = min(start_idx + cfg.vertical_horizon, len(panel) - 1)
-        if end_idx <= start_idx:
-            continue
-
-        start_price = float(panel.iloc[start_idx][price_col])
-        path = panel.iloc[start_idx : end_idx + 1]
-        side = float(event[side_col])
-        adjusted_returns = (path[price_col].astype(float) / start_price - 1.0) * side
-        upper = cfg.profit_taking * target if cfg.profit_taking > 0 else np.inf
-        lower = -cfg.stop_loss * target if cfg.stop_loss > 0 else -np.inf
-
-        upper_hits = np.flatnonzero(adjusted_returns.to_numpy(dtype=float) >= upper)
-        lower_hits = np.flatnonzero(adjusted_returns.to_numpy(dtype=float) <= lower)
-        upper_pos = int(upper_hits[0]) if upper_hits.size else None
-        lower_pos = int(lower_hits[0]) if lower_hits.size else None
-
-        barrier: BarrierName = "vertical"
-        touch_pos = len(path) - 1
-        if upper_pos is not None and (lower_pos is None or upper_pos <= lower_pos):
-            barrier = "profit_taking"
-            touch_pos = upper_pos
-        elif lower_pos is not None:
-            barrier = "stop_loss"
-            touch_pos = lower_pos
-
-        touch_row = path.iloc[touch_pos]
-        adjusted_return = float(adjusted_returns.iloc[touch_pos])
-        raw_return = adjusted_return * side
-        if barrier == "profit_taking":
-            label = 1
-        elif barrier == "stop_loss":
-            label = -1
-        elif cfg.vertical_label == "zero":
-            label = 0
-        else:
-            label = int(np.sign(adjusted_return))
-
-        record = dict(event)
-        record.update(
-            {
-                event_id_col: event[event_id_col],
-                "label_start": pd.Timestamp(panel.iloc[start_idx][price_time_col]),
-                "label_end": pd.Timestamp(touch_row[price_time_col]),
-                "first_touch": pd.Timestamp(touch_row[price_time_col]),
-                "barrier": barrier,
-                "target": target,
-                "side": side,
-                "realized_return": raw_return,
-                "side_adjusted_return": adjusted_return,
-                "label": label,
-                "meta_label": int(adjusted_return > 0),
-                "vertical_end": pd.Timestamp(panel.iloc[end_idx][price_time_col]),
-            }
+        record = _label_event(
+            event,
+            grouped_prices,
+            cfg=cfg,
+            symbol_col=symbol_col,
+            price_time_col=price_time_col,
+            event_time_col=event_time_col,
+            price_col=price_col,
+            target_col=target_col,
+            side_col=side_col,
+            event_id_col=event_id_col,
         )
-        records.append(record)
+        if record is not None:
+            records.append(record)
 
     if not records:
         return pd.DataFrame(
@@ -242,9 +188,99 @@ def label_triple_barrier(
             ]
         )
     result = pd.DataFrame.from_records(records)
-    return result.sort_values([event_time_col, symbol_col, event_id_col], kind="mergesort").reset_index(
-        drop=True
+    return result.sort_values(
+        [event_time_col, symbol_col, event_id_col], kind="mergesort"
+    ).reset_index(drop=True)
+
+
+def _label_event(
+    event: dict[str, object],
+    grouped_prices: dict[object, pd.DataFrame],
+    *,
+    cfg: TripleBarrierConfig,
+    symbol_col: str,
+    price_time_col: str,
+    event_time_col: str,
+    price_col: str,
+    target_col: str,
+    side_col: str,
+    event_id_col: str,
+) -> dict[str, object] | None:
+    target = float(event[target_col])
+    if not np.isfinite(target) or target < cfg.min_target or target <= 0:
+        return None
+    panel = grouped_prices.get(event[symbol_col])
+    if panel is None or panel.empty:
+        return None
+    event_time = pd.Timestamp(event[event_time_col])
+    times = pd.DatetimeIndex(panel[price_time_col])
+    start_idx = int(times.searchsorted(event_time, side="left"))
+    if start_idx >= len(panel):
+        return None
+    end_idx = min(start_idx + cfg.vertical_horizon, len(panel) - 1)
+    if end_idx <= start_idx:
+        return None
+
+    start_price = float(panel.iloc[start_idx][price_col])
+    path = panel.iloc[start_idx : end_idx + 1]
+    side = float(event[side_col])
+    adjusted_returns = (path[price_col].astype(float) / start_price - 1.0) * side
+    barrier, touch_pos = _first_barrier_touch(adjusted_returns, cfg=cfg, target=target)
+    touch_row = path.iloc[touch_pos]
+    adjusted_return = float(adjusted_returns.iloc[touch_pos])
+
+    record = dict(event)
+    record.update(
+        {
+            event_id_col: event[event_id_col],
+            "label_start": pd.Timestamp(panel.iloc[start_idx][price_time_col]),
+            "label_end": pd.Timestamp(touch_row[price_time_col]),
+            "first_touch": pd.Timestamp(touch_row[price_time_col]),
+            "barrier": barrier,
+            "target": target,
+            "side": side,
+            "realized_return": adjusted_return * side,
+            "side_adjusted_return": adjusted_return,
+            "label": _barrier_label(barrier, adjusted_return, cfg.vertical_label),
+            "meta_label": int(adjusted_return > 0),
+            "vertical_end": pd.Timestamp(panel.iloc[end_idx][price_time_col]),
+        }
     )
+    return record
+
+
+def _first_barrier_touch(
+    adjusted_returns: pd.Series,
+    *,
+    cfg: TripleBarrierConfig,
+    target: float,
+) -> tuple[BarrierName, int]:
+    upper = cfg.profit_taking * target if cfg.profit_taking > 0 else np.inf
+    lower = -cfg.stop_loss * target if cfg.stop_loss > 0 else -np.inf
+    values = adjusted_returns.to_numpy(dtype=float)
+    upper_hits = np.flatnonzero(values >= upper)
+    lower_hits = np.flatnonzero(values <= lower)
+    upper_pos = int(upper_hits[0]) if upper_hits.size else None
+    lower_pos = int(lower_hits[0]) if lower_hits.size else None
+    if upper_pos is not None and (lower_pos is None or upper_pos <= lower_pos):
+        return "profit_taking", upper_pos
+    if lower_pos is not None:
+        return "stop_loss", lower_pos
+    return "vertical", len(adjusted_returns) - 1
+
+
+def _barrier_label(
+    barrier: BarrierName,
+    adjusted_return: float,
+    vertical_label: Literal["sign", "zero"],
+) -> int:
+    if barrier == "profit_taking":
+        return 1
+    if barrier == "stop_loss":
+        return -1
+    if vertical_label == "zero":
+        return 0
+    return int(np.sign(adjusted_return))
 
 
 def meta_label_from_predictions(

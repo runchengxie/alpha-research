@@ -99,9 +99,7 @@ def _event_sample_weights(
         horizon_days = None if horizon_days_raw is None else int(horizon_days_raw)
         event_windows, status = _build_label_event_windows(
             events[date_col],
-            all_trade_dates=(
-                all_trade_dates if all_trade_dates is not None else events[date_col]
-            ),
+            all_trade_dates=(all_trade_dates if all_trade_dates is not None else events[date_col]),
             horizon_mode=str(params_map.get("label_horizon_mode", "fixed")),
             horizon_days=horizon_days,
             shift_days=int(params_map.get("label_shift_days", 0)),
@@ -134,13 +132,13 @@ def _event_sample_weights(
             else "uniqueness"
         ),
         uniqueness_power=float(params_map.get("uniqueness_power", 1.0)),
-        time_decay_halflife=(
-            float(halflife_raw) if halflife_raw is not None else None
-        ),
+        time_decay_halflife=(float(halflife_raw) if halflife_raw is not None else None),
         min_weight=_coerce_sample_weight_min(params_map.get("min_weight", 0.0)),
     )
     group_col_raw = params_map.get("group_col", params_map.get("symbol_col", "symbol"))
-    group_col = str(group_col_raw) if group_col_raw and str(group_col_raw) in events.columns else None
+    group_col = (
+        str(group_col_raw) if group_col_raw and str(group_col_raw) in events.columns else None
+    )
     weighted, _receipt = build_event_sample_weights(
         events,
         config=config,
