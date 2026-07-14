@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 
-from cstree.alpha import overfitting_diagnostics
+from alpha_research import overfitting_diagnostics
 
 
 def test_uniqueness_report_outputs_sample_weights_and_bootstrap_ids():

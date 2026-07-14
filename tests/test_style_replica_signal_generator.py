@@ -3,10 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from cstree.alpha.style_replica import signal_generator
-from cstree.alpha.style_replica.resvol import compute_resvol_factor
-from cstree.alpha.style_replica.score_a import compute_score_a
-from cstree.alpha.style_replica.score_b import compute_score_b
+from alpha_research.style_replica import signal_generator
+from alpha_research.style_replica.resvol import compute_resvol_factor
+from alpha_research.style_replica.score_a import compute_score_a
+from alpha_research.style_replica.score_b import compute_score_b
 
 
 def test_generate_daily_signals_decorates_and_ranks_scores(monkeypatch) -> None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from cstree.alpha.factor_diagnostics import (
+from alpha_research.factor_diagnostics import (
     compute_factor_diagnostics,
     factor_diagnostics_options_from_config,
 )

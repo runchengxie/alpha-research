@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from cstree.alpha.rebalance_calendar import (
+from alpha_research.rebalance_calendar import (
     estimate_rebalance_gap,
     get_rebalance_dates,
     sample_rebalance_frame,

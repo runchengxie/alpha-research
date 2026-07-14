@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from cstree.alpha.recency_diagnostics import build_recency_diagnostics
+from alpha_research.recency_diagnostics import build_recency_diagnostics
 
 
 def test_build_recency_diagnostics_uses_calendar_windows_and_roles() -> None:

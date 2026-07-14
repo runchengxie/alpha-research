@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cstree.alpha.transform import (
+from alpha_research.transform import (
     apply_cross_sectional_series_transform,
     apply_cross_sectional_transform,
     apply_score_postprocess,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from cstree.alpha.signal_artifact import (
+from alpha_research.signal_artifact import (
     CANONICAL_SIGNAL_COLUMNS,
     SIGNAL_CONTRACT,
     SIGNAL_CONTRACT_NAME,

@@ -2,7 +2,7 @@
 
 These factors require only 1-minute OHLCV bars (TuShare ``pro.mins``),
 NOT Level-2 order-book data.  They are designed to drop into the
-``cstree.alpha`` feature pipeline via ``feature_dataset``.
+``alpha_research`` feature pipeline via ``feature_dataset``.
 
 Factor groups
 -------------

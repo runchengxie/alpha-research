@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from cstree.alpha.walk_forward_windows import build_walk_forward_windows
+from alpha_research.walk_forward_windows import build_walk_forward_windows
 
 
 def test_walk_forward_windows_anchor_end_with_gap() -> None:

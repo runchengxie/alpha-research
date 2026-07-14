@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from cstree.alpha.split import (
+from alpha_research.split import (
     _apply_event_window_purge_indices,
     _build_label_event_windows,
     build_sample_weight,

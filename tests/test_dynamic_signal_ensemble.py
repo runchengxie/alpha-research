@@ -5,7 +5,7 @@ import json
 import pandas as pd
 import pytest
 
-from cstree.alpha import dynamic_signal_ensemble as dse
+from alpha_research import dynamic_signal_ensemble as dse
 
 
 def _ensemble_data() -> pd.DataFrame:

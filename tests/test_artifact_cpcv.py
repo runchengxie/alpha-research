@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from cstree.alpha import artifact_cpcv, cpcv
+from alpha_research import artifact_cpcv, cpcv
 
 
 def _write_artifact_inputs(tmp_path):

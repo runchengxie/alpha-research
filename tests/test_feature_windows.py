@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from cstree.alpha.feature_windows import parse_feature_windows, parse_window_config
+from alpha_research.feature_windows import parse_feature_windows, parse_window_config
 
 
 def test_parse_feature_windows_extracts_prefixed_numeric_windows() -> None:

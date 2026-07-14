@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from cstree.alpha.daily_watch20_features import (
+from alpha_research.daily_watch20_features import (
     DAILY_WATCH20_FEATURES,
     DEFAULT_LABEL_HORIZON_WEIGHTS,
     LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS,
@@ -16,7 +16,7 @@ from cstree.alpha.daily_watch20_features import (
     DailyWatch20FeatureConfig,
     build_daily_watch20_feature_frame,
 )
-from cstree.alpha.style_replica.factors import compute_hermite_stability_factor
+from alpha_research.style_replica.factors import compute_hermite_stability_factor
 
 
 def _series(frame: pd.DataFrame, column: str) -> pd.Series:

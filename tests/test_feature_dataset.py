@@ -1,10 +1,10 @@
 import pandas as pd
 
-from cstree.alpha.feature_dataset import (
+from alpha_research.feature_dataset import (
     _build_rebalance_tail_candidate_dates,
     _prepare_feature_dataset,
 )
-from cstree.alpha.research_dataset import ResearchDataset
+from alpha_research.research_dataset import ResearchDataset
 
 
 def test_rebalance_tail_candidate_dates_keep_recent_fallback_dates():

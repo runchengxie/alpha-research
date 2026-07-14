@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from cstree.alpha.metrics import daily_ic_series, summarize_ic
-from cstree.alpha.research_dataset import ResearchDataset
-from cstree.alpha.research_model import CSTreeModel
-from cstree.alpha.signal_artifact import (
+from alpha_research.metrics import daily_ic_series, summarize_ic
+from alpha_research.research_dataset import ResearchDataset
+from alpha_research.research_model import CSTreeModel
+from alpha_research.signal_artifact import (
     SIGNAL_CONTRACT_NAME,
     load_signal_metadata,
     read_signal_artifact,
@@ -79,7 +79,7 @@ signals, summary = write_signal_artifact(
 loaded = read_signal_artifact(signal_path)
 metadata = load_signal_metadata(signal_path)
 
-for prefix in ("cstree.backtesting", "cstree.pipeline"):
+for prefix in ("portfolio_backtester", "strategy_pipeline.pipeline"):
     offenders = [
         module_name
         for module_name in sys.modules

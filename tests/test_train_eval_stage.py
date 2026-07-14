@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cstree.alpha import train_eval_stage
-from cstree.alpha.train_eval_contracts import (
+from alpha_research import train_eval_stage
+from alpha_research.train_eval_contracts import (
     TrainEvalBacktestSettings,
     TrainEvalData,
     TrainEvalFeatureTarget,
@@ -19,7 +19,7 @@ from cstree.alpha.train_eval_contracts import (
     TrainEvalSignalSettings,
     TrainEvalWalkForwardSettings,
 )
-from cstree.alpha.train_eval_stage import _industry_exposure_columns
+from alpha_research.train_eval_stage import _industry_exposure_columns
 
 
 def _empty_train_eval_data(

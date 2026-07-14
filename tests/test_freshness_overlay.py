@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from cstree.alpha.freshness_overlay import apply_freshness_overlay
+from alpha_research.freshness_overlay import apply_freshness_overlay
 
 
 def test_volume_only_freshness_overlay_blends_base_and_volume_ranks() -> None:

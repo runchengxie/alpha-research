@@ -1,0 +1,34 @@
+{
+  "blockers": [
+    {
+      "kind": "parent-relative",
+      "level": 2,
+      "line": 29,
+      "module": "signal_artifact",
+      "path": "src/alpha_research/style_replica/signal_generator.py"
+    },
+    {
+      "kind": "parent-relative",
+      "level": 2,
+      "line": 10,
+      "module": "modeling",
+      "path": "src/alpha_research/backends/native.py"
+    },
+    {
+      "kind": "parent-relative",
+      "level": 2,
+      "line": 11,
+      "module": "research_dataset",
+      "path": "src/alpha_research/backends/native.py"
+    },
+    {
+      "kind": "parent-relative",
+      "level": 2,
+      "line": 9,
+      "module": "research_dataset",
+      "path": "src/alpha_research/backends/base.py"
+    }
+  ],
+  "owner": "alpha_research",
+  "schema": "namespace_migration_blockers.v1"
+}

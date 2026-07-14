@@ -29,7 +29,7 @@
 先说结论：
 
 * `strategy-pipeline/docs/concepts/universe-modes.md` 讲的是股票池模式。
-* 当前仓库代码真正支持的模型类型只有 `xgb_regressor`、`xgb_ranker`、`ridge`、`elasticnet`，见 `cstree.alpha.modeling`。
+* 当前仓库代码真正支持的模型类型只有 `xgb_regressor`、`xgb_ranker`、`ridge`、`elasticnet`，见 `alpha_research.modeling`。
 * 当前任务结构决定了最值得先回答的是五个独立问题，对应五层诊断金字塔：市场 beta（无特征）→ 线性 alpha（Ridge）→ 非线性增量（Random Forest）→ Boosting 增量（XGBoost）→ 排序增量（XGBRanker）。
 * ElasticNet 在 30-100 特征规模下和 Ridge 高度重叠，诊断价值有限；Random Forest 填补了当前缺失的「非线性本身」对照。
 * 当前 HK quarterly PIT + overlay 主线里，最稳的基线仍然是 `xgb_ranker + h12_w16`；最值得继续追的 challenger 是 `xgb_regressor + zscore target`。
