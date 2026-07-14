@@ -1,0 +1,24 @@
+name: namespace source export pr
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.head_ref == 'artifact/namespace-integration-export'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
+      - run: tar --exclude=.git --exclude=.venv --exclude=artifacts -czf /tmp/alpha-research-source.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-research-source
+          path: /tmp/alpha-research-source.tar.gz
+          if-no-files-found: error
