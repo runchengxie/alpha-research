@@ -4,16 +4,9 @@
 
 ## 仓库职责
 
-本仓库维护 `alpha_research` 包，负责：
+本仓库维护 `alpha_research` 包，覆盖特征、模型、稳健性诊断、信号产物和模型专用目标持仓规则。
 
-- 特征工程、特征窗口和特征证据
-- 模型训练与模型诊断
-- walk-forward、CPCV、PBO 和过拟合控制
-- signal artifact 和信号稳定性
-- 与具体 alpha 模型绑定的目标持仓规则
-- 候选晋升中的 alpha 证据
-
-完整研究编排由 `strategy-pipeline` 负责。通用组合回测由 `portfolio-backtester` 负责。
+研究编排由 `strategy-pipeline` 负责。通用组合回测由 `portfolio-backtester` 负责。
 
 ## 依赖边界
 
@@ -22,7 +15,7 @@
 - 不在运行时导入 `strategy_pipeline.pipeline`。
 - 不依赖 `portfolio_backtester` 内部实现。
 - 跨仓库交接使用公开 API 或稳定产物契约。
-- 修改 signal artifact 契约时，同步检查顶层工作区文件约定。
+- 修改 signal artifact 契约时同步检查顶层文件约定。
 
 ## 常用命令
 
@@ -33,44 +26,27 @@ scripts/dev/run_tests.sh format
 scripts/dev/run_tests.sh typecheck
 scripts/dev/run_tests.sh all
 scripts/dev/run_tests.sh maintainability
+scripts/dev/run_tests.sh basedpyright
 ```
 
 `fast` 和 `unit` 是 `all` 的兼容别名。
 
-发布前类型诊断：
+## 文档范围
 
-```bash
-scripts/dev/run_tests.sh basedpyright
-```
-
-定点测试可以直接运行：
-
-```bash
-uv run --extra dev python -m pytest tests/test_signal_artifact.py -q
-```
-
-## 文档分工
-
-本仓库文档优先覆盖：
+本仓库文档维护：
 
 - 特征工程和特征证据
 - 模型训练、评估和稳健性诊断
-- walk-forward、CPCV、PBO、DSR 和过拟合控制
+- walk-forward、CPCV、PBO 和 DSR
 - `signals.parquet` 与 `signals.meta.json`
 - 模型专用目标持仓规则
 - alpha 证据和候选晋升规则
 
-以下内容由其他仓库维护：
-
-- 通用回测、成本和容量分析：`portfolio-backtester`
-- 编排、CLI、配置和运行目录：`strategy-pipeline`
-- 数据生产和当前数据契约：`market-data-platform`
-- 券商执行和审计：`quant-execution-engine`
+回测、编排、数据生产和券商执行说明留在对应仓库。
 
 ## 编辑规则
 
-- 中文说明使用自然、直接的表达。
-- 中文正文使用中文标点。
+- 中文说明使用自然、直接的表达和中文标点。
 - 保留必要的命令、路径、配置键和 API 名称。
 - 用户指南聚焦当前能力和使用方式。
 - 历史迁移材料放在归档或 PR 中。
@@ -80,4 +56,4 @@ uv run --extra dev python -m pytest tests/test_signal_artifact.py -q
 
 ## Git
 
-大范围文档、契约或跨仓库调整使用短期分支和 PR。修改本仓后，如需让工作区采用新版本，再更新顶层子模块指针。
+大范围文档、契约或跨仓库调整使用短期分支和 PR。合并后再按需更新顶层子模块指针。
