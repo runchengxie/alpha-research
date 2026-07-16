@@ -32,6 +32,7 @@ OWNED_MODULES = (
     "alpha_research.fundamentals",
     "alpha_research.freshness_overlay",
     "alpha_research.metrics",
+    "alpha_research.minute_friend_factors",
     "alpha_research.modeling",
     "alpha_research.research_dataset",
     "alpha_research.research_model",

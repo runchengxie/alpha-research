@@ -52,6 +52,7 @@ __all__ = [
     "fundamentals",
     "label_columns_for_horizon_weights",
     "metrics",
+    "minute_friend_factors",
     "modeling",
     "normalize_label_horizon_weights",
     "overfitting_diagnostics",
