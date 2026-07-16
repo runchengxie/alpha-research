@@ -5,7 +5,7 @@
 本仓库维护：
 
 - 特征工程、特征证据和单因子诊断
-- 可复用、I/O-free 的分钟因子 SQL 语义与股票日输出契约
+- 分钟因子 SQL 定义与股票日输出契约，不负责文件读写
 - 模型训练与稳健性评估
 - walk-forward、CPCV、PBO 和过拟合诊断
 - 信号产物与模型专用目标持仓规则
@@ -45,6 +45,6 @@ model diagnostics
 promotion evidence
 ```
 
-修改信号产物契约时，应同步更新代码、测试和文档。
+信号字段和元数据约定见 [docs/reference/signal-artifacts.md](docs/reference/signal-artifacts.md)。修改契约时，应同步更新代码、测试和文档。
 
 文档从 [docs/README.md](docs/README.md) 进入。

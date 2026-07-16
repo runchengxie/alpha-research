@@ -47,6 +47,12 @@ uv run --extra dev python -m pytest tests/test_signal_artifact.py -q
 uv run --extra dev python -m pytest tests/test_cpcv.py -q
 ```
 
+## 推送前检查
+
+在 `research-workspace` 受管检出中，顶层共享 `pre-push` 会按照工作区清单运行本仓库的导入检查、Ruff、格式检查、`ty` 和完整测试集。
+
+单独克隆本仓库时不会继承共享钩子。推送前应手动运行上方列出的 `lint`、`format`、`typecheck`、`all`、`maintainability` 和 `basedpyright`。
+
 ## 测试重点
 
 当前测试应重点保护：
@@ -63,4 +69,4 @@ uv run --extra dev python -m pytest tests/test_cpcv.py -q
 
 ## 自动化状态
 
-当前仓库没有启用 GitHub Actions 测试 workflow。本地脚本、`pyproject.toml` 和工作区验证记录是检查范围的事实来源。
+当前仓库没有启用 GitHub Actions 远端测试。本地脚本、`pyproject.toml` 和工作区验证记录共同构成本地质量门禁。

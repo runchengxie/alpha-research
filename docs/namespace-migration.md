@@ -1,9 +1,7 @@
-# Alpha namespace migration
+# Alpha 命名空间
 
-- Canonical package: `alpha_research.*`
-- Canonical contract prefix: `alpha_research.*`
-- Removal release: workspace 2.0
-- Current status: the workspace 1.x compatibility namespace and facade are removed
+- 权威 Python 包：`alpha_research.*`
+- 权威契约前缀：`alpha_research.*`
+- 旧兼容入口删除版本：workspace 2.0
 
-This distribution installs only its owner-native package. It does not ship a
-shared namespace package or a compatibility alias.
+当前发行包只安装 `alpha_research`。工作区 1.x 的共享命名空间、兼容 facade 和别名已经删除。新增代码、文档和产物契约都应使用 owner-native 名称。

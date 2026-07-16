@@ -70,4 +70,4 @@ weights, receipt = build_event_sample_weights(
 
 ## Structural break
 
-CUSUM 和 SADF 输出属于研究特征或诊断证据。它们不能直接触发实盘下单或自动换模型。对于较高频输入，应先在数据层聚合；`sadf_series` 面向日频和预聚合序列，不适合 raw order-book 消息。
+CUSUM 和 SADF 输出属于研究特征或诊断证据。它们不能直接触发实盘下单或自动换模型。较高频输入应先在数据层聚合。`sadf_series` 面向日频和预聚合序列，不适合原始逐笔订单簿消息。
