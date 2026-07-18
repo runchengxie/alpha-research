@@ -220,15 +220,20 @@ def score_rolling_oos(
             _series(training_frame, "trade_date").isin(block_dates.tolist())
         ]
         scores = ranker.predict_relative(candidates)
-        keep = [
-            "trade_date",
-            "symbol",
-            label_col,
-            return_col,
-            "forward_return_1d",
-            "forward_label_start_date",
-            *passthrough_columns,
-        ]
+        keep = list(
+            dict.fromkeys(
+                [
+                    "trade_date",
+                    "symbol",
+                    label_col,
+                    return_col,
+                    "forward_return_1d",
+                    "forward_label_start_date",
+                    "forward_label_end_date",
+                    *passthrough_columns,
+                ]
+            )
+        )
         scored = candidates[keep].merge(
             scores,
             on=["trade_date", "symbol"],
