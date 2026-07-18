@@ -15,6 +15,10 @@ from typing import Any, Protocol
 import pandas as pd
 
 DEFAULT_SELECTION_SCHEMA = "daily_watch20.selection.v2"
+LEGACY_SELECTION_SCHEMAS = frozenset({"daily_watch20.selection.v1"})
+DEFAULT_ACCEPTED_SELECTION_SCHEMAS = frozenset(
+    {DEFAULT_SELECTION_SCHEMA, *LEGACY_SELECTION_SCHEMAS}
+)
 
 
 class RestorableRanker(Protocol):
@@ -50,10 +54,21 @@ def passed_prior_runs(
     output_root: Path,
     source_date: str,
     *,
-    selection_schema: str = DEFAULT_SELECTION_SCHEMA,
+    selection_schema: str | None = None,
 ) -> list[tuple[str, str, Path]]:
-    """Return passed prior publication runs in deterministic newest-first order."""
+    """Return passed prior publication runs in deterministic newest-first order.
 
+    When no explicit schema is requested, both the current v2 receipt and the
+    historical v1 receipt are accepted. Writers remain responsible for emitting
+    the current schema; this dual-read policy prevents a repository migration
+    from forcing needless model retraining.
+    """
+
+    accepted_schemas = (
+        DEFAULT_ACCEPTED_SELECTION_SCHEMAS
+        if selection_schema is None
+        else frozenset({selection_schema})
+    )
     runs_root = output_root / "runs"
     if not runs_root.is_dir():
         return []
@@ -70,7 +85,7 @@ def passed_prior_runs(
             continue
         prior_source = str(receipt.get("source_date") or "").replace("-", "")
         if (
-            receipt.get("schema_version") != selection_schema
+            receipt.get("schema_version") not in accepted_schemas
             or str(receipt.get("status") or "").lower() != "passed"
             or str(receipt.get("quality_status") or "passed").lower() != "passed"
             or len(prior_source) != 8
@@ -112,7 +127,7 @@ def restore_prior_ranker(
     source_date: str,
     open_dates: pd.DatetimeIndex,
     max_age_trade_days: int,
-    selection_schema: str = DEFAULT_SELECTION_SCHEMA,
+    selection_schema: str | None = None,
 ) -> ModelLifecycle | None:
     """Restore the newest compatible, integrity-verified prior model."""
 
@@ -182,7 +197,7 @@ def prepare_ranker_lifecycle(
     output_root: Path,
     source_date: str,
     open_dates: pd.DatetimeIndex,
-    selection_schema: str = DEFAULT_SELECTION_SCHEMA,
+    selection_schema: str | None = None,
 ) -> ModelLifecycle:
     """Choose deterministic train-versus-restore behavior for one source date."""
 
@@ -209,7 +224,9 @@ def prepare_ranker_lifecycle(
 
 
 __all__ = [
+    "DEFAULT_ACCEPTED_SELECTION_SCHEMAS",
     "DEFAULT_SELECTION_SCHEMA",
+    "LEGACY_SELECTION_SCHEMAS",
     "ModelLifecycle",
     "RestorableRanker",
     "passed_prior_runs",
