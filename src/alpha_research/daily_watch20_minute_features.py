@@ -10,6 +10,7 @@ from typing import Any, cast
 
 import numpy as np
 import pandas as pd
+
 from market_data_platform.research_views.daily_watch20_minute_source import MinuteSourceCatalog
 
 MINUTE_FEATURE_SCHEMA = "daily_watch20.minute_features.v3"

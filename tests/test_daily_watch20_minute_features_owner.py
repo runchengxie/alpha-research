@@ -68,7 +68,9 @@ def _catalog(tmp_path: Path) -> MinuteSourceCatalog:
 
 
 def test_transform_catalog_returns_bound_evidence(tmp_path: Path) -> None:
-    result = transform_daily_watch20_minute_catalog(_catalog(tmp_path), threads=1, memory_limit="1GB")
+    result = transform_daily_watch20_minute_catalog(
+        _catalog(tmp_path), threads=1, memory_limit="1GB"
+    )
     assert tuple(result.frame.columns) == MINUTE_FEATURE_COLUMNS
     assert result.frame[["trade_date", "symbol"]].to_dict("records") == [
         {"trade_date": "20260717", "symbol": "000001.SZ"}

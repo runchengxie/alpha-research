@@ -57,7 +57,7 @@ case "$mode" in
     ;;
   typecheck)
     echo "Running ty typed surface from pyproject.toml."
-    run_ty "$@"
+    run_ty --error-on-warning "$@"
     ;;
   basedpyright | typecheck-release)
     echo "Running BasedPyright diagnostics from pyproject.toml."

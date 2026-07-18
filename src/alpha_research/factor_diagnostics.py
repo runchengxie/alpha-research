@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
 from market_data_platform.symbols import canonicalize_symbol_columns
 
 from .factor_diagnostics_config import (

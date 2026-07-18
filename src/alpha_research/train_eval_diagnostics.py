@@ -5,6 +5,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
+
 from market_data_platform.symbols import canonicalize_symbol_columns
 
 _RECENCY_WINDOW_PATTERN = re.compile(r"^\s*(\d+)\s*([dwm])\s*$", re.IGNORECASE)

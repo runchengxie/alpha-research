@@ -59,6 +59,8 @@ known-first-party = ["alpha_research", "market_data_platform"]
 [tool.ty.src]
 include = [
   "src/alpha_research/backends",
+  "src/alpha_research/daily_watch20_minute_features.py",
+  "src/alpha_research/daily_watch20_policy.py",
 ]
 exclude = [
   ".venv",
