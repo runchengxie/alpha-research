@@ -193,9 +193,9 @@ def join_news_heat_neutral(
 
 
 __all__ = [
-    "DailyWatch20NewsHeat",
     "NEWS_HEAT_COLUMNS",
     "NEWS_HEAT_SCHEMA",
+    "DailyWatch20NewsHeat",
     "join_news_heat_neutral",
     "load_daily_watch20_news_heat",
 ]
