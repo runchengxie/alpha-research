@@ -13,8 +13,19 @@ from .daily_watch20_features import (
     label_columns_for_horizon_weights,
     normalize_label_horizon_weights,
 )
+from .daily_watch20_minute_features import (
+    MINUTE_FEATURE_COLUMNS,
+    MINUTE_FEATURE_SCHEMA,
+    MINUTE_TRANSFORM_CONTRACT,
+    MinuteFeatureTransformResult,
+    daily_watch20_minute_feature_sql,
+    transform_daily_watch20_minute_catalog,
+    validate_daily_watch20_minute_feature_frame,
+)
+from .daily_watch20_policy import ALPHA_POLICY_SCHEMA, DailyWatch20AlphaPolicy
 
 __all__ = [
+    "ALPHA_POLICY_SCHEMA",
     "BLENDED_FORWARD_RANK_COL",
     "BLENDED_FORWARD_RETURN_COL",
     "DAILY_WATCH20_FEATURES",
@@ -22,7 +33,12 @@ __all__ = [
     "LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS",
     "LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID",
     "MINUTE_FEATURES",
+    "MINUTE_FEATURE_COLUMNS",
+    "MINUTE_FEATURE_SCHEMA",
+    "MINUTE_TRANSFORM_CONTRACT",
+    "DailyWatch20AlphaPolicy",
     "DailyWatch20FeatureConfig",
+    "MinuteFeatureTransformResult",
     "artifact_cpcv",
     "backends",
     "backends.base",
@@ -34,6 +50,7 @@ __all__ = [
     "cpcv_audit",
     "daily_watch20",
     "daily_watch20_features",
+    "daily_watch20_minute_feature_sql",
     "dataset",
     "dataset_sampling",
     "date_slices",
@@ -80,6 +97,8 @@ __all__ = [
     "train_eval_result",
     "train_eval_stage",
     "transform",
+    "transform_daily_watch20_minute_catalog",
+    "validate_daily_watch20_minute_feature_frame",
     "walk_forward",
     "walk_forward_windows",
 ]
