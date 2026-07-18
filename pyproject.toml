@@ -71,7 +71,7 @@ exclude = [
 ]
 
 [tool.uv.sources]
-market-data-platform = { path = "../market-data-platform", editable = true }
+market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "ea29feded9fec2932af8d9b97fbd28648d028508" }
 
 [tool.basedpyright]
 include = [

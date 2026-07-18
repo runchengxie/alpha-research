@@ -24,7 +24,7 @@
 ## 安装和测试
 
 ```bash
-uv sync --extra dev
+uv sync --locked --extra dev
 scripts/dev/run_tests.sh lint
 scripts/dev/run_tests.sh format
 scripts/dev/run_tests.sh typecheck
@@ -32,6 +32,9 @@ scripts/dev/run_tests.sh all
 scripts/dev/run_tests.sh maintainability
 scripts/dev/run_tests.sh basedpyright
 ```
+
+`market-data-platform` 固定到 `pyproject.toml` 和 `uv.lock` 记录的 Git commit。
+独立检出时需要对应私有仓库的 GitHub 读取权限。
 
 `fast` 和 `unit` 是 `all` 的兼容别名。详细范围见 [docs/testing.md](docs/testing.md)。
 
