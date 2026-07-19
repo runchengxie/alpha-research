@@ -1,7 +1,6 @@
 .venv/
 .pytest_cache/
 .ruff_cache/
-.basedpyright/
 __pycache__/
 *.py[cod]
 build/
@@ -9,4 +8,3 @@ dist/
 *.egg-info/
 artifacts/
 outputs/
-

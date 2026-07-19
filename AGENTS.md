@@ -33,9 +33,9 @@ uv sync --extra dev
 scripts/dev/run_tests.sh lint
 scripts/dev/run_tests.sh format
 scripts/dev/run_tests.sh typecheck
+scripts/dev/run_tests.sh typecheck-release
 scripts/dev/run_tests.sh all
 scripts/dev/run_tests.sh maintainability
-scripts/dev/run_tests.sh basedpyright
 ```
 
 `fast` 和 `unit` 是 `all` 的兼容别名。

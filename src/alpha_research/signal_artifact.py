@@ -192,7 +192,7 @@ def build_signal_artifact_frame(
 
     out = pd.DataFrame(index=frame.index)
     dates = pd.to_datetime(_column_series(frame, source_cols.date_col), errors="coerce")
-    out["signal_date"] = cast(pd.Series, dates).dt.strftime("%Y%m%d")
+    out["signal_date"] = dates.dt.strftime("%Y%m%d")
     out["symbol"] = _column_series(frame, "symbol").astype(str)
     out["raw_pred"] = pd.to_numeric(
         _column_series(frame, source_cols.raw_pred_col),

@@ -37,7 +37,7 @@ def _apply_target_winsorization(
         group[target] = group[target].clip(lower, upper)
         return group
 
-    return cast(pd.DataFrame, df_features.groupby("trade_date", group_keys=False).apply(_winsorize))
+    return df_features.groupby("trade_date", group_keys=False).apply(_winsorize)
 
 
 def _prepare_modeling_feature_frame(
@@ -126,13 +126,10 @@ def _build_modeling_dataset_frame(
             if col not in {"trade_date", "symbol"} and col not in df_full.columns
         ]
         if extra_eval_cols:
-            df_full = cast(
-                pd.DataFrame,
-                df_full.merge(
-                    eval_extra_df[["trade_date", "symbol", *extra_eval_cols]],
-                    on=["trade_date", "symbol"],
-                    how="left",
-                ),
+            df_full = df_full.merge(
+                eval_extra_df[["trade_date", "symbol", *extra_eval_cols]],
+                on=["trade_date", "symbol"],
+                how="left",
             )
     return dataset, df_features, df_full
 

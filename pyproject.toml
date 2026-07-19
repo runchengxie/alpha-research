@@ -21,7 +21,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "basedpyright>=1.39.9",
   "duckdb>=1.2",
   "pytest>=9.0.3",
   "ruff>=0.8",
@@ -58,27 +57,12 @@ known-first-party = ["alpha_research", "market_data_platform"]
 
 [tool.ty.src]
 include = [
-  "src/alpha_research/backends",
-  "src/alpha_research/daily_watch20_minute_features.py",
-  "src/alpha_research/daily_watch20_policy.py",
-]
-exclude = [
-  ".venv",
-  "artifacts",
-  "build",
-  "dist",
-  "outputs",
-]
-
-[tool.uv.sources]
-market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "fbc7fe058e1411ad6266e1ae9813a26c2fda4b41" }
-
-[tool.basedpyright]
-include = [
   "src/alpha_research/cpcv_audit.py",
   "src/alpha_research/backends",
   "src/alpha_research/dataset_sampling.py",
   "src/alpha_research/dataset_sampling_core.py",
+  "src/alpha_research/daily_watch20_minute_features.py",
+  "src/alpha_research/daily_watch20_policy.py",
   "src/alpha_research/dynamic_signal_ensemble_types.py",
   "src/alpha_research/evaluation.py",
   "src/alpha_research/feature_windows.py",
@@ -99,8 +83,6 @@ exclude = [
   "dist",
   "outputs",
 ]
-venvPath = "."
-venv = ".venv"
-pythonVersion = "3.12"
-typeCheckingMode = "basic"
-reportMissingTypeStubs = false
+
+[tool.uv.sources]
+market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "fbc7fe058e1411ad6266e1ae9813a26c2fda4b41" }

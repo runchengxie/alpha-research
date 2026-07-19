@@ -210,9 +210,7 @@ def _record_quantile_return_metrics(
     n_quantiles: int,
 ) -> None:
     quantile_ts = quantile_returns(eval_df, signal_col, target, n_quantiles)
-    quantile_mean = (
-        cast(pd.Series, quantile_ts.mean()) if not quantile_ts.empty else pd.Series(dtype=float)
-    )
+    quantile_mean = quantile_ts.mean() if not quantile_ts.empty else pd.Series(dtype=float)
     result["quantile_ts"] = quantile_ts
     result["quantile_mean"] = quantile_mean
     if not quantile_mean.empty:

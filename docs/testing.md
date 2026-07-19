@@ -23,8 +23,7 @@ scripts/dev/run_tests.sh <mode> [args...]
 | `format` | Ruff 格式检查 |
 | `format-all` | `format` 的兼容别名 |
 | `typecheck` | `ty` 配置范围 |
-| `basedpyright` | BasedPyright 配置范围 |
-| `typecheck-release` | `basedpyright` 的兼容别名 |
+| `typecheck-release` | `typecheck` 的兼容别名 |
 | `maintainability` | 维护性指标和当前预算 |
 
 `fast` 和 `unit` 都会运行完整测试集。
@@ -36,8 +35,8 @@ scripts/dev/run_tests.sh all
 scripts/dev/run_tests.sh lint
 scripts/dev/run_tests.sh format
 scripts/dev/run_tests.sh typecheck
+scripts/dev/run_tests.sh typecheck-release
 scripts/dev/run_tests.sh maintainability
-scripts/dev/run_tests.sh basedpyright
 ```
 
 定点测试示例：
@@ -61,7 +60,9 @@ uv run --extra dev python -m pytest tests/test_cpcv.py -q
 
 在 `research-workspace` 受管检出中，顶层共享 `pre-push` 会按照工作区清单运行本仓库的导入检查、Ruff、格式检查、`ty` 和完整测试集。
 
-单独克隆本仓库时不会继承共享钩子。推送前应手动运行上方列出的 `lint`、`format`、`typecheck`、`all`、`maintainability` 和 `basedpyright`。
+单独克隆本仓库时不会继承共享钩子。推送前应手动运行上方列出的 `lint`、`format`、`typecheck`、`all` 和 `maintainability`。
+
+`typecheck-release` 与 `typecheck` 使用相同的 `ty` 配置。`[tool.ty.src]` 已合并原发布检查范围，迁移后没有缩小类型检查覆盖。
 
 ## 测试重点
 
