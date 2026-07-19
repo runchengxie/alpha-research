@@ -47,6 +47,16 @@ uv run --extra dev python -m pytest tests/test_signal_artifact.py -q
 uv run --extra dev python -m pytest tests/test_cpcv.py -q
 ```
 
+## 研究后端测试范围
+
+`tests/test_research_backends.py` 当前覆盖框架中立接口、`NativeDatasetBackend`、
+`NativeTrainerBackend`、`NullExperimentRecorder`，以及产物元数据不携带运行时模型对象的
+约束。
+
+标准 `dev` 依赖没有安装 Qlib。当前仓库也没有 Qlib 运行时或原生与 Qlib 等价测试，因为
+当前 `main` 尚未实现 Qlib 适配器。接入条件和验证要求见
+[研究后端与 Qlib 状态](concepts/framework-backends.md)。
+
 ## 推送前检查
 
 在 `research-workspace` 受管检出中，顶层共享 `pre-push` 会按照工作区清单运行本仓库的导入检查、Ruff、格式检查、`ty` 和完整测试集。

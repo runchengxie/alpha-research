@@ -17,9 +17,19 @@
 
 本仓库读取外部数据资产和研究配置，不在运行时依赖 `strategy_pipeline.pipeline`、`portfolio_backtester` 内部实现或券商执行代码。
 
-跨仓库交接使用公开 API 和稳定文件契约。工作区 2.0 已删除旧共享 namespace 和 facade。新代码只使用 `alpha_research`。
+跨仓库交接使用公开 API 和稳定文件契约。工作区 2.0 已删除旧共享命名空间和兼容入口。
+新代码只使用 `alpha_research`。
 
-`alpha_research.backends` 提供框架无关的 `DatasetBackend`、`TrainerBackend` 和 `ExperimentRecorder` 接口。可选框架实现留在 adapter 内部，跨模块结果只保存普通元数据和本工作区定义的产物。
+## 研究后端状态
+
+`alpha_research.backends` 提供框架中立的 `DatasetBackend`、`TrainerBackend` 和
+`ExperimentRecorder` 接口。当前包只实现 `NativeDatasetBackend`、`NativeTrainerBackend`
+和 `NullExperimentRecorder`。
+
+当前 `main` 没有 `pyqlib` 依赖、`qlib` extra 或 Qlib 适配器。历史分支中的 Qlib 候选实现
+不属于当前支持范围。未来接入需要独立的可选依赖、归属仓库内的适配器和确定性等价验证。
+跨模块结果仍只保存普通元数据和本工作区定义的产物。完整边界见
+[研究后端与 Qlib 状态](docs/concepts/framework-backends.md)。
 
 ## 安装和测试
 

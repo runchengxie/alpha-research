@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
 from alpha_research.modeling import SUPPORTED_MODEL_TYPES
 from alpha_research.signal_artifact import CANONICAL_SIGNAL_COLUMNS
 
 ROOT = Path(__file__).resolve().parents[1]
+FRAMEWORK_BACKEND_DOC = ROOT / "docs" / "concepts" / "framework-backends.md"
 NEW_CONTRACT_DOCS = (
     ROOT / "docs" / "concepts" / "minute-factors.md",
     ROOT / "docs" / "reference" / "signal-artifacts.md",
@@ -84,6 +86,40 @@ def test_docs_record_current_automation_status() -> None:
     assert "当前仓库没有启用 GitHub Actions 远端测试" in docs
     assert "本地质量门禁" in docs
     assert ".github/workflows/tests.yml" not in docs
+
+
+def test_framework_backend_docs_match_current_main_surface() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    docs_index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
+    framework_docs = FRAMEWORK_BACKEND_DOC.read_text(encoding="utf-8")
+    testing_docs = (ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
+    ownership_docs = (ROOT / "docs" / "ownership-migration.md").read_text(encoding="utf-8")
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    dependencies = [
+        *pyproject["project"].get("dependencies", []),
+        *[
+            dependency
+            for group in pyproject["project"].get("optional-dependencies", {}).values()
+            for dependency in group
+        ],
+    ]
+
+    assert "当前包只实现 `NativeDatasetBackend`" in readme
+    assert "当前 `main` 没有 Qlib 适配器" in agents
+    assert "concepts/framework-backends.md" in docs_index
+    for backend in (
+        "`NativeDatasetBackend`",
+        "`NativeTrainerBackend`",
+        "`NullExperimentRecorder`",
+    ):
+        assert backend in framework_docs
+    assert "当前仓库也没有 Qlib 运行时或原生与 Qlib 等价测试" in testing_docs
+    assert not any("pyqlib" in dependency.lower() for dependency in dependencies)
+    assert not (ROOT / "src" / "alpha_research" / "backends" / "qlib.py").exists()
+    assert "# DailyWatch20 alpha 归属" in ownership_docs
+    assert "兼容入口已经删除" in ownership_docs
+    assert "Ownership migration" not in ownership_docs
 
 
 def test_model_landscape_matches_current_registry_and_research_state() -> None:
