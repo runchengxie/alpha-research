@@ -85,4 +85,4 @@ exclude = [
 ]
 
 [tool.uv.sources]
-market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "7ea08668ae64d035e6e91d71744bb6783b7bcc1e" }
+market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "7ee07baa77c9353468c5dbb29a1a36d8759b24a4" }
