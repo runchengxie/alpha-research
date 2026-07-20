@@ -94,9 +94,14 @@ def compute_beta_factor(
                 continue
             yv = y[valid]
             xv = x[valid]
-            if np.std(xv) < 1e-12:
+            x_centered = xv - xv.mean()
+            denominator = float(np.dot(x_centered, x_centered))
+            if denominator < 1e-12:
                 continue
-            beta = np.cov(yv, xv)[0, 1] / np.var(xv)
+            # OLS covariance and variance must use the same normalization.
+            # The centered-sum form avoids the former np.cov(ddof=1) /
+            # np.var(ddof=0) mismatch, which inflated beta by n/(n-1).
+            beta = float(np.dot(yv - yv.mean(), x_centered) / denominator)
             result.iloc[i, result.columns.get_loc(symbol)] = beta
 
     return result

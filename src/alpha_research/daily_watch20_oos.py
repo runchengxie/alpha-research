@@ -202,11 +202,21 @@ def score_rolling_oos(
     evaluation_dates: pd.DatetimeIndex,
     rolling_folds: int,
     passthrough_columns: tuple[str, ...] = (),
+    embargo_trade_days: int = 0,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     """Fit only on eligible rows and emit deterministic rolling OOS scores."""
 
+    if (
+        not isinstance(embargo_trade_days, int)
+        or isinstance(embargo_trade_days, bool)
+        or embargo_trade_days < 0
+    ):
+        raise ValueError("embargo_trade_days must be a non-negative integer")
     eligible = cast(pd.Series, frame["hard_eligible"]).astype(bool)
     training_frame = cast(pd.DataFrame, frame.loc[eligible]).copy()
+    training_dates = pd.DatetimeIndex(
+        pd.to_datetime(_series(training_frame, "trade_date").unique())
+    ).sort_values()
     scored_parts: list[pd.DataFrame] = []
     refits: list[dict[str, Any]] = []
     for raw_block in np.array_split(evaluation_dates, rolling_folds):
@@ -214,8 +224,21 @@ def score_rolling_oos(
         if block_dates.empty:
             continue
         refit_date = cast(pd.Timestamp, block_dates[0])
+        prior_dates = training_dates[training_dates < refit_date]
+        required_prior_dates = embargo_trade_days + 1 if embargo_trade_days else 0
+        if len(prior_dates) < required_prior_dates:
+            raise ValueError(
+                "DailyWatch20 OOS has insufficient prior trade dates for "
+                f"embargo_trade_days={embargo_trade_days} at {refit_date.date()}"
+            )
+        fit_as_of_date = (
+            cast(pd.Timestamp, prior_dates[-(embargo_trade_days + 1)])
+            if embargo_trade_days
+            else refit_date
+        )
+        excluded_dates = tuple(prior_dates[-embargo_trade_days:]) if embargo_trade_days else ()
         ranker: RollingRanker = ranker_factory(group_features)
-        ranker.fit(training_frame, as_of_date=refit_date)
+        ranker.fit(training_frame, as_of_date=fit_as_of_date)
         candidates = training_frame.loc[
             _series(training_frame, "trade_date").isin(block_dates.tolist())
         ]
@@ -240,16 +263,29 @@ def score_rolling_oos(
             validate="one_to_one",
         )
         scored["refit_as_of_date"] = refit_date
+        scored["model_fit_as_of_date"] = fit_as_of_date
+        scored["last_allowed_label_end_date"] = fit_as_of_date
+        scored["embargo_trade_days"] = embargo_trade_days
         scored_parts.append(scored)
         summary = ranker.training_summary
         if summary is None:
             raise RuntimeError("DailyWatch20 OOS ranker has no training summary")
         if hasattr(summary, "__dataclass_fields__"):
-            refits.append(asdict(summary))
+            refit_summary = asdict(cast(Any, summary))
         elif isinstance(summary, dict):
-            refits.append(dict(summary))
+            refit_summary = dict(summary)
         else:
             raise TypeError("DailyWatch20 training summary must be a dataclass or mapping")
+        refit_summary.update(
+            {
+                "evaluation_refit_date": refit_date,
+                "model_fit_as_of_date": fit_as_of_date,
+                "last_allowed_label_end_date": fit_as_of_date,
+                "embargo_excluded_trade_dates": excluded_dates,
+                "embargo_trade_days": embargo_trade_days,
+            }
+        )
+        refits.append(refit_summary)
     if not scored_parts:
         return pd.DataFrame(), refits
     return pd.concat(scored_parts, ignore_index=True), refits

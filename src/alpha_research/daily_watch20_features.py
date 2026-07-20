@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -54,6 +54,17 @@ DAILY_WATCH20_FEATURES = (
     "hermite_stability",
 )
 
+# Research-only candidates.  Keeping them outside DAILY_WATCH20_FEATURES is
+# deliberate: feature experiments must not mutate the production model schema.
+DAILY_WATCH20_MARKET_SHADOW_FEATURES = (
+    "beta_60",
+    "vol_regime_20_60_pct",
+)
+DAILY_WATCH20_MARKET_SHADOW_DIAGNOSTICS = ("value_yield_pct",)
+
+_BETA_WINDOW = 60
+_BETA_MIN_OBS = 40
+
 _MINUTE_PREFIX = "minute_"
 MINUTE_ORIGIN_FEATURES = tuple(
     name for name in DAILY_WATCH20_FEATURES if name.startswith(_MINUTE_PREFIX)
@@ -73,6 +84,7 @@ class DailyWatch20FeatureConfig:
     minute_lag_trade_days: int = 0
     min_listed_days: int = 60
     liquidity_floor_quantile: float = 0.20
+    include_market_shadow_features: bool = False
 
     def __post_init__(self) -> None:
         horizon_weights = normalize_label_horizon_weights(self.label_horizon_weights)
@@ -89,6 +101,8 @@ class DailyWatch20FeatureConfig:
             raise ValueError("min_listed_days must be a non-negative integer")
         if not 0 <= self.liquidity_floor_quantile < 1:
             raise ValueError("liquidity_floor_quantile must be in [0, 1)")
+        if not isinstance(self.include_market_shadow_features, bool):
+            raise ValueError("include_market_shadow_features must be a boolean")
         object.__setattr__(self, "minute_lag_trade_days", minute_lag)
         object.__setattr__(self, "min_listed_days", min_listed)
         object.__setattr__(self, "forward_days", int(self.forward_days))
@@ -119,8 +133,8 @@ def normalize_label_horizon_weights(
     seen: set[int] = set()
     for raw_horizon, raw_weight in items:
         try:
-            horizon = int(raw_horizon)
-            weight = float(raw_weight)
+            horizon = int(cast(Any, raw_horizon))
+            weight = float(cast(Any, raw_weight))
         except (TypeError, ValueError) as exc:
             raise ValueError("label horizons and weights must be numeric") from exc
         if horizon != raw_horizon or horizon <= 0:
@@ -208,7 +222,7 @@ def _prepare_daily_input(daily: pd.DataFrame) -> pd.DataFrame:
         },
     )
     out = daily.copy()
-    dates = cast(pd.Series, pd.to_datetime(_series(out, "trade_date"), errors="coerce"))
+    dates = pd.to_datetime(_series(out, "trade_date"), errors="coerce")
     if dates.isna().any():
         raise ValueError("DailyWatch20 daily input contains invalid trade_date values")
     if dates.dt.tz is not None:
@@ -291,6 +305,7 @@ def _add_liquidity_and_style_features(frame: pd.DataFrame) -> pd.DataFrame:
     )
     out["size_log"] = np.log1p(out["total_mv"].where(out["total_mv"] > 0))
     out["value_yield"] = 1.0 / out["pb"].where(out["pb"] > 0)
+    # This is a valuation yield only; it must not be presented as earnings quality.
     out["earnings_yield"] = 1.0 / out["pe_ttm"].where(out["pe_ttm"] > 0)
     out["vol_convergence"] = -(out["vol_5"] / out["vol_60"].where(out["vol_60"] > 0))
     rank_inputs = {
@@ -313,6 +328,111 @@ def _add_liquidity_and_style_features(frame: pd.DataFrame) -> pd.DataFrame:
     # Compatibility-only alias. New model contracts must use low_volatility_pct.
     out["low_resvol_pct"] = out["low_volatility_pct"]
     return out.drop(columns="_log_amount")
+
+
+def _rolling_sum(values: np.ndarray, window: int) -> np.ndarray:
+    cumulative = np.concatenate(([0.0], np.cumsum(values, dtype=float)))
+    ends = np.arange(1, len(values) + 1)
+    starts = np.maximum(ends - window, 0)
+    return cumulative[ends] - cumulative[starts]
+
+
+def _rolling_ols_slope(
+    dependent: np.ndarray,
+    independent: np.ndarray,
+    *,
+    window: int,
+    min_obs: int,
+) -> np.ndarray:
+    """Return an aligned rolling OLS slope from pairwise finite observations."""
+
+    valid = np.isfinite(dependent) & np.isfinite(independent)
+    y = np.where(valid, dependent, 0.0)
+    x = np.where(valid, independent, 0.0)
+    count = _rolling_sum(valid.astype(float), window)
+    sum_x = _rolling_sum(x, window)
+    sum_y = _rolling_sum(y, window)
+    sum_xx = _rolling_sum(x * x, window)
+    sum_xy = _rolling_sum(x * y, window)
+    safe_count = np.where(count > 0, count, 1.0)
+    denominator = sum_xx - sum_x * sum_x / safe_count
+    numerator = sum_xy - sum_x * sum_y / safe_count
+    slope = np.full(len(dependent), np.nan, dtype=float)
+    usable = (count >= min_obs) & (denominator > np.finfo(float).eps)
+    slope[usable] = numerator[usable] / denominator[usable]
+    return slope
+
+
+def _adjacent_trade_day_returns(frame: pd.DataFrame) -> pd.Series:
+    """Return close changes that represent one observable, tradable session."""
+
+    trade_dates = pd.DatetimeIndex(_series(frame, "trade_date").unique()).sort_values()
+    date_position = pd.Series(np.arange(len(trade_dates)), index=trade_dates)
+    current_position = _series(frame, "trade_date").map(date_position)
+    grouped = frame.groupby("symbol", sort=False)
+    previous_date = grouped["trade_date"].shift(1)
+    previous_position = previous_date.map(date_position)
+    adjacent = current_position.sub(previous_position).eq(1)
+    current_tradable = _known_false_flag(_series(frame, "is_suspended")) & _series(
+        frame, "amount"
+    ).gt(0)
+    previous_tradable = grouped["is_suspended"].shift(1).pipe(_known_false_flag) & grouped[
+        "amount"
+    ].shift(1).gt(0)
+    returns = grouped["tr_close"].pct_change(fill_method=None)
+    valid_prices = _series(frame, "tr_close").gt(0) & grouped["tr_close"].shift(1).gt(0)
+    valid = adjacent & current_tradable & previous_tradable & valid_prices & np.isfinite(returns)
+    return cast(pd.Series, returns.where(valid))
+
+
+def _equal_weight_market_return(frame: pd.DataFrame, returns: pd.Series) -> pd.Series:
+    target = frame.loc[_target_market(_series(frame, "symbol"))]
+    return cast(
+        pd.Series,
+        returns.loc[target.index].groupby(_series(target, "trade_date"), sort=True).mean(),
+    )
+
+
+def _add_market_shadow_features(frame: pd.DataFrame) -> pd.DataFrame:
+    """Attach research-only beta and medium/long volatility-regime candidates."""
+
+    out = frame.copy()
+    aligned_returns = _adjacent_trade_day_returns(out)
+    market_return = _equal_weight_market_return(out, aligned_returns)
+    market_dates = pd.DatetimeIndex(market_return.index)
+    market_values = market_return.to_numpy(dtype=float)
+    target_mask = _target_market(_series(out, "symbol"))
+    out["value_yield_pct"] = (
+        _series(out, "value_yield")
+        .where(target_mask)
+        .groupby(_series(out, "trade_date"), sort=False)
+        .rank(pct=True)
+    )
+    beta = pd.Series(np.nan, index=out.index, dtype=float)
+    vol_regime = pd.Series(np.nan, index=out.index, dtype=float)
+    target = out.loc[target_mask]
+    for _symbol, group in target.groupby("symbol", sort=False):
+        returns_by_date = pd.Series(
+            aligned_returns.loc[group.index].to_numpy(dtype=float),
+            index=pd.DatetimeIndex(_series(group, "trade_date")),
+        ).reindex(market_dates)
+        slopes = _rolling_ols_slope(
+            returns_by_date.to_numpy(dtype=float),
+            market_values,
+            window=_BETA_WINDOW,
+            min_obs=_BETA_MIN_OBS,
+        )
+        slope_by_date = pd.Series(slopes, index=market_dates)
+        beta.loc[group.index] = _series(group, "trade_date").map(slope_by_date).to_numpy()
+        vol_20 = returns_by_date.rolling(20, min_periods=10).std()
+        vol_60 = returns_by_date.rolling(60, min_periods=30).std()
+        ratio_by_date = -(vol_20 / vol_60.where(vol_60 > 0))
+        vol_regime.loc[group.index] = _series(group, "trade_date").map(ratio_by_date).to_numpy()
+    out["beta_60"] = beta
+    out["vol_regime_20_60_pct"] = (
+        vol_regime.where(target_mask).groupby(_series(out, "trade_date"), sort=False).rank(pct=True)
+    )
+    return out
 
 
 def _add_market_regime_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -346,10 +466,7 @@ def _lag_minute_features(
         rename["source_trade_date"] = "trade_date"
     minute = minute.rename(columns=rename)
     _require_columns(minute, {"trade_date", "symbol"})
-    minute_dates = cast(
-        pd.Series,
-        pd.to_datetime(_series(minute, "trade_date"), errors="coerce"),
-    )
+    minute_dates = pd.to_datetime(_series(minute, "trade_date"), errors="coerce")
     if minute_dates.dt.tz is not None:
         minute_dates = minute_dates.dt.tz_localize(None)
     minute_symbols = _series(minute, "symbol").astype("string").str.strip().str.upper()
@@ -622,6 +739,8 @@ def build_daily_watch20_feature_frame(
     out = _prepare_daily_input(daily)
     out = _add_price_features(out)
     out = _add_liquidity_and_style_features(out)
+    if cfg.include_market_shadow_features:
+        out = _add_market_shadow_features(out)
     out = _add_market_regime_features(out)
     out = _join_minute_features(out, minute_daily, lag_trade_days=cfg.minute_lag_trade_days)
     out = _add_hermite_stability(out)
@@ -632,6 +751,8 @@ def build_daily_watch20_feature_frame(
 
 __all__ = [
     "DAILY_WATCH20_FEATURES",
+    "DAILY_WATCH20_MARKET_SHADOW_DIAGNOSTICS",
+    "DAILY_WATCH20_MARKET_SHADOW_FEATURES",
     "DEFAULT_LABEL_HORIZON_WEIGHTS",
     "LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS",
     "LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID",
