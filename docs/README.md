@@ -25,7 +25,7 @@
 
 - 特征工程、特征窗口和特征证据
 - 单因子 IC、特征相关性和信号稳定性
-- 模型训练、walk-forward、CPCV、PBO 和 DSR
+- 模型训练、滚动前向（walk-forward）、组合式带清理交叉验证（CPCV）、过拟合概率（PBO）和修正夏普比（DSR）
 - `signals.parquet`、`signals.meta.json` 和信号产物
 - 模型专用目标持仓规则
 - 候选晋升中的 alpha 证据
