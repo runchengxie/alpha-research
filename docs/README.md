@@ -17,6 +17,7 @@
 | 研究模板设计 | [playbooks/research-template-design.md](playbooks/research-template-design.md) |
 | 信号产物契约 | [reference/signal-artifacts.md](reference/signal-artifacts.md) |
 | DailyWatch20 alpha 归属 | [ownership-migration.md](ownership-migration.md) |
+| 组合研究命名空间 | [namespace-migration.md](namespace-migration.md) |
 | 测试和质量检查 | [testing.md](testing.md) |
 
 ## 文档边界
