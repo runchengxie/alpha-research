@@ -17,6 +17,7 @@ dependencies = [
   "pyyaml>=6.0",
   "scikit-learn>=1.2",
   "xgboost>=1.7",
+  "research-dev-metrics",
 ]
 
 [project.optional-dependencies]
@@ -89,3 +90,4 @@ exclude = [
 
 [tool.uv.sources]
 market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "f98e43e4673d1521fc600c897cfc4dd2c51bb75c" }
+research-dev-metrics = { git = "https://github.com/runchengxie/research-dev-metrics.git", rev = "e1d6e278b0645a23adb523ada9fa8d4743c2e3bf" }
