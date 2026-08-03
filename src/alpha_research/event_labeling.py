@@ -9,7 +9,7 @@ cross-validation and sample-weight calculations.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -206,15 +206,15 @@ def _label_event(
     side_col: str,
     event_id_col: str,
 ) -> dict[str, object] | None:
-    target = float(event[target_col])
+    target = float(cast(Any, event[target_col]))
     if not np.isfinite(target) or target < cfg.min_target or target <= 0:
         return None
-    panel = grouped_prices.get(event[symbol_col])
+    panel = grouped_prices.get(cast(Any, event[symbol_col]))
     if panel is None or panel.empty:
         return None
-    event_time = pd.Timestamp(event[event_time_col])
+    event_time = pd.Timestamp(cast(Any, event[event_time_col]))
     times = pd.DatetimeIndex(panel[price_time_col])
-    start_idx = int(times.searchsorted(event_time, side="left"))
+    start_idx = int(times.searchsorted(cast(Any, event_time), side="left"))
     if start_idx >= len(panel):
         return None
     end_idx = min(start_idx + cfg.vertical_horizon, len(panel) - 1)
@@ -223,7 +223,7 @@ def _label_event(
 
     start_price = float(panel.iloc[start_idx][price_col])
     path = panel.iloc[start_idx : end_idx + 1]
-    side = float(event[side_col])
+    side = float(cast(Any, event[side_col]))
     adjusted_returns = (path[price_col].astype(float) / start_price - 1.0) * side
     barrier, touch_pos = _first_barrier_touch(adjusted_returns, cfg=cfg, target=target)
     touch_row = path.iloc[touch_pos]

@@ -1,4 +1,6 @@
+import argparse
 import json
+from typing import cast
 
 import pandas as pd
 
@@ -39,19 +41,22 @@ def test_pbo_run_writes_summary_and_split_files(tmp_path):
 
     assert (
         pbo.run(
-            type(
-                "Args",
-                (),
-                {
-                    "returns": str(returns_path),
-                    "date_col": "date",
-                    "candidate_col": None,
-                    "n_groups": 4,
-                    "test_groups": 2,
-                    "periods_per_year": None,
-                    "out": str(out),
-                },
-            )()
+            cast(
+                argparse.Namespace,
+                type(
+                    "Args",
+                    (),
+                    {
+                        "returns": str(returns_path),
+                        "date_col": "date",
+                        "candidate_col": None,
+                        "n_groups": 4,
+                        "test_groups": 2,
+                        "periods_per_year": None,
+                        "out": str(out),
+                    },
+                )(),
+            )
         )
         == 0
     )

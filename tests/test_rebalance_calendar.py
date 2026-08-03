@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
 
 from alpha_research.rebalance_calendar import (
@@ -30,7 +32,10 @@ def test_rebalance_calendar_supports_anchored_multiweek_frequency() -> None:
 
 def test_estimate_rebalance_gap_uses_calendar_positions() -> None:
     trade_dates = pd.date_range("2024-01-01", "2024-01-12", freq="B")
-    rebalance_dates = [pd.Timestamp("2024-01-05"), pd.Timestamp("2024-01-12")]
+    rebalance_dates = [
+        cast(pd.Timestamp, pd.Timestamp("2024-01-05")),
+        cast(pd.Timestamp, pd.Timestamp("2024-01-12")),
+    ]
 
     assert estimate_rebalance_gap(trade_dates, rebalance_dates) == 5.0
 
@@ -54,7 +59,10 @@ def test_sample_rebalance_frame_sorts_and_filters_dates() -> None:
     sampled, rebalance_dates = sample_rebalance_frame(
         frame,
         frequency="W",
-        valid_dates={pd.Timestamp("2024-01-05"), pd.Timestamp("2024-01-12")},
+        valid_dates={
+            cast(pd.Timestamp, pd.Timestamp("2024-01-05")),
+            cast(pd.Timestamp, pd.Timestamp("2024-01-12")),
+        },
         allowed_dates=pd.DatetimeIndex(["2024-01-12", "2024-01-19"]),
     )
 

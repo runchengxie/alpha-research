@@ -17,7 +17,7 @@ after the split.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -60,12 +60,13 @@ def _run_walk_forward_evaluation(
             updated_signal_direction=updated_signal_direction,
         )
         try:
-            walk_forward_test_size = float(walk_forward_settings.wf_test_size)
+            size_value = walk_forward_settings.wf_test_size
+            walk_forward_test_size = None if size_value is None else float(size_value)
         except (TypeError, ValueError):
             walk_forward_test_size = None
         windows = build_walk_forward_windows(
             request.data.all_dates,
-            walk_forward_test_size,
+            cast(float, walk_forward_test_size),
             walk_forward_settings.wf_n_windows,
             walk_forward_settings.wf_step_size,
             walk_forward_settings.effective_gap_steps,
@@ -123,7 +124,7 @@ def _run_cv_and_fit_model(request: TrainEvalRequest) -> _TrainFitResult:
         sample_weight_params=model_settings.sample_weight_params,
         train_window_mode=model_settings.train_window_mode,
         train_window_size=model_settings.train_window_size,
-        train_window_unit=model_settings.train_window_unit,
+        train_window_unit=cast(str, model_settings.train_window_unit),
         fit_target_col=feature_target.train_target,
         score_postprocess_method=signal_settings.score_postprocess_method,
         score_postprocess_columns=signal_settings.score_postprocess_columns,

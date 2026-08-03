@@ -197,7 +197,7 @@ def _format_feature_availability_rows(items: list[dict[str, Any]]) -> str:
 
 
 def _build_rebalance_tail_candidate_dates(
-    trade_dates: pd.Series | list[pd.Timestamp],
+    trade_dates: pd.Index | pd.Series | list[pd.Timestamp],
     *,
     rebalance_frequency: str,
     tail_days_per_period: int = _REBALANCE_CANDIDATE_TAIL_DAYS,

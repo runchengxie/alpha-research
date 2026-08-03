@@ -11,7 +11,7 @@ def test_rebalance_tail_candidate_dates_keep_recent_fallback_dates():
     dates = pd.date_range("2020-01-01", "2020-02-28", freq="B")
 
     candidates = _build_rebalance_tail_candidate_dates(
-        dates,
+        list(dates),
         rebalance_frequency="M",
         tail_days_per_period=3,
     )
@@ -34,7 +34,7 @@ def test_rebalance_tail_candidate_dates_support_biweekly_frequency():
     dates = pd.bdate_range("2020-01-01", "2020-02-14")
 
     candidates = _build_rebalance_tail_candidate_dates(
-        dates,
+        list(dates),
         rebalance_frequency="2W",
         tail_days_per_period=2,
     )

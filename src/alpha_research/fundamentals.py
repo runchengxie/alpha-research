@@ -7,7 +7,7 @@ import pandas as pd
 
 
 def _to_datetime_series(series: pd.Series) -> pd.Series:
-    return cast(pd.Series, pd.to_datetime(series, errors="coerce"))
+    return pd.to_datetime(series, errors="coerce")
 
 
 def _to_numeric_series(series: pd.Series) -> pd.Series:

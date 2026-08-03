@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -24,7 +24,7 @@ def _resolve_input_path(
     path = _resolve_path(path_text, base_dir=base_dir)
     if path is None or path.exists():
         return path
-    candidate = Path(path_text).expanduser()
+    candidate = Path(cast("str | Path", path_text)).expanduser()
     if not candidate.is_absolute():
         cwd_path = (Path.cwd() / candidate).resolve()
         if cwd_path.exists():
@@ -123,7 +123,10 @@ def _features_from_base_config(cfg: dict[str, Any], *, config_dir: Path) -> list
     if base_config_path is None or not base_config_path.exists():
         return []
     base_cfg = _load_yaml(base_config_path)
-    features_cfg = base_cfg.get("features") if isinstance(base_cfg.get("features"), dict) else {}
+    features_cfg = cast(
+        dict[str, Any],
+        base_cfg.get("features") if isinstance(base_cfg.get("features"), dict) else {},
+    )
     feature_list = features_cfg.get("list")
     if not isinstance(feature_list, list):
         return []

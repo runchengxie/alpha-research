@@ -1,4 +1,6 @@
+import argparse
 import json
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -134,20 +136,23 @@ def test_cpcv_command_dispatches_artifact_configs(tmp_path, capsys):
     out_dir = tmp_path / "cpcv"
 
     result = cpcv.run(
-        type(
-            "Args",
-            (),
-            {
-                "config": str(config_path),
-                "n_groups": 4,
-                "test_groups": 1,
-                "embargo_days": 0,
-                "out": str(out_dir),
-                "include_final_oos": False,
-                "fail_on_quality": None,
-                "artifacts_root": None,
-            },
-        )()
+        cast(
+            argparse.Namespace,
+            type(
+                "Args",
+                (),
+                {
+                    "config": str(config_path),
+                    "n_groups": 4,
+                    "test_groups": 1,
+                    "embargo_days": 0,
+                    "out": str(out_dir),
+                    "include_final_oos": False,
+                    "fail_on_quality": None,
+                    "artifacts_root": None,
+                },
+            )(),
+        )
     )
 
     assert result == 0
@@ -175,4 +180,4 @@ def test_cpcv_pipeline_config_requires_injected_context_builder(tmp_path):
     )()
 
     with pytest.raises(SystemExit, match="requires a prepare_research_context adapter"):
-        cpcv.run(args)
+        cpcv.run(cast(argparse.Namespace, args))

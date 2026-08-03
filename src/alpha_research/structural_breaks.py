@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -31,7 +32,7 @@ def symmetric_cusum_filter(
     if drift < 0:
         raise ValueError("drift must be >= 0")
     if np.isscalar(threshold):
-        threshold_values = pd.Series(float(threshold), index=values.index)
+        threshold_values = pd.Series(float(cast(float, threshold)), index=values.index)
     else:
         threshold_values = pd.to_numeric(threshold, errors="coerce").reindex(values.index)
     if bool((threshold_values <= 0).dropna().any()):
@@ -48,10 +49,10 @@ def symmetric_cusum_filter(
         negative = min(0.0, negative + float(value) + drift)
         if positive > float(limit):
             positive = 0.0
-            events.append(pd.Timestamp(timestamp))
+            events.append(cast(pd.Timestamp, pd.Timestamp(timestamp)))
         elif negative < -float(limit):
             negative = 0.0
-            events.append(pd.Timestamp(timestamp))
+            events.append(cast(pd.Timestamp, pd.Timestamp(timestamp)))
     return pd.DatetimeIndex(events, name=values.index.name)
 
 

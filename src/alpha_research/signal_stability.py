@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -130,7 +130,7 @@ def _window_rows(
             previous = current.copy()
             continue
         window_row, changes = _one_window(previous, current, rank_panel, buffer_width)
-        window_row["rebalance_date"] = pd.Timestamp(rebalance_date).strftime("%Y%m%d")
+        window_row["rebalance_date"] = cast(pd.Timestamp, pd.Timestamp(cast(Any, rebalance_date))).strftime("%Y%m%d")
         rows.append(window_row)
         symbol_rows.extend(changes)
         previous = current.copy()
@@ -147,8 +147,8 @@ def _one_window(
     curr_symbols = set(current["symbol"])
     entrants = sorted(curr_symbols - prev_symbols)
     exits = sorted(prev_symbols - curr_symbols)
-    prev_date = pd.Timestamp(previous["rebalance_date"].iloc[0])
-    curr_date = pd.Timestamp(current["rebalance_date"].iloc[0])
+    prev_date = cast(pd.Timestamp, pd.Timestamp(previous["rebalance_date"].iloc[0]))
+    curr_date = cast(pd.Timestamp, pd.Timestamp(current["rebalance_date"].iloc[0]))
     prev_ranks = _date_ranks(rank_panel, prev_date)
     curr_ranks = _date_ranks(rank_panel, curr_date)
     prev_held_ranks = _held_ranks(previous)
@@ -257,7 +257,7 @@ def _feature_rows(
             values = pd.to_numeric(group[feature], errors="coerce").dropna()
             if values.empty:
                 continue
-            rebalance_date, change_type = keys
+            rebalance_date, change_type = cast(tuple[Any, Any], keys)
             rows.append(
                 {
                     "rebalance_date": rebalance_date,

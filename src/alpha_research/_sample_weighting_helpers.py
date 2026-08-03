@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Mapping, Sequence
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -32,7 +33,7 @@ def _group_bar_index(
     group_value: object,
 ) -> Sequence[object] | pd.Index | None:
     if isinstance(bar_index, Mapping):
-        return bar_index.get(group_value)
+        return cast(Sequence[object] | pd.Index | None, bar_index.get(group_value))
     return bar_index
 
 

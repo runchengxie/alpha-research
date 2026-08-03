@@ -10,7 +10,7 @@ files smaller while preserving the exact public/private symbol surface.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -352,11 +352,11 @@ def _correlation_rows(
         for cluster_id in set(clusters.values())
     }
     out["cluster_id"] = [
-        clusters[row.factor_a] if bool(row.is_high_corr) else np.nan
+        clusters[cast(Any, row).factor_a] if bool(cast(Any, row).is_high_corr) else np.nan
         for row in out.itertuples(index=False)
     ]
     out["cluster_size"] = [
-        sizes.get(clusters[row.factor_a], 1) if bool(row.is_high_corr) else np.nan
+        sizes.get(clusters[cast(Any, row).factor_a], 1) if bool(cast(Any, row).is_high_corr) else np.nan
         for row in out.itertuples(index=False)
     ]
     return out
@@ -378,8 +378,8 @@ def _correlation_clusters(factors: list[str], pairs: pd.DataFrame) -> dict[str, 
             parent[right_root] = left_root
 
     for row in pairs.itertuples(index=False):
-        if bool(row.is_high_corr):
-            union(str(row.factor_a), str(row.factor_b))
+        if bool(cast(Any, row).is_high_corr):
+            union(str(cast(Any, row).factor_a), str(cast(Any, row).factor_b))
     root_ids = {root: idx + 1 for idx, root in enumerate(sorted({find(f) for f in factors}))}
     return {factor: root_ids[find(factor)] for factor in factors}
 

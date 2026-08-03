@@ -7,7 +7,7 @@ import json
 import math
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -89,10 +89,12 @@ def uniqueness_report(
     calendar = pd.date_range(valid["label_start"].min(), valid["label_end"].max(), freq="D")
     concurrency = pd.Series(0.0, index=calendar)
     for row in valid.itertuples(index=False):
+        row = cast(Any, row)
         concurrency.loc[row.label_start : row.label_end] += 1.0
 
     rows: list[dict[str, Any]] = []
     for row in valid.itertuples(index=False):
+        row = cast(Any, row)
         active = concurrency.loc[row.label_start : row.label_end]
         uniqueness = float((1.0 / active.replace(0.0, np.nan)).mean())
         rows.append(

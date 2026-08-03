@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import csv
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -27,7 +27,10 @@ def generate_ablation_jobs(config: dict[str, Any], *, config_dir: Path) -> dict[
     if base_config_path is None:
         raise SystemExit("feature_evidence.base_config is required for generate-ablation.")
     base_cfg = _load_yaml(base_config_path)
-    features_cfg = base_cfg.get("features") if isinstance(base_cfg.get("features"), dict) else {}
+    features_cfg = cast(
+        dict[str, Any],
+        base_cfg.get("features") if isinstance(base_cfg.get("features"), dict) else {},
+    )
     feature_list = features_cfg.get("list")
     if not isinstance(feature_list, list) or not feature_list:
         raise SystemExit("Base config must include features.list for ablation generation.")

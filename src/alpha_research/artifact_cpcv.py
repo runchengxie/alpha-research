@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -190,10 +190,12 @@ def _load_inputs(config_path: Path) -> ArtifactCPCVInputs:
 def _event_windows(periods: pd.DataFrame) -> dict[pd.Timestamp, cpcv_module.LabelEventWindow]:
     windows: dict[pd.Timestamp, cpcv_module.LabelEventWindow] = {}
     for row in periods.itertuples(index=False):
-        windows[pd.Timestamp(row.rebalance_ts)] = cpcv_module.LabelEventWindow(
-            signal_date=pd.Timestamp(row.rebalance_ts),
-            label_start=pd.Timestamp(row.entry_ts),
-            label_end=pd.Timestamp(row.exit_ts),
+        row_any = cast(Any, row)
+        rebalance_ts = cast(pd.Timestamp, pd.Timestamp(row_any.rebalance_ts))
+        windows[rebalance_ts] = cpcv_module.LabelEventWindow(
+            signal_date=rebalance_ts,
+            label_start=cast(pd.Timestamp, pd.Timestamp(row_any.entry_ts)),
+            label_end=cast(pd.Timestamp, pd.Timestamp(row_any.exit_ts)),
         )
     return windows
 

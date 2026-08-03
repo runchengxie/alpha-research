@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -9,7 +10,7 @@ import pandas as pd
 
 def _coerce_sample_weight_min(value: object) -> float:
     try:
-        min_weight = float(value)
+        min_weight = float(cast(Any, value))
     except (TypeError, ValueError) as exc:
         raise ValueError("sample_weight_params.min_weight must be a number.") from exc
     if min_weight < 0:
@@ -33,14 +34,14 @@ def _time_decay_weights(
     if halflife_raw is not None:
         decay_base = 0.5
         try:
-            decay_scale = float(halflife_raw)
+            decay_scale = float(cast(Any, halflife_raw))
         except (TypeError, ValueError) as exc:
             raise ValueError("sample_weight_params.halflife must be a number.") from exc
         if not np.isfinite(decay_scale) or decay_scale <= 0:
             raise ValueError("sample_weight_params.halflife must be > 0.")
     elif decay_rate_raw is not None:
         try:
-            decay_base = float(decay_rate_raw)
+            decay_base = float(cast(Any, decay_rate_raw))
         except (TypeError, ValueError) as exc:
             raise ValueError("sample_weight_params.decay_rate must be a number.") from exc
         if not np.isfinite(decay_base) or decay_base <= 0 or decay_base > 1:
@@ -100,7 +101,7 @@ def select_train_window_dates(
     if unit_text == "dates":
         return np.asarray(date_index[-size_value:], dtype="datetime64[ns]")
     if unit_text == "years":
-        end_date = pd.Timestamp(date_index[-1])
+        end_date = cast(pd.Timestamp, pd.Timestamp(date_index[-1]))
         cutoff = end_date - pd.DateOffset(years=size_value)
         selected = date_index[date_index >= cutoff]
         if selected.empty:
@@ -125,14 +126,18 @@ class _CVDateSlices:
 
 
 def _date_key(date: object) -> pd.Timestamp:
-    return pd.Timestamp(date).normalize()
+    return cast(pd.Timestamp, pd.Timestamp(cast(Any, date))).normalize()
 
 
 def _as_date_tuple(dates: object) -> tuple[pd.Timestamp, ...]:
     values = pd.to_datetime(
-        list(dates) if not isinstance(dates, pd.Series) else dates, errors="coerce"
+        list(cast(Any, dates)) if not isinstance(dates, pd.Series) else dates, errors="coerce"
     )
-    cleaned = [pd.Timestamp(date).normalize() for date in values if not pd.isna(date)]
+    cleaned = [
+        cast(pd.Timestamp, pd.Timestamp(date)).normalize()
+        for date in values
+        if not pd.isna(date)
+    ]
     return tuple(pd.Index(cleaned).drop_duplicates().sort_values())
 
 
@@ -171,8 +176,8 @@ def _build_label_event_windows(
     next_map = {
         _date_key(key): _date_key(value)
         for key, value in (next_rebalance_map or {}).items()
-        if not pd.isna(pd.to_datetime(key, errors="coerce"))
-        and not pd.isna(pd.to_datetime(value, errors="coerce"))
+        if not pd.isna(pd.to_datetime(cast(Any, key), errors="coerce"))
+        and not pd.isna(pd.to_datetime(cast(Any, value), errors="coerce"))
     }
     windows: dict[pd.Timestamp, _LabelEventWindow] = {}
     for signal_date in dates:

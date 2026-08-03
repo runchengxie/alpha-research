@@ -80,7 +80,7 @@ def _score_train_frame(
         train_eval_df,
         "pred",
         method=signal_settings.score_postprocess_method,
-        columns=signal_settings.score_postprocess_columns,
+        columns=signal_settings.score_postprocess_columns or [],
         strength=signal_settings.score_postprocess_strength,
         min_obs=signal_settings.score_postprocess_min_obs,
     )

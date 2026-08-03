@@ -10,7 +10,7 @@ files smaller while preserving the exact public/private symbol surface.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -73,8 +73,8 @@ def compute_factor_diagnostics(
         return _empty_result("no_numeric_features", rows=len(scored), target_col=target_col)
 
     style_cols = _existing_numeric_columns(scored, style_columns)
-    industry_col = _first_existing(scored.columns, industry_columns)
-    cap_col = _resolve_market_cap_col(scored.columns, market_cap_col)
+    industry_col = _first_existing(cast(Sequence[str], scored.columns), industry_columns)
+    cap_col = _resolve_market_cap_col(cast(Sequence[str], scored.columns), market_cap_col)
     warnings = _input_warnings(style_cols=style_cols, industry_col=industry_col, cap_col=cap_col)
 
     frames = _diagnostic_frames(

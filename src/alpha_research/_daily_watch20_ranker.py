@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from os import PathLike
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -202,7 +202,7 @@ class DailyWatch20Ranker:
             self.model_type,
             data,
             features=self.config.features,
-            target_col=self.config.label_col,
+            target_col=cast(str, self.config.label_col),
             sample_weight=sample_weight,
             date_col=self.config.date_col,
         )

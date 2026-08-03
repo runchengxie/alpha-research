@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -74,8 +75,8 @@ def _request_data(dates: pd.DatetimeIndex, frame: pd.DataFrame) -> TrainEvalData
         all_dates=dates.to_numpy(),
         all_date_start_rows=np.array([0, 1]),
         all_date_end_rows=np.array([1, 2]),
-        all_date_to_pos={pd.Timestamp("2020-01-01"): 0},
-        valid_dates_set={pd.Timestamp("2020-01-01")},
+        all_date_to_pos={cast(pd.Timestamp, pd.Timestamp("2020-01-01")): 0},
+        valid_dates_set={cast(pd.Timestamp, pd.Timestamp("2020-01-01"))},
         backtest_pricing_df=frame,
         benchmark_df=None,
         benchmark_return_series=pd.Series(dtype=float),
