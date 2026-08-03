@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import reduce
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import yaml
@@ -159,6 +159,7 @@ def _load_from_signal_files(cfg: dict[str, Any], *, config_dir: Path) -> pd.Data
         spec = {"path": item} if isinstance(item, str) else item
         if not isinstance(spec, dict):
             raise SystemExit(f"signal_files[{idx}] must be a string or mapping.")
+        spec = cast(dict[str, Any], spec)
         path = _resolve_path(spec.get("path"), base_dir=config_dir)
         if path is None:
             raise SystemExit(f"signal_files[{idx}] is missing path.")

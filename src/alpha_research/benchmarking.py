@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -32,8 +32,8 @@ def warn_if_delay_exit_lag(
         total_periods = 0
     if delayed_periods <= 0:
         return
-    avg_lag = stats.get("avg_exit_lag_days")
-    max_lag = stats.get("max_exit_lag_days")
+    avg_lag: Any = stats.get("avg_exit_lag_days")
+    max_lag: Any = stats.get("max_exit_lag_days")
     try:
         avg_value = float(avg_lag)
     except (TypeError, ValueError):
@@ -73,7 +73,7 @@ def build_benchmark_series(
         bench_index = []
         bench_periods: list[dict[str, Any]] = []
         for info in period_info:
-            entry_date = pd.to_datetime(info.get("entry_date"), errors="coerce")
+            entry_date = pd.to_datetime(cast(Any, info.get("entry_date")), errors="coerce")
             exit_date = pd.to_datetime(info["exit_date"], errors="coerce")
             if pd.isna(entry_date) or pd.isna(exit_date):
                 continue

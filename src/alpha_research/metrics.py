@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 import numpy as np
 import pandas as pd
 
@@ -8,7 +10,7 @@ from market_data_platform.symbols import canonicalize_symbol_columns
 try:
     from scipy import stats as scipy_stats
 except Exception:  # pragma: no cover - optional dependency
-    scipy_stats = None
+    scipy_stats: Any = None
 
 
 def apply_rebalance_buffer(
@@ -95,7 +97,7 @@ def daily_ic_series(
             continue
         ic = corr_fn(group[pred_col], group[target_col])
         if not np.isnan(ic):
-            records.append((pd.to_datetime(date), float(ic)))
+            records.append((pd.to_datetime(cast(Any, date)), float(ic)))
     if not records:
         return pd.Series(dtype=float, name="ic")
     records.sort(key=lambda x: x[0])
@@ -229,7 +231,7 @@ def assign_daily_quantile_bucket(
     buckets = data.groupby(date_col, sort=False)[value_col].apply(_bucket)
     buckets = buckets.reset_index(level=0, drop=True)
     buckets.name = f"{value_col}_bucket"
-    return buckets
+    return cast(pd.Series, buckets)
 
 
 def bucket_ic_summary(
@@ -246,12 +248,12 @@ def bucket_ic_summary(
     subset = data.dropna(subset=[bucket_col, target_col, pred_col])
     if subset.empty:
         return pd.DataFrame()
-    records: list[dict[str, float | str]] = []
+    records: list[dict[str, Any]] = []
     for bucket_value, group in subset.groupby(bucket_col, sort=False):
         if min_count and group.shape[0] < min_count:
             continue
         ic_series = daily_ic_series(group, target_col, pred_col, method=method)
-        stats = summarize_ic(ic_series)
+        stats: dict[str, Any] = summarize_ic(ic_series)
         stats["bucket"] = str(bucket_value)
         stats["bucket_col"] = str(bucket_col)
         records.append(stats)

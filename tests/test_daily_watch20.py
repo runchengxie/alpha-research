@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -43,7 +44,7 @@ def _panel(n_dates: int = 9) -> pd.DataFrame:
 
 
 def _tiny_config(**overrides: object) -> DailyWatch20Config:
-    values = {
+    values: dict[str, Any] = {
         "features": ("f1", "f2"),
         "train_window_dates": None,
         "model_params": {
@@ -143,7 +144,7 @@ def test_fit_purges_blended_next_open_label_until_longest_horizon_is_known(
     monkeypatch.setattr(daily_watch20, "build_model", lambda *_args: object())
 
     def _capture_fit(model: object, *_args: object, **_kwargs: object) -> object:
-        captured["data"] = _args[1].copy()
+        captured["data"] = cast(pd.DataFrame, _args[1]).copy()
         return model
 
     monkeypatch.setattr(daily_watch20, "fit_model", _capture_fit)
@@ -199,7 +200,7 @@ def test_time_decay_increases_recent_query_weight(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(daily_watch20, "build_model", lambda *_args: object())
 
     def _capture_fit(model: object, *_args: object, **kwargs: object) -> object:
-        captured["data"] = _args[1].copy()
+        captured["data"] = cast(pd.DataFrame, _args[1]).copy()
         captured["weight"] = np.asarray(kwargs["sample_weight"])
         return model
 
@@ -346,9 +347,9 @@ def test_training_policy_identity_rejects_changed_fit_policy(
     changed_policy.update(overrides)
     changed = DailyWatch20Ranker(_tiny_config(**changed_policy))
     summary = DailyWatch20TrainingSummary(
-        as_of_date=pd.Timestamp("2026-07-10"),
-        train_start_date=pd.Timestamp("2025-01-02"),
-        train_end_date=pd.Timestamp("2026-07-03"),
+        as_of_date=cast(pd.Timestamp, pd.Timestamp("2026-07-10")),
+        train_start_date=cast(pd.Timestamp, pd.Timestamp("2025-01-02")),
+        train_end_date=cast(pd.Timestamp, pd.Timestamp("2026-07-03")),
         rows=100,
         query_groups=50,
         sample_weight_mode="exp_decay",

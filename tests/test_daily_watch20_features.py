@@ -98,7 +98,7 @@ def test_feature_config_defaults_to_weighted_horizons_and_supports_legacy_five_d
     with pytest.raises(ValueError, match="longest configured"):
         DailyWatch20FeatureConfig(forward_days=3)
     with pytest.raises(ValueError, match="non-negative integer"):
-        DailyWatch20FeatureConfig(minute_lag_trade_days=0.5)  # type: ignore[arg-type]
+        DailyWatch20FeatureConfig(minute_lag_trade_days=cast(int, 0.5))
 
 
 def test_rolling_features_are_symbol_local_and_input_order_invariant() -> None:
@@ -121,7 +121,7 @@ def test_rolling_features_are_symbol_local_and_input_order_invariant() -> None:
     assert set(DAILY_WATCH20_MARKET_SHADOW_DIAGNOSTICS).isdisjoint(actual.columns)
     assert set(DAILY_WATCH20_MARKET_SHADOW_FEATURES).isdisjoint(DAILY_WATCH20_FEATURES)
     with pytest.raises(ValueError, match="must be a boolean"):
-        DailyWatch20FeatureConfig(include_market_shadow_features=1)  # type: ignore[arg-type]
+        DailyWatch20FeatureConfig(include_market_shadow_features=cast(bool, 1))
 
 
 def test_market_shadow_feature_builder_is_not_called_without_explicit_opt_in(

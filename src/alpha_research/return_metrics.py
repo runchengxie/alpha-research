@@ -42,13 +42,13 @@ def _drawdown_timing(nav: pd.Series) -> dict[str, float]:
         recovery_pos = trough_pos + int(recovery_candidates[0])
         recovery_time = float(recovery_pos - trough_pos)
         if isinstance(nav.index, pd.DatetimeIndex):
-            dt_index = cast(pd.DatetimeIndex, nav.index)
+            dt_index = nav.index
             recovery_days = float((dt_index[recovery_pos] - dt_index[trough_pos]).days)
         else:
             recovery_days = np.nan
 
     if isinstance(nav.index, pd.DatetimeIndex):
-        dt_index = cast(pd.DatetimeIndex, nav.index)
+        dt_index = nav.index
         drawdown_days = float((dt_index[trough_pos] - dt_index[peak_pos]).days)
     else:
         drawdown_days = np.nan

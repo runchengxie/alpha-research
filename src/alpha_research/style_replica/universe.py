@@ -7,6 +7,8 @@ and stocks with insufficient price history for factor computation (need ≥ 120 
 
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
 
 _REQUIRED_HISTORY_DAYS = 120
@@ -64,7 +66,7 @@ def filter_style_replica_universe(
     Returns:
         A subset of ``price_panel`` containing only eligible symbols.
     """
-    as_of_dt = pd.Timestamp(as_of_date).normalize()
+    as_of_dt = cast(pd.Timestamp, pd.Timestamp(as_of_date)).normalize()
 
     eligible_from_history = _has_sufficient_history(price_panel, min_history=min_history)
     if not eligible_from_history:

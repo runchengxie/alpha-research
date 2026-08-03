@@ -9,6 +9,8 @@ public/private symbol surface.
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pandas as pd
 
@@ -146,6 +148,7 @@ def _aggregate_stock_scores(
 ) -> pd.Series:
     score: pd.Series | None = None
     for factor, weight in weights.items():
+        factor = cast(str, factor)
         if weight <= 0 or factor not in factor_panels:
             continue
         values = factor_panels[factor].loc[date].astype(float)

@@ -4,6 +4,7 @@ import logging
 
 import numpy as np
 import pandas as pd
+from typing import cast
 
 from .split import select_train_window_dates
 
@@ -47,7 +48,7 @@ def slice_trade_dates(
     start_rows: np.ndarray,
     end_rows: np.ndarray,
     date_to_pos: dict[pd.Timestamp, int],
-    dates: np.ndarray | list[pd.Timestamp],
+    dates: np.ndarray | list[pd.Timestamp] | tuple[pd.Timestamp, ...],
     *,
     date_col: str = "trade_date",
 ) -> pd.DataFrame:
@@ -57,7 +58,7 @@ def slice_trade_dates(
     unique_dates = []
     seen_dates: set[pd.Timestamp] = set()
     for date in pd.to_datetime(dates):
-        date_ts = pd.Timestamp(date)
+        date_ts = cast(pd.Timestamp, pd.Timestamp(date))
         if date_ts in seen_dates:
             continue
         seen_dates.add(date_ts)
@@ -97,7 +98,7 @@ def slice_trade_dates(
 
 
 def apply_model_train_window(
-    train_dates_input: np.ndarray | list[pd.Timestamp],
+    train_dates_input: np.ndarray | list[pd.Timestamp] | tuple[pd.Timestamp, ...],
     *,
     label: str,
     train_window_mode: str,
@@ -134,7 +135,7 @@ def slice_with_train_window(
     start_rows: np.ndarray,
     end_rows: np.ndarray,
     date_to_pos: dict[pd.Timestamp, int],
-    train_dates_input: np.ndarray | list[pd.Timestamp],
+    train_dates_input: np.ndarray | list[pd.Timestamp] | tuple[pd.Timestamp, ...],
     *,
     label: str,
     train_window_mode: str,

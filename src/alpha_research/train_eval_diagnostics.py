@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -197,8 +198,8 @@ def _recency_window_start(end: pd.Timestamp, *, amount: int, unit: str) -> pd.Ti
     if unit == "m":
         return end - pd.DateOffset(months=amount)
     if unit == "w":
-        return end - pd.Timedelta(weeks=amount)
-    return end - pd.Timedelta(days=amount)
+        return cast(pd.Timestamp, end - pd.Timedelta(weeks=amount))
+    return cast(pd.Timestamp, end - pd.Timedelta(days=amount))
 
 
 def _slice_recency_window(
@@ -235,10 +236,10 @@ def _recency_window_row(
         "window": label,
         "role": _recency_role(label),
         "status": _recency_status(
-            ic_count=ic_summary["count"],
-            return_count=return_summary["count"],
-            active_count=active_summary["count"],
-            turnover_count=turnover_summary["count"],
+            ic_count=int(ic_summary["count"]),
+            return_count=int(return_summary["count"]),
+            active_count=int(active_summary["count"]),
+            turnover_count=int(turnover_summary["count"]),
         ),
         "start": start.strftime("%Y%m%d"),
         "end": end.strftime("%Y%m%d"),
@@ -363,7 +364,7 @@ def _annualization_scale(periods_per_year: float | None) -> float:
 
 def _valid_periods_per_year(periods_per_year: float | None) -> float:
     try:
-        value = float(periods_per_year)
+        value = float(cast(Any, periods_per_year))
     except (TypeError, ValueError):
         return np.nan
     return value if np.isfinite(value) and value > 0 else np.nan

@@ -9,7 +9,7 @@ from ``alpha_research.cpcv`` so existing imports keep working unchanged.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -23,14 +23,14 @@ class LabelEventWindow:
 
 
 def _date_key(date: Any) -> pd.Timestamp:
-    return pd.Timestamp(date).normalize()
+    return cast(pd.Timestamp, pd.Timestamp(date)).normalize()
 
 
 def _as_date_tuple(dates: Any) -> tuple[pd.Timestamp, ...]:
     values = pd.to_datetime(
         list(dates) if not isinstance(dates, pd.Series) else dates, errors="coerce"
     )
-    cleaned = [pd.Timestamp(date).normalize() for date in values if not pd.isna(date)]
+    cleaned = [cast(pd.Timestamp, pd.Timestamp(date)).normalize() for date in values if not pd.isna(date)]
     return tuple(pd.Index(cleaned).drop_duplicates().sort_values())
 
 

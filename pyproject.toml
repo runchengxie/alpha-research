@@ -57,29 +57,7 @@ combine-as-imports = true
 known-first-party = ["alpha_research", "market_data_platform"]
 
 [tool.ty.src]
-include = [
-  "src/alpha_research/cpcv_audit.py",
-  "src/alpha_research/backends",
-  "src/alpha_research/dataset_sampling.py",
-  "src/alpha_research/dataset_sampling_core.py",
-  "src/alpha_research/daily_watch20_minute_features.py",
-  "src/alpha_research/daily_watch20_features.py",
-  "src/alpha_research/daily_watch20_oos.py",
-  "src/alpha_research/daily_watch20_policy.py",
-  "src/alpha_research/dynamic_signal_ensemble_types.py",
-  "src/alpha_research/evaluation.py",
-  "src/alpha_research/feature_windows.py",
-  "src/alpha_research/modeling_dataset.py",
-  "src/alpha_research/period_evaluation.py",
-  "src/alpha_research/promotion_gate_thresholds.py",
-  "src/alpha_research/signal_artifact.py",
-  "src/alpha_research/style_replica/factors.py",
-  "src/alpha_research/train_eval.py",
-  "src/alpha_research/train_eval_contracts.py",
-  "src/alpha_research/train_eval_request_builder.py",
-  "src/alpha_research/train_eval_result.py",
-  "src/alpha_research/walk_forward_windows.py",
-]
+include = ["src", "scripts", "tests"]
 exclude = [
   ".venv",
   "artifacts",

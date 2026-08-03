@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,7 @@ def _event_sample_weights(
 ) -> np.ndarray | None:
     if params is not None and not isinstance(params, Mapping):
         raise ValueError("sample_weight_params must be a mapping.")
-    params_map = dict(params or {})
+    params_map: dict[str, Any] = dict(params or {})
     events = data.copy()
     events["_sample_event_id"] = np.arange(len(events), dtype=int)
     start_col = str(params_map.get("start_col", "label_start"))
