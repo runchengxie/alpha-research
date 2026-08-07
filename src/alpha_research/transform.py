@@ -37,6 +37,14 @@ def apply_cross_sectional_transform(
         std = grouped.transform(lambda s: s.std(ddof=0)).replace(0, np.nan)
         values = (values - mean) / std
         values = values.fillna(0.0)
+    elif method == "robust":
+        # 复刻 qlib RobustZScoreNorm 的核心数学: 中位数中心化 + MAD 缩放。
+        # 对含极端值或偏态的因子 (如 pe_ttm) 比 zscore 更稳。
+        grouped = values.groupby(group_keys, sort=False)
+        median = grouped.transform("median")
+        mad = grouped.transform(lambda s: (s - s.median()).abs().median()).replace(0, np.nan)
+        values = (values - median) / mad
+        values = values.fillna(0.0)
     elif method == "rank":
         values = values.groupby(group_keys, sort=False).rank(method="average", pct=True) - 0.5
     elif method == "rank_relevance":

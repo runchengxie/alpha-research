@@ -27,6 +27,25 @@ def test_cross_sectional_zscore_by_date():
         assert np.isclose(subset["f2"].mean(), 0.0, atol=1e-8)
 
 
+def test_cross_sectional_robust_by_date():
+    df = pd.DataFrame(
+        {
+            "trade_date": pd.to_datetime(["2020-01-01"] * 5 + ["2020-01-02"] * 5),
+            "symbol": [f"S{i}" for i in range(5)] * 2,
+            "f1": [1.0, 2.0, 3.0, 4.0, 100.0, 1.0, 2.0, 3.0, 4.0, 100.0],
+        }
+    )
+    out = apply_cross_sectional_transform(df, ["f1"], method="robust", winsorize_pct=None)
+    for date in out["trade_date"].unique():
+        subset = out[out["trade_date"] == date]
+        # 中位数中心化后中位数为 0
+        assert np.isclose(subset["f1"].median(), 0.0, atol=1e-8)
+        # MAD 缩放后距中位数 1 个 MAD 的值为 1
+        assert np.isclose(float(subset["f1"].iloc[2]), 0.0, atol=1e-8)
+    # 极端值 100 比 zscore 更稳健: MAD 不为 0
+    assert out["f1"].abs().max() > 1.0
+
+
 def test_cross_sectional_series_transform_preserves_missing_values():
     df = pd.DataFrame(
         {
