@@ -19,8 +19,9 @@
 
 ## 外部框架边界
 
-`alpha_research.backends` 当前只公开框架中立接口、原生数据集后端、原生训练后端和空实验
-记录器。当前 `main` 没有 Qlib 适配器，也不声明 `pyqlib` 依赖或 `qlib` extra。
+`alpha_research.backends` 公开框架中立接口、原生数据集后端、原生训练后端、空实验
+记录器，以及 Qlib 可选适配器（`QlibTrainerBackend` / `QlibDatasetBackend`，见 ADR-0005）。
+Qlib 通过 `qlib` extra 作为独立可选依赖安装。未安装时原生路径保持可导入、可测试。
 
 新增外部研究框架时，应把实现放在归属仓库内的适配器中，并使用独立可选依赖。原生路径
 必须在未安装外部框架时保持可导入、可测试。合并前还要补齐确定性数据集等价、PIT 和泄漏

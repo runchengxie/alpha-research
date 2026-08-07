@@ -52,8 +52,9 @@ uv run --extra dev python -m pytest tests/test_cpcv.py -q
 `NativeTrainerBackend`、`NullExperimentRecorder`，以及产物元数据不携带运行时模型对象的
 约束。
 
-标准 `dev` 依赖没有安装 Qlib。当前仓库也没有 Qlib 运行时或原生与 Qlib 等价测试，因为
-当前 `main` 尚未实现 Qlib 适配器。接入条件和验证要求见
+标准 `dev` 依赖没有安装 Qlib。Qlib 后端通过 `qlib` extra 安装后可运行
+`QlibTrainerBackend` 的确定性训练与预测测试（见 `tests/test_backends_qlib.py`）。
+接入条件和验证要求见
 [研究后端与 Qlib 状态](concepts/framework-backends.md)。
 
 ## 推送前检查

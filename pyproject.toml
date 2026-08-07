@@ -27,6 +27,9 @@ dev = [
   "ruff>=0.8",
   "ty>=0.0.55",
 ]
+qlib = [
+  "pyqlib>=0.9.5",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
