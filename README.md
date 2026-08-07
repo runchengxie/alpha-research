@@ -23,12 +23,13 @@
 ## 研究后端状态
 
 `alpha_research.backends` 提供框架中立的 `DatasetBackend`、`TrainerBackend` 和
-`ExperimentRecorder` 接口。当前包只实现 `NativeDatasetBackend`、`NativeTrainerBackend`
+`ExperimentRecorder` 接口。原生实现为 `NativeDatasetBackend`、`NativeTrainerBackend`
 和 `NullExperimentRecorder`。
 
-当前 `main` 没有 `pyqlib` 依赖、`qlib` extra 或 Qlib 适配器。历史分支中的 Qlib 候选实现
-不属于当前支持范围。未来接入需要独立的可选依赖、归属仓库内的适配器和确定性等价验证。
-跨模块结果仍只保存普通元数据和本工作区定义的产物。完整边界见
+Qlib 后端通过可选依赖接入（见 ADR-0005）。`QlibTrainerBackend` 用 Qlib 的 XGBModel
+训练与预测，`QlibDatasetBackend` 复用 Qlib 预处理管线的横截面标准化。Qlib 通过
+`pyqlib` extra 安装。未安装时 native 路径保持可导入、可测试、可运行。跨模块结果仍只
+保存普通元数据和本工作区定义的产物，Qlib 对象不进入跨仓库产物。完整边界见
 [研究后端与 Qlib 状态](docs/concepts/framework-backends.md)。
 
 ## 安装和测试

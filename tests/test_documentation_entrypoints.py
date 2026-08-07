@@ -100,7 +100,6 @@ def test_docs_record_current_automation_status() -> None:
 
 def test_framework_backend_docs_match_current_main_surface() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     docs_index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
     framework_docs = FRAMEWORK_BACKEND_DOC.read_text(encoding="utf-8")
     testing_docs = (ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
@@ -115,8 +114,8 @@ def test_framework_backend_docs_match_current_main_surface() -> None:
         ],
     ]
 
-    assert "当前包只实现 `NativeDatasetBackend`" in readme
-    assert "当前 `main` 没有 Qlib 适配器" in agents
+    assert "原生实现为 `NativeDatasetBackend`" in readme
+    assert "Qlib 后端通过可选依赖接入" in readme
     assert "concepts/framework-backends.md" in docs_index
     for backend in (
         "`NativeDatasetBackend`",
@@ -124,9 +123,12 @@ def test_framework_backend_docs_match_current_main_surface() -> None:
         "`NullExperimentRecorder`",
     ):
         assert backend in framework_docs
-    assert "当前仓库也没有 Qlib 运行时或原生与 Qlib 等价测试" in testing_docs
-    assert not any("pyqlib" in dependency.lower() for dependency in dependencies)
-    assert not (ROOT / "src" / "alpha_research" / "backends" / "qlib.py").exists()
+    assert (
+        "Qlib 适配器" in framework_docs and "位于 `alpha_research.backends.qlib`" in framework_docs
+    )
+    assert "确定性训练与预测测试" in testing_docs
+    assert "pyqlib>=0.9.5" in "\n".join(dependencies)
+    assert (ROOT / "src" / "alpha_research" / "backends" / "qlib.py").exists()
     assert "# DailyWatch20 alpha 归属" in ownership_docs
     assert "兼容入口已经删除" in ownership_docs
     assert "Ownership migration" not in ownership_docs

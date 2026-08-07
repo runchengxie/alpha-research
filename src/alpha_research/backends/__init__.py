@@ -1,3 +1,5 @@
+import contextlib
+
 from .base import (
     DatasetBackend,
     DatasetBuildRequest,
@@ -10,6 +12,10 @@ from .base import (
 )
 from .native import NativeDatasetBackend, NativeTrainerBackend, NullExperimentRecorder
 
+with contextlib.suppress(ImportError):
+    # pyqlib not installed; keep module importable per ADR-0005.
+    from .qlib import QlibDatasetBackend, QlibTrainerBackend
+
 __all__ = [
     "DatasetBackend",
     "DatasetBuildRequest",
@@ -20,6 +26,8 @@ __all__ = [
     "NativeDatasetBackend",
     "NativeTrainerBackend",
     "NullExperimentRecorder",
+    "QlibDatasetBackend",
+    "QlibTrainerBackend",
     "TrainerBackend",
     "TrainerFitRequest",
 ]
