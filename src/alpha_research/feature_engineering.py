@@ -13,6 +13,24 @@ def _numeric_column_or_nan(group: pd.DataFrame, column: str) -> pd.Series:
     return pd.Series(np.nan, index=group.index, dtype=float)
 
 
+def _ta_series(
+    callable,
+    series: pd.Series,
+    **kwargs,
+) -> pd.Series:
+    """Call pandas_ta and coerce short-series None results to float NaN.
+
+    pandas_ta returns None for series shorter than the indicator window.
+    Assigning None into a feature column yields an object dtype, which then
+    pollutes the concatenated feature panel and breaks xgboost training.
+    This wrapper converts None to a float NaN series aligned to the input.
+    """
+    result = callable(series, **kwargs)
+    if result is None:
+        return pd.Series(np.nan, index=series.index, dtype=float)
+    return result
+
+
 def _has_columns(group: pd.DataFrame, columns: tuple[str, ...]) -> bool:
     return all(column in group.columns for column in columns)
 
@@ -48,7 +66,7 @@ def _add_sma_features(
     if not sma_windows:
         sma_windows = _parse_window_config(feature_params.get("sma_windows"))
     for win in sorted(sma_windows):
-        group[f"sma_{win}"] = ta.sma(price_series, length=win)
+        group[f"sma_{win}"] = _ta_series(ta.sma, price_series, length=win)
         if f"sma_{win}_diff" in needed:
             group[f"sma_{win}_diff"] = group[f"sma_{win}"].pct_change()
 
@@ -64,7 +82,7 @@ def _add_rsi_features(
     if not rsi_lengths:
         rsi_lengths = _parse_window_config(feature_params.get("rsi"))
     for length in sorted(rsi_lengths):
-        group[f"rsi_{length}"] = ta.rsi(price_series, length=length)
+        group[f"rsi_{length}"] = _ta_series(ta.rsi, price_series, length=length)
 
 
 def _add_macd_feature(
@@ -80,7 +98,10 @@ def _add_macd_feature(
     macd_fast, macd_slow, macd_signal = macd_cfg
     macd = ta.macd(price_series, fast=macd_fast, slow=macd_slow, signal=macd_signal)
     col_name = f"MACDh_{macd_fast}_{macd_slow}_{macd_signal}"
-    group["macd_hist"] = macd[col_name] if macd is not None and col_name in macd.columns else np.nan
+    if macd is not None and isinstance(macd, pd.DataFrame) and col_name in macd.columns:
+        group["macd_hist"] = pd.to_numeric(macd[col_name], errors="coerce")
+    else:
+        group["macd_hist"] = pd.Series(np.nan, index=group.index, dtype=float)
 
 
 def _add_volume_features(
@@ -94,9 +115,7 @@ def _add_volume_features(
     if not volume_windows:
         volume_windows = _parse_window_config(feature_params.get("volume_sma_windows"))
     for win in sorted(volume_windows):
-        volume_sma = ta.sma(group["vol"], length=win)
-        if volume_sma is None:
-            volume_sma = group["vol"].rolling(window=win).mean()
+        volume_sma = _ta_series(ta.sma, group["vol"], length=win)
         group[f"volume_sma{win}"] = volume_sma
         if f"volume_sma{win}_ratio" in needed:
             group[f"volume_sma{win}_ratio"] = group["vol"] / group[f"volume_sma{win}"]
