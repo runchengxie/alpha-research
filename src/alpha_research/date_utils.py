@@ -21,7 +21,8 @@ def _normalized_timestamp_or_none(value: object) -> pd.Timestamp | None:
     parsed = pd.to_datetime(cast(Any, value), errors="coerce")
     if pd.isna(parsed):
         return None
-    return cast(pd.Timestamp, pd.Timestamp(parsed)).normalize()
+    resolved: pd.Timestamp = pd.Timestamp(parsed)
+    return resolved.normalize()
 
 
 def normalize_date_token(value: object | None, default: str) -> str:
@@ -88,7 +89,7 @@ def resolve_date_token(
     warn_label: str | None = None,
 ) -> pd.Timestamp:
     token = normalize_date_token(value, default=default)
-    today = cast(pd.Timestamp, pd.Timestamp.now()).normalize()
+    today = pd.Timestamp.now().normalize()
     if token == "today":
         return today
     if token in {"last_trading_day", "last_completed_trading_day"}:
