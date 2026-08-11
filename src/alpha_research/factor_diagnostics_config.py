@@ -54,10 +54,24 @@ def factor_diagnostics_options_from_config(config: Mapping[str, Any]) -> dict[st
         return {"enabled": True}
 
     raw_any = cast(dict[str, Any], raw)
-    size_cfg = cast(dict[str, Any], raw.get("size_buckets")) if isinstance(raw.get("size_buckets"), Mapping) else {}
-    neutralize_cfg = cast(dict[str, Any], raw.get("neutralize")) if isinstance(raw.get("neutralize"), Mapping) else {}
-    corr_cfg = cast(dict[str, Any], raw.get("correlation")) if isinstance(raw.get("correlation"), Mapping) else {}
-    drift_cfg = cast(dict[str, Any], raw.get("drift")) if isinstance(raw.get("drift"), Mapping) else {}
+    size_cfg = (
+        cast(dict[str, Any], raw.get("size_buckets"))
+        if isinstance(raw.get("size_buckets"), Mapping)
+        else {}
+    )
+    neutralize_cfg = (
+        cast(dict[str, Any], raw.get("neutralize"))
+        if isinstance(raw.get("neutralize"), Mapping)
+        else {}
+    )
+    corr_cfg = (
+        cast(dict[str, Any], raw.get("correlation"))
+        if isinstance(raw.get("correlation"), Mapping)
+        else {}
+    )
+    drift_cfg = (
+        cast(dict[str, Any], raw.get("drift")) if isinstance(raw.get("drift"), Mapping) else {}
+    )
 
     options: dict[str, Any] = {
         "enabled": bool(raw_any.get("enabled", True)),

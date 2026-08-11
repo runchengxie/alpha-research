@@ -39,8 +39,12 @@ def test_cpcv_event_window_purge_fixed_and_next_rebalance():
         shift_days=1,
     )
     assert fixed_mode == "event_window"
-    assert fixed_windows[cast(pd.Timestamp, pd.Timestamp("2020-01-01"))].label_start == pd.Timestamp("2020-01-02")
-    assert fixed_windows[cast(pd.Timestamp, pd.Timestamp("2020-01-01"))].label_end == pd.Timestamp("2020-01-05")
+    assert fixed_windows[
+        cast(pd.Timestamp, pd.Timestamp("2020-01-01"))
+    ].label_start == pd.Timestamp("2020-01-02")
+    assert fixed_windows[cast(pd.Timestamp, pd.Timestamp("2020-01-01"))].label_end == pd.Timestamp(
+        "2020-01-05"
+    )
 
     _, splits = cpcv.build_cpcv_splits(
         signal_dates[:4],
@@ -67,7 +71,9 @@ def test_cpcv_event_window_purge_fixed_and_next_rebalance():
         },
     )
     assert next_mode == "event_window"
-    assert next_windows[cast(pd.Timestamp, pd.Timestamp("2020-01-01"))].label_end == pd.Timestamp("2020-01-04")
+    assert next_windows[cast(pd.Timestamp, pd.Timestamp("2020-01-01"))].label_end == pd.Timestamp(
+        "2020-01-04"
+    )
 
 
 def test_cpcv_marks_insufficient_data_after_purge():

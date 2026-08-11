@@ -189,7 +189,9 @@ def _run_dynamic_ensemble_rebalance(
         max_l1_turnover=cfg.max_stock_turnover,
     )
     realized = float(
-        cast(Any, stock_weights.reindex(assets).fillna(0.0).dot(inputs.returns.loc[date].fillna(0.0)))
+        cast(
+            Any, stock_weights.reindex(assets).fillna(0.0).dot(inputs.returns.loc[date].fillna(0.0))
+        )
     )
     return _DynamicEnsembleRebalance(
         snapshot=snapshot,

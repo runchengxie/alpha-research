@@ -130,7 +130,9 @@ def _window_rows(
             previous = current.copy()
             continue
         window_row, changes = _one_window(previous, current, rank_panel, buffer_width)
-        window_row["rebalance_date"] = cast(pd.Timestamp, pd.Timestamp(cast(Any, rebalance_date))).strftime("%Y%m%d")
+        window_row["rebalance_date"] = cast(
+            pd.Timestamp, pd.Timestamp(cast(Any, rebalance_date))
+        ).strftime("%Y%m%d")
         rows.append(window_row)
         symbol_rows.extend(changes)
         previous = current.copy()

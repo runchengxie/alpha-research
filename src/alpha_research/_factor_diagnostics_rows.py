@@ -356,7 +356,9 @@ def _correlation_rows(
         for row in out.itertuples(index=False)
     ]
     out["cluster_size"] = [
-        sizes.get(clusters[cast(Any, row).factor_a], 1) if bool(cast(Any, row).is_high_corr) else np.nan
+        sizes.get(clusters[cast(Any, row).factor_a], 1)
+        if bool(cast(Any, row).is_high_corr)
+        else np.nan
         for row in out.itertuples(index=False)
     ]
     return out

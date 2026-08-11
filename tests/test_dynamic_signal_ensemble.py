@@ -122,6 +122,10 @@ dynamic_signal_ensemble:
         encoding="utf-8",
     )
 
-    dse.run(cast(argparse.Namespace, type("Args", (), {"config": str(config_path), "output_dir": None})()))
+    dse.run(
+        cast(
+            argparse.Namespace, type("Args", (), {"config": str(config_path), "output_dir": None})()
+        )
+    )
 
     assert (tmp_path / "ensemble_out" / "dynamic_signal_ensemble_summary.json").exists()

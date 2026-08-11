@@ -134,9 +134,7 @@ def _as_date_tuple(dates: object) -> tuple[pd.Timestamp, ...]:
         list(cast(Any, dates)) if not isinstance(dates, pd.Series) else dates, errors="coerce"
     )
     cleaned = [
-        cast(pd.Timestamp, pd.Timestamp(date)).normalize()
-        for date in values
-        if not pd.isna(date)
+        cast(pd.Timestamp, pd.Timestamp(date)).normalize() for date in values if not pd.isna(date)
     ]
     return tuple(pd.Index(cleaned).drop_duplicates().sort_values())
 
