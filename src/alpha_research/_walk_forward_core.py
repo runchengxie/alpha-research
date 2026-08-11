@@ -299,9 +299,7 @@ def _walk_forward_portfolio_metrics(
         context["target"],
         context["n_quantiles"],
     )
-    quantile_mean_w = (
-        quantile_ts_w.mean() if not quantile_ts_w.empty else pd.Series(dtype=float)
-    )
+    quantile_mean_w = quantile_ts_w.mean() if not quantile_ts_w.empty else pd.Series(dtype=float)
     long_short_w = (
         float(quantile_mean_w.iloc[-1] - quantile_mean_w.iloc[0])
         if not quantile_mean_w.empty

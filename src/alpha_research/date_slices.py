@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
+from typing import cast
 
 import numpy as np
 import pandas as pd
-from typing import cast
 
 from .split import select_train_window_dates
 

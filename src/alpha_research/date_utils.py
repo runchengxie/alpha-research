@@ -21,7 +21,7 @@ def _normalized_timestamp_or_none(value: object) -> pd.Timestamp | None:
     parsed = pd.to_datetime(cast(Any, value), errors="coerce")
     if pd.isna(parsed):
         return None
-    resolved: pd.Timestamp = pd.Timestamp(parsed)
+    resolved = cast(pd.Timestamp, pd.Timestamp(parsed))
     return resolved.normalize()
 
 

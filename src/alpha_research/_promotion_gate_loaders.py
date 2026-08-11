@@ -98,7 +98,10 @@ def _load_dsr_summary(path: Path | None) -> dict[str, Any]:
     payload = _load_json(path)
     if not payload:
         return _empty_dsr_summary(path)
-    summary = cast(dict[str, Any], payload.get("summary") if isinstance(payload.get("summary"), dict) else payload)
+    summary = cast(
+        dict[str, Any],
+        payload.get("summary") if isinstance(payload.get("summary"), dict) else payload,
+    )
     return {
         "available": True,
         "path": str(path),
