@@ -78,7 +78,7 @@ source = ["src/alpha_research"]
 show_missing = true
 
 [tool.uv.sources]
-market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "f98e43e4673d1521fc600c897cfc4dd2c51bb75c" }
+market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "e9c49945b2679e23e38853f2ebd43980fdf0fe77" }
 research-dev-metrics = { git = "https://github.com/runchengxie/research-dev-metrics.git", rev = "e1d6e278b0645a23adb523ada9fa8d4743c2e3bf" }
 
 [tool.uv]
