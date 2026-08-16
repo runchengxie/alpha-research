@@ -70,6 +70,7 @@ def test_testing_docs_match_script_modes() -> None:
         "all",
         "fast",
         "unit",
+        "coverage",
         "lint",
         "format",
         "typecheck",

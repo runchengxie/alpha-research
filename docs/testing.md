@@ -19,6 +19,7 @@ scripts/dev/run_tests.sh <mode> [args...]
 | `all` | 完整 `pytest` 测试集 |
 | `fast` | `all` 的兼容别名 |
 | `unit` | `all` 的兼容别名 |
+| `coverage` | 完整测试集加覆盖率报告 |
 | `lint` | Ruff 代码检查 |
 | `format` | Ruff 格式检查 |
 | `format-all` | `format` 的兼容别名 |
@@ -32,12 +33,25 @@ scripts/dev/run_tests.sh <mode> [args...]
 
 ```bash
 scripts/dev/run_tests.sh all
+scripts/dev/run_tests.sh coverage
 scripts/dev/run_tests.sh lint
 scripts/dev/run_tests.sh format
 scripts/dev/run_tests.sh typecheck
 scripts/dev/run_tests.sh typecheck-release
 scripts/dev/run_tests.sh maintainability
 ```
+
+## 依赖与安全
+
+依赖审计和静态安全扫描按仓库运行：
+
+```bash
+uv run --extra dev pip-audit
+uvx deptry .
+uvx bandit -q -r src -lll
+```
+
+coverage 按高风险模块逐步提高，不设置统一阈值。
 
 定点测试示例：
 
