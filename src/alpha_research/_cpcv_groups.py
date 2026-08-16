@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import combinations
 from math import comb
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -118,7 +118,7 @@ def _apply_event_purge(
     purged: list[pd.Timestamp] = []
     embargoed: list[pd.Timestamp] = []
     kept: list[pd.Timestamp] = []
-    embargo_delta = pd.Timedelta(days=max(0, int(embargo_days)))
+    embargo_delta = cast(pd.Timedelta, pd.Timedelta(days=max(0, int(embargo_days))))
     for train_date in train_dates:
         train_window = event_windows.get(train_date)
         if train_window is None:

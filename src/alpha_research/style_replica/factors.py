@@ -81,7 +81,7 @@ def compute_beta_factor(
     mkt = market_returns.reindex(dates).values.astype(float)
     n = len(dates)
 
-    result = pd.DataFrame(np.nan, index=dates, columns=symbols, dtype=float)
+    result = pd.DataFrame(np.nan, index=pd.Index(dates), columns=pd.Index(symbols), dtype=float)
 
     for symbol in symbols:
         r = returns_panel[symbol].values.astype(float)

@@ -99,7 +99,7 @@ def recursive_residual_cusum(
     features = x.apply(pd.to_numeric, errors="coerce")
     aligned = pd.concat([response.rename("y"), features], axis=1).dropna()
     if aligned.empty:
-        return pd.DataFrame(columns=["recursive_residual", "cusum", "standardized_cusum"])
+        return pd.DataFrame(columns=pd.Index(["recursive_residual", "cusum", "standardized_cusum"]))
     x_values = np.column_stack(
         [np.ones(len(aligned), dtype=float), aligned[features.columns].to_numpy(dtype=float)]
     )

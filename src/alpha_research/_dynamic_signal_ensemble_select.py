@@ -32,8 +32,8 @@ def _rolling_factor_correlation(
     if len(hist_dates) == 0:
         return pd.DataFrame(
             np.eye(len(factors)),
-            index=factors,
-            columns=factors,
+            index=pd.Index(factors),
+            columns=pd.Index(factors),
         )
     flattened = {}
     for factor in factors:

@@ -269,8 +269,8 @@ def test_daily_watch20_hermite_matches_style_replica_reference() -> None:
     rng = np.random.default_rng(19)
     panel = pd.DataFrame(
         rng.lognormal(mean=0.0, sigma=0.35, size=(len(dates), len(symbols))),
-        index=dates,
-        columns=symbols,
+        index=pd.Index(dates),
+        columns=pd.Index(symbols),
     )
     stacked = cast(
         pd.Series,

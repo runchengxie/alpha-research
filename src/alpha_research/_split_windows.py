@@ -223,7 +223,7 @@ def _apply_event_window_purge_indices(
         return train_idx, False
 
     keep: list[int] = []
-    embargo_delta = pd.Timedelta(days=max(0, int(embargo_days)))
+    embargo_delta = cast(pd.Timedelta, pd.Timedelta(days=max(0, int(embargo_days))))
     for idx in train_idx:
         train_date = _date_key(dates[idx])
         train_window = event_windows.get(train_date)

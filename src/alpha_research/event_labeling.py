@@ -170,22 +170,24 @@ def label_triple_barrier(
 
     if not records:
         return pd.DataFrame(
-            columns=[
-                event_id_col,
-                symbol_col,
-                event_time_col,
-                "label_start",
-                "label_end",
-                "first_touch",
-                "barrier",
-                "target",
-                "side",
-                "realized_return",
-                "side_adjusted_return",
-                "label",
-                "meta_label",
-                "vertical_end",
-            ]
+            columns=pd.Index(
+                [
+                    event_id_col,
+                    symbol_col,
+                    event_time_col,
+                    "label_start",
+                    "label_end",
+                    "first_touch",
+                    "barrier",
+                    "target",
+                    "side",
+                    "realized_return",
+                    "side_adjusted_return",
+                    "label",
+                    "meta_label",
+                    "vertical_end",
+                ]
+            )
         )
     result = pd.DataFrame.from_records(records)
     return result.sort_values(

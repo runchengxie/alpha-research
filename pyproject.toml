@@ -80,3 +80,12 @@ show_missing = true
 [tool.uv.sources]
 market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "f98e43e4673d1521fc600c897cfc4dd2c51bb75c" }
 research-dev-metrics = { git = "https://github.com/runchengxie/research-dev-metrics.git", rev = "e1d6e278b0645a23adb523ada9fa8d4743c2e3bf" }
+
+[tool.uv]
+# pyqlib 0.9.7 在 Python <3.14 下钉死 mlflow==1.27.0，该版本有多个已知安全漏洞。
+# alpha_research 的 qlib 后端只使用 qlib 的数据预处理与 XGBModel 训练，
+# 不经过 mlflow workflow recorder，因此用 override 强制解析到已修复版本。
+override-dependencies = [
+  "mlflow>=2.20.0",
+  "cryptography>=50.0.0",
+]

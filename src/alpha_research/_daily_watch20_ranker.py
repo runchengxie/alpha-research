@@ -295,12 +295,14 @@ class DailyWatch20Ranker:
             return DailyWatch20Explanation(
                 source=importance_source,
                 local_contributions=pd.DataFrame(
-                    columns=[
-                        self.config.date_col,
-                        self.config.symbol_col,
-                        "feature",
-                        "contribution",
-                    ]
+                    columns=pd.Index(
+                        [
+                            self.config.date_col,
+                            self.config.symbol_col,
+                            "feature",
+                            "contribution",
+                        ]
+                    )
                 ),
                 feature_importance=importance.reset_index(drop=True),
             )
@@ -320,7 +322,7 @@ class DailyWatch20Ranker:
         if values.shape != (len(data), len(names)):
             raise ValueError("Unexpected XGBoost contribution matrix shape.")
         keys = data[[cfg.date_col, cfg.symbol_col]].reset_index(drop=True)
-        contributions = pd.DataFrame(values, columns=names)
+        contributions = pd.DataFrame(values, columns=pd.Index(names))
         wide = pd.concat([keys, contributions], axis=1)
         return wide.melt(
             id_vars=[cfg.date_col, cfg.symbol_col],

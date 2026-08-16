@@ -58,7 +58,7 @@ def test_scores_allow_optional_intraday_factors_to_be_absent() -> None:
     frame = pd.DataFrame(
         [[0.1, 0.2], [0.3, 0.4]],
         index=pd.date_range("2025-01-02", periods=2),
-        columns=["A", "B"],
+        columns=pd.Index(["A", "B"]),
     )
     common = {
         "resvol": frame,
@@ -74,8 +74,8 @@ def test_scores_allow_optional_intraday_factors_to_be_absent() -> None:
     }
     factors_b = {**common, "vol_convergence": frame}
 
-    assert compute_score_a(factors_a).notna().all().all()
-    assert compute_score_b(factors_b).notna().all().all()
+    assert compute_score_a(factors_a).notna().to_numpy().all()
+    assert compute_score_b(factors_b).notna().to_numpy().all()
 
 
 def test_resvol_uses_observation_level_regression_residuals() -> None:
