@@ -71,7 +71,7 @@ def test_sample_rebalance_frame_sorts_and_filters_dates() -> None:
 
 
 def test_sample_rebalance_frame_handles_empty_input() -> None:
-    frame = pd.DataFrame(columns=["trade_date", "symbol"])
+    frame = pd.DataFrame(columns=pd.Index(["trade_date", "symbol"]))
 
     sampled, rebalance_dates = sample_rebalance_frame(frame, frequency="W")
 

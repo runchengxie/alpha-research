@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -78,7 +78,7 @@ def size_bucket_ic_spread(frame: pd.DataFrame) -> float:
 
 
 def date_text(value: Any) -> str:
-    return pd.Timestamp(value).strftime("%Y%m%d")
+    return cast(pd.Timestamp, pd.Timestamp(value)).strftime("%Y%m%d")
 
 
 def zscore(values: pd.Series) -> pd.Series:

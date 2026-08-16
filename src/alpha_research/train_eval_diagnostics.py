@@ -11,28 +11,30 @@ from market_data_platform.symbols import canonicalize_symbol_columns
 
 _RECENCY_WINDOW_PATTERN = re.compile(r"^\s*(\d+)\s*([dwm])\s*$", re.IGNORECASE)
 DEFAULT_RECENCY_WINDOWS = ["6m", "1m", "1w"]
-RECENCY_DIAGNOSTIC_COLUMNS = [
-    "window",
-    "role",
-    "status",
-    "start",
-    "end",
-    "ic_count",
-    "ic_mean",
-    "ic_ir",
-    "ic_positive_ratio",
-    "return_count",
-    "total_return",
-    "ann_return",
-    "ann_vol",
-    "sharpe",
-    "max_drawdown",
-    "active_count",
-    "active_total_return",
-    "active_information_ratio",
-    "turnover_count",
-    "avg_turnover",
-]
+RECENCY_DIAGNOSTIC_COLUMNS = pd.Index(
+    [
+        "window",
+        "role",
+        "status",
+        "start",
+        "end",
+        "ic_count",
+        "ic_mean",
+        "ic_ir",
+        "ic_positive_ratio",
+        "return_count",
+        "total_return",
+        "ann_return",
+        "ann_vol",
+        "sharpe",
+        "max_drawdown",
+        "active_count",
+        "active_total_return",
+        "active_information_ratio",
+        "turnover_count",
+        "avg_turnover",
+    ]
+)
 
 
 def _coerce_yyyymmdd(values: pd.Series) -> pd.Series:

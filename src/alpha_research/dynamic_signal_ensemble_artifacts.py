@@ -14,7 +14,7 @@ def stock_scores_to_long(
     score_col: str = "dynamic_ensemble_score",
 ) -> pd.DataFrame:
     if scores.empty:
-        return pd.DataFrame(columns=["trade_date", "symbol", score_col])
+        return pd.DataFrame(columns=pd.Index(["trade_date", "symbol", score_col]))
     out = scores.stack(future_stack=True).rename(score_col).reset_index()
     out.columns = ["trade_date", "symbol", score_col]
     return out.dropna(subset=[score_col]).reset_index(drop=True)

@@ -37,7 +37,7 @@ def _as_date_tuple(dates: Any) -> tuple[pd.Timestamp, ...]:
 
 
 def _format_date(date: Any) -> str:
-    return pd.Timestamp(date).strftime("%Y-%m-%d")
+    return cast(pd.Timestamp, pd.Timestamp(date)).strftime("%Y-%m-%d")
 
 
 def _format_dates(dates: tuple[pd.Timestamp, ...] | list[pd.Timestamp]) -> str:

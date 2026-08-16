@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import numpy as np
 import pandas as pd
@@ -299,7 +299,7 @@ def build_style_replica_positions(
             normal_weight=cfg.normal_slot_weight,
             max_weight=cfg.max_name_weight,
         )
-        date_text = pd.Timestamp(date).strftime("%Y%m%d")
+        date_text = cast(pd.Timestamp, pd.Timestamp(date)).strftime("%Y%m%d")
         rows.extend(_build_position_rows(date_text, a_final, b_final, weights, day))
         previous_a = set(a_final)
         previous_b = set(b_final)
