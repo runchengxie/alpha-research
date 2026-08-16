@@ -10,12 +10,15 @@
 | 模型选择 | [concepts/model-selection.md](concepts/model-selection.md) |
 | 模型版图 | [concepts/model-landscape.md](concepts/model-landscape.md) |
 | 过拟合控制 | [concepts/overfitting-controls.md](concepts/overfitting-controls.md) |
+| 结果解读 | [concepts/result-interpretation.md](concepts/result-interpretation.md) |
+| 特征研究协议 | [concepts/feature-research-protocol.md](concepts/feature-research-protocol.md) |
 | AFML 方法组件 | [concepts/afml-methodology.md](concepts/afml-methodology.md) |
 | 研究后端与 Qlib 状态 | [concepts/framework-backends.md](concepts/framework-backends.md) |
 | 分钟因子边界 | [concepts/minute-factors.md](concepts/minute-factors.md) |
 | StyleReplica | [concepts/style-replica.md](concepts/style-replica.md) |
 | 研究模板设计 | [playbooks/research-template-design.md](playbooks/research-template-design.md) |
 | 信号产物契约 | [reference/signal-artifacts.md](reference/signal-artifacts.md) |
+| 研究产物契约 | [reference/research-outputs.md](reference/research-outputs.md) |
 | DailyWatch20 alpha 归属 | [ownership-migration.md](ownership-migration.md) |
 | 组合研究命名空间 | [namespace-migration.md](namespace-migration.md) |
 | 测试和质量检查 | [testing.md](testing.md) |
