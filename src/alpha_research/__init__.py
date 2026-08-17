@@ -92,6 +92,7 @@ __all__ = [
     "signal_stability",
     "split",
     "structural_breaks",
+    "style_factors",
     "style_replica",
     "train_eval",
     "train_eval_contracts",
