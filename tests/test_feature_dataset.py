@@ -12,7 +12,6 @@ def test_prepare_feature_dataset_public_alias():
     assert prepare_feature_dataset is _prepare_feature_dataset
 
 
-
 def test_rebalance_tail_candidate_dates_keep_recent_fallback_dates():
     dates = pd.date_range("2020-01-01", "2020-02-28", freq="B")
 
