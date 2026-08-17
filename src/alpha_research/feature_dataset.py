@@ -23,6 +23,9 @@ from ._feature_dataset_prepare import (
     _validate_feature_dataset_inputs,
 )
 
+# Public owner API: cross-repo callers must import the non-underscore name.
+prepare_feature_dataset = _prepare_feature_dataset
+
 __all__ = [
     "_FeatureDatasetConfig",
     "_FeatureDatasetPrepared",
@@ -42,4 +45,5 @@ __all__ = [
     "_prepare_modeling_date_candidates",
     "_resolve_engineered_features",
     "_validate_feature_dataset_inputs",
+    "prepare_feature_dataset",
 ]
