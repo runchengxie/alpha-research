@@ -1,9 +1,10 @@
 """Equivalence/sanity tests for the migrated A-share style-factor kernel.
 
 These cover the pure DataFrame-in / DataFrame-out computation moved from the
-workspace ``src/style_factors`` package into ``alpha_research.style_factors``
-(ADR-0006 R4 slice 7). Reporting/charting/backtest layers are owned elsewhere
-and tested there.
+root ``src/style_factors`` package into ``alpha_research.style_factors``
+(ADR-0006 R4 slice 7; the rest of the research package later moved to
+strategy-research/style_factors). Reporting/charting/backtest layers are
+owned elsewhere and tested there.
 """
 
 from __future__ import annotations
