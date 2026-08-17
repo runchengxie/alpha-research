@@ -43,7 +43,7 @@ __all__ = [
     "_prepare_engineered_feature_dataset",
     "_prepare_feature_dataset",
     "_prepare_modeling_date_candidates",
-    "prepare_feature_dataset",
     "_resolve_engineered_features",
     "_validate_feature_dataset_inputs",
+    "prepare_feature_dataset",
 ]
