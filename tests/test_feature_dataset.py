@@ -3,8 +3,14 @@ import pandas as pd
 from alpha_research.feature_dataset import (
     _build_rebalance_tail_candidate_dates,
     _prepare_feature_dataset,
+    prepare_feature_dataset,
 )
 from alpha_research.research_dataset import ResearchDataset
+
+
+def test_prepare_feature_dataset_public_alias():
+    assert prepare_feature_dataset is _prepare_feature_dataset
+
 
 
 def test_rebalance_tail_candidate_dates_keep_recent_fallback_dates():
