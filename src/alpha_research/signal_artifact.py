@@ -1,13 +1,24 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
 from pandas.api.types import is_bool_dtype, is_integer_dtype, is_numeric_dtype
+from research_contracts import (
+    ArtifactEnvelopeV2,
+    LineageInput,
+    ProducerIdentity,
+    attach_artifact_envelope_v2,
+    canonical_json_sha256,
+    file_sha256,
+)
 
 SIGNAL_CONTRACT_NAME = "alpha_research.signals"
 SIGNAL_SCHEMA_VERSION = 1
@@ -46,6 +57,63 @@ class SignalArtifactContract:
 
 
 SIGNAL_CONTRACT = SignalArtifactContract()
+
+PRODUCER_REPOSITORY = "alpha-research"
+PRODUCER_BACKEND_SIGNAL_ARTIFACT = "signal_artifact"
+PRODUCER_BACKEND_STYLE_REPLICA = "style_replica"
+
+
+def _producer_version() -> str:
+    try:
+        return package_version(PRODUCER_REPOSITORY)
+    except PackageNotFoundError:
+        return "0.0.0"
+
+
+def _git_commit() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+    return result.stdout.strip() or "unknown"
+
+
+def default_signal_run_id() -> str:
+    """Return a timezone-stamped run id when the caller does not provide one."""
+    return f"signals-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
+
+
+def build_signal_envelope_v2(
+    *,
+    artifact_id: str,
+    artifact_type: str,
+    run_id: str,
+    content_sha256: str,
+    configuration: Mapping[str, Any],
+    producer_backend: str,
+    lineage: Sequence[tuple[str, str]] = (),
+) -> ArtifactEnvelopeV2:
+    """Build a research.artifact-envelope.v2 for a signal artifact write."""
+    return ArtifactEnvelopeV2(
+        artifact_id=artifact_id,
+        artifact_type=artifact_type,
+        run_id=run_id,
+        created_at=datetime.now(UTC),
+        producer=ProducerIdentity(
+            repository=PRODUCER_REPOSITORY,
+            version=_producer_version(),
+            commit=_git_commit(),
+            backend=producer_backend,
+        ),
+        configuration_sha256=canonical_json_sha256(configuration),
+        content_sha256=content_sha256,
+        lineage=tuple(LineageInput(artifact_id=item[0], sha256=item[1]) for item in lineage),
+    )
 
 
 @dataclass(frozen=True)
@@ -269,6 +337,9 @@ def write_signal_artifact(
     signal_direction: float | int | None = None,
     eligible_for_backtest: bool | None = None,
     eligible_for_live: bool | None = None,
+    run_id: str | None = None,
+    configuration: Mapping[str, Any] | None = None,
+    lineage: Sequence[tuple[str, str]] = (),
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     out_path = Path(path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -289,6 +360,25 @@ def write_signal_artifact(
         "summary": summary,
         "metadata": dict(metadata or {}),
     }
+    resolved_run_id = run_id or default_signal_run_id()
+    config_payload = {
+        **dict(configuration or {}),
+        "model_version": model_version,
+        "feature_set_id": feature_set_id,
+        "signal_direction": signal_direction,
+        "eligible_for_backtest": eligible_for_backtest,
+        "eligible_for_live": eligible_for_live,
+    }
+    envelope = build_signal_envelope_v2(
+        artifact_id=f"signals:{resolved_run_id}",
+        artifact_type=CANONICAL_SIGNAL_FILE,
+        run_id=resolved_run_id,
+        content_sha256=file_sha256(out_path),
+        configuration=config_payload,
+        producer_backend=PRODUCER_BACKEND_SIGNAL_ARTIFACT,
+        lineage=lineage,
+    )
+    payload = attach_artifact_envelope_v2(payload, envelope)
     meta_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return signals, summary
 
@@ -312,12 +402,17 @@ __all__ = [
     "CANONICAL_SIGNAL_COLUMNS",
     "CANONICAL_SIGNAL_FILE",
     "CANONICAL_SIGNAL_META_FILE",
+    "PRODUCER_BACKEND_SIGNAL_ARTIFACT",
+    "PRODUCER_BACKEND_STYLE_REPLICA",
+    "PRODUCER_REPOSITORY",
     "SIGNAL_CONTRACT",
     "SIGNAL_CONTRACT_NAME",
     "SIGNAL_SCHEMA_VERSION",
     "SignalArtifactContract",
     "assert_signal_artifact_frame",
     "build_signal_artifact_frame",
+    "build_signal_envelope_v2",
+    "default_signal_run_id",
     "load_signal_metadata",
     "read_signal_artifact",
     "signal_artifact_summary",

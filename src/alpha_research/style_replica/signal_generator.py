@@ -20,17 +20,22 @@ Output schema (extends alpha_research.signals):
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from research_contracts import attach_artifact_envelope_v2, file_sha256
 
 from ..signal_artifact import (
     CANONICAL_SIGNAL_COLUMNS,
+    PRODUCER_BACKEND_STYLE_REPLICA,
     SIGNAL_CONTRACT_NAME,
     SIGNAL_SCHEMA_VERSION,
     build_signal_artifact_frame,
+    build_signal_envelope_v2,
+    default_signal_run_id,
     signal_artifact_summary,
 )
 from .factors import compute_all_style_factors
@@ -375,6 +380,8 @@ class StyleReplicaSignalGenerator:
         output_dir: str | Path,
         *,
         extra_metadata: dict[str, Any] | None = None,
+        run_id: str | None = None,
+        lineage: Sequence[tuple[str, str]] = (),
     ) -> tuple[pd.DataFrame, dict[str, Any]]:
         """Write signals to parquet with metadata.
 
@@ -383,6 +390,8 @@ class StyleReplicaSignalGenerator:
             output_dir: Directory to write ``signals_style_replica.parquet``
                        and ``signals_style_replica.meta.json``.
             extra_metadata: Additional metadata to include in the meta JSON.
+            run_id: Run identifier recorded in the artifact envelope.
+            lineage: Upstream (artifact_id, sha256) pairs recorded in the envelope.
 
         Returns:
             (canonical_frame, summary_dict).
@@ -395,18 +404,32 @@ class StyleReplicaSignalGenerator:
         canonical.to_parquet(signal_path, index=False)
 
         summary = signal_artifact_summary(canonical, path=signal_path)
+        config = {
+            "a_slots": self.config.a_slots,
+            "b_slots": self.config.b_slots,
+            "theme_quotas": self.config.theme_quotas,
+            "model_version": self.config.model_version,
+            "feature_set_id": self.config.feature_set_id,
+        }
         meta_payload = {
             "artifact_type": SIGNAL_CONTRACT_NAME,
             "schema_version": SIGNAL_SCHEMA_VERSION,
             "model_version": self.config.model_version,
-            "config": {
-                "a_slots": self.config.a_slots,
-                "b_slots": self.config.b_slots,
-                "theme_quotas": self.config.theme_quotas,
-            },
+            "config": config,
             "summary": summary,
             "metadata": dict(extra_metadata or {}),
         }
+        resolved_run_id = run_id or default_signal_run_id()
+        envelope = build_signal_envelope_v2(
+            artifact_id=f"signals_style_replica:{resolved_run_id}",
+            artifact_type=STYLE_REPLICA_SIGNAL_FILE,
+            run_id=resolved_run_id,
+            content_sha256=file_sha256(signal_path),
+            configuration=config,
+            producer_backend=PRODUCER_BACKEND_STYLE_REPLICA,
+            lineage=lineage,
+        )
+        meta_payload = attach_artifact_envelope_v2(meta_payload, envelope)
         meta_path = out_dir / STYLE_REPLICA_META_FILE
         meta_path.write_text(
             json.dumps(meta_payload, ensure_ascii=False, indent=2),
