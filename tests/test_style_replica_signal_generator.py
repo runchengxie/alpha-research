@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pandas as pd
+from research_contracts import ArtifactEnvelopeV2, file_sha256, read_artifact_envelope
 
 from alpha_research.style_replica import signal_generator
 from alpha_research.style_replica.resvol import compute_resvol_factor
@@ -95,3 +98,52 @@ def test_resvol_uses_observation_level_regression_residuals() -> None:
     assert result.iloc[:39].isna().all().all()
     assert result.iloc[39:].notna().all().all()
     assert (result.iloc[39:] > 0.0).all().all()
+
+
+def test_style_replica_write_attaches_readable_v2_envelope(tmp_path, monkeypatch) -> None:
+    dates = pd.to_datetime(["2025-01-02", "2025-01-03"])
+    prices = pd.DataFrame(
+        {"THEMED": [10.0, 10.5], "UNTHEMED": [20.0, 19.5]},
+        index=dates,
+    )
+    factors = {"placeholder": prices}
+    score_a = pd.DataFrame(
+        {"THEMED": [0.8, 0.4], "UNTHEMED": [0.9, 0.2]},
+        index=dates,
+    )
+    score_b = pd.DataFrame(
+        {"THEMED": [0.3, 0.7], "UNTHEMED": [0.6, 0.9]},
+        index=dates,
+    )
+    monkeypatch.setattr(
+        signal_generator,
+        "compute_all_style_factors",
+        lambda *args, **kwargs: factors,
+    )
+    monkeypatch.setattr(signal_generator, "compute_score_a", lambda factor_map: score_a)
+    monkeypatch.setattr(signal_generator, "compute_score_b", lambda factor_map: score_b)
+
+    gen = signal_generator.StyleReplicaSignalGenerator()
+    signals = gen.generate(prices)
+    canonical, _ = gen.write(
+        signals,
+        tmp_path,
+        run_id="run-demo",
+        lineage=[("signals.parquet", "c" * 64)],
+    )
+
+    meta_path = tmp_path / "signals_style_replica.meta.json"
+    payload = json.loads(meta_path.read_text(encoding="utf-8"))
+    envelope = read_artifact_envelope(payload, allow_legacy=False)
+
+    assert isinstance(envelope, ArtifactEnvelopeV2)
+    assert envelope.run_id == "run-demo"
+    assert envelope.artifact_id == "signals_style_replica:run-demo"
+    assert envelope.artifact_type == "signals_style_replica.parquet"
+    assert envelope.created_at.utcoffset() is not None
+    assert envelope.producer.repository == "alpha-research"
+    assert envelope.producer.backend == "style_replica"
+    assert envelope.content_sha256 == file_sha256(tmp_path / "signals_style_replica.parquet")
+    assert len(envelope.lineage) == 1
+    assert envelope.lineage[0].artifact_id == "signals.parquet"
+    assert not canonical.empty
