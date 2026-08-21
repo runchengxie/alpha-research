@@ -67,6 +67,39 @@ def _add_dividend_ps_value_factor(
     return df
 
 
+def _add_fund_breadth_factor(
+    df: pd.DataFrame, *, fund: pd.DataFrame | None
+) -> pd.DataFrame:
+    """Public-fund ownership breadth from fund_portfolio_features.
+
+    ``fund_count_holding_stock`` = number of public funds holding the stock
+    (raw, un-deduped); ``fund_count_holding_stock_qoq_change`` = quarter-over-
+    quarter change in that count (captures consensus formation / dissolution).
+    PIT alignment and forward-fill are already applied upstream, so no
+    look-ahead is introduced here.
+    """
+    if fund is not None and not fund.empty:
+        df = _merge_aux(
+            df,
+            fund,
+            ["fund_count_holding_stock", "fund_count_holding_stock_qoq_change"],
+        )
+        df["factor_fund_breadth"] = (
+            df["fund_count_holding_stock"].astype(float)
+            if "fund_count_holding_stock" in df
+            else np.nan
+        )
+        df["factor_fund_breadth_change"] = (
+            df["fund_count_holding_stock_qoq_change"].astype(float)
+            if "fund_count_holding_stock_qoq_change" in df
+            else np.nan
+        )
+    else:
+        df["factor_fund_breadth"] = np.nan
+        df["factor_fund_breadth_change"] = np.nan
+    return df
+
+
 def add_new_factors(df: pd.DataFrame, *, aux: dict | None) -> pd.DataFrame:
     """Compute auxiliary daily and ownership factors from local datasets.
 
@@ -78,7 +111,9 @@ def add_new_factors(df: pd.DataFrame, *, aux: dict | None) -> pd.DataFrame:
     moneyflow = aux.get("moneyflow_ths")
     holder = aux.get("holder_structure")
     basics_extra = aux.get("daily_basic_extra")
+    fund = aux.get("fund_portfolio_features")
 
     df = _add_liquidity_flow_factor(df, moneyflow=moneyflow)
     df = _add_chip_concentration_factor(df, holder=holder)
+    df = _add_fund_breadth_factor(df, fund=fund)
     return _add_dividend_ps_value_factor(df, basics_extra=basics_extra)

@@ -24,6 +24,9 @@ FACTOR_COLS = [
     "factor_institution_holding",  # holder_structure: top10 inst float hold ratio
     "factor_dividend_yield",  # daily_basic.dv_ttm (value group)
     "factor_ps_value",  # 1/ps_ttm (value group)
+    # Public-fund ownership breadth from fund_portfolio_features:
+    "factor_fund_breadth",  # fund_count_holding_stock: # public funds holding stock
+    "factor_fund_breadth_change",  # qoq change in fund count (consensus formation/dissolution)
 ]
 
 # Factor grouping for sector-level signal demeaning. Every factor below is
@@ -371,8 +374,9 @@ def compute_factors(
     when supplied to feed the cashflow-quality sub-indicator.
 
     ``aux`` (optional) carries locally-landed tushare datasets keyed by name:
-    ``moneyflow_ths``, ``holder_structure`` and ``daily_basic_extra``
-    (dv_ttm / ps_ttm).  These add five auxiliary factors with zero network traffic.
+    ``moneyflow_ths``, ``holder_structure``, ``daily_basic_extra``
+    (dv_ttm / ps_ttm) and ``fund_portfolio_features`` (public-fund ownership
+    breadth).  These add auxiliary factors with zero network traffic.
 
     ``sw_membership`` (optional) is the PIT SW-L1 membership long table from
     ``load_sw_industry_membership``.  When present, every factor is demeaned
