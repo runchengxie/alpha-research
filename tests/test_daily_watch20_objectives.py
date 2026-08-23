@@ -93,6 +93,17 @@ def test_objective_selects_pointwise_pairwise_or_listwise_training(
         assert not pd.api.types.is_integer_dtype(fit_data[target_col])
 
 
+def test_empty_model_params_keep_existing_pairwise_defaults() -> None:
+    ranker = DailyWatch20Ranker(
+        DailyWatch20Config(features=("f1", "f2"), train_window_dates=None)
+    )
+
+    assert ranker.model_type == "xgb_ranker"
+    assert ranker.model_params["objective"] == "rank:pairwise"
+    assert ranker.model_params["n_estimators"] == 300
+    assert ranker.model_params["learning_rate"] == pytest.approx(0.05)
+
+
 def test_listwise_relevance_grades_preserve_label_order(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
     monkeypatch.setattr(daily_watch20, "build_model", lambda *_args: object())
