@@ -40,6 +40,8 @@ def _resolve_daily_watch20_model(model_params: Mapping[str, Any]) -> tuple[str, 
     """Map XGBoost objective semantics onto the repository model registry."""
 
     params = dict(model_params)
+    if not params:
+        return resolve_model_spec({"type": "xgb_ranker", "params": {}})
     objective = str(params.get("objective") or _PAIRWISE_OBJECTIVE).strip().lower()
     if objective.startswith(_POINTWISE_PREFIX):
         requested_type = "xgb_regressor"
