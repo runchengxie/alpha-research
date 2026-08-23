@@ -2,10 +2,11 @@
 
 Size, Value, Momentum, Quality (composite), Earnings Yield, LowVol, Growth,
 Leverage, Beta, Liquidity, plus locally-landed tushare auxiliary factors
-(liquidity flow, chip concentration, institution holding, public-fund breadth,
-public-fund breadth change, public-fund ownership, public-fund ownership change,
-dividend yield, PS value). Pure DataFrame-in / DataFrame-out computation; data
-loading and reporting live in their respective owners (see ADR-0006 R4 slice 7).
+(liquidity flow, chip concentration, institution holding, public-fund top-10
+breadth, public-fund top-10 breadth change, public-fund top-10 ownership,
+public-fund top-10 ownership change, dividend yield, PS value). Pure
+DataFrame-in / DataFrame-out computation; data loading and reporting live in
+their respective owners (see ADR-0006 R4 slice 7).
 """
 
 from __future__ import annotations
