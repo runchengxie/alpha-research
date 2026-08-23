@@ -1,4 +1,4 @@
-"""DailyWatch20 ranker training/scoring (model-fit dependent)."""
+"""DailyWatch20 cross-sectional training/scoring (model-fit dependent)."""
 
 from __future__ import annotations
 
@@ -30,15 +30,38 @@ from .modeling import feature_importance_frame, resolve_model_spec
 from .signal_artifact import CANONICAL_SIGNAL_COLUMNS, build_signal_artifact_frame
 from .split import build_sample_weight, select_train_window_dates
 
+_LISTWISE_OBJECTIVE = "rank:ndcg"
+_PAIRWISE_OBJECTIVE = "rank:pairwise"
+_POINTWISE_PREFIX = "reg:"
+_LISTWISE_MAX_RELEVANCE = 31
+
+
+def _resolve_daily_watch20_model(model_params: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Map XGBoost objective semantics onto the repository model registry."""
+
+    params = dict(model_params)
+    if not params:
+        return resolve_model_spec({"type": "xgb_ranker", "params": {}})
+    objective = str(params.get("objective") or _PAIRWISE_OBJECTIVE).strip().lower()
+    if objective.startswith(_POINTWISE_PREFIX):
+        requested_type = "xgb_regressor"
+    elif objective in {_PAIRWISE_OBJECTIVE, _LISTWISE_OBJECTIVE}:
+        requested_type = "xgb_ranker"
+    else:
+        raise ValueError(
+            "DailyWatch20 supports pointwise reg:* objectives, rank:pairwise, or rank:ndcg; "
+            f"got objective={objective!r}."
+        )
+    params["objective"] = objective
+    return resolve_model_spec({"type": requested_type, "params": params})
+
 
 class DailyWatch20Ranker:
-    """Train and score a date-grouped XGBRanker without data-lake dependencies."""
+    """Train and score a date-grouped cross-sectional model without data-lake dependencies."""
 
     def __init__(self, config: DailyWatch20Config) -> None:
         self.config = config
-        model_type, model_params = resolve_model_spec(
-            {"type": "xgb_ranker", "params": dict(config.model_params)}
-        )
+        model_type, model_params = _resolve_daily_watch20_model(config.model_params)
         self.model_type = model_type
         self.model_params = model_params
         self.model: Any | None = None
@@ -194,13 +217,25 @@ class DailyWatch20Ranker:
         )
         return data, sample_weight, as_of
 
+    def _fit_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Adapt the canonical percentile label only when the objective requires it."""
+
+        if self.model_params.get("objective") != _LISTWISE_OBJECTIVE:
+            return data
+        target_col = cast(str, self.config.label_col)
+        relevance = pd.to_numeric(data[target_col], errors="raise").clip(lower=0.0, upper=1.0)
+        fit_data = data.copy()
+        fit_data[target_col] = np.rint(relevance * _LISTWISE_MAX_RELEVANCE).astype(np.int32)
+        return fit_data
+
     def fit(self, frame: pd.DataFrame, *, as_of_date: object | None = None) -> DailyWatch20Ranker:
         data, sample_weight, as_of = self._training_data(frame, as_of_date=as_of_date)
+        fit_data = self._fit_data(data)
         self.model = _stage.build_model(self.model_type, self.model_params)
         _stage.fit_model(
             self.model,
             self.model_type,
-            data,
+            fit_data,
             features=self.config.features,
             target_col=cast(str, self.config.label_col),
             sample_weight=sample_weight,
