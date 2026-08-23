@@ -22,6 +22,10 @@ FACTOR_COLS = [
     "factor_liquidity_flow",  # moneyflow_ths: main-order net inflow
     "factor_chip_concentration",  # holder_structure: top10 float concentration
     "factor_institution_holding",  # holder_structure: top10 inst float hold ratio
+    "factor_fund_breadth",  # fund top10: log count of funds listing the stock
+    "factor_fund_breadth_change",  # fund top10: signed-log formation-date count change
+    "factor_fund_ownership",  # fund top10: summed stock float-share holding ratio
+    "factor_fund_ownership_change",  # fund top10: formation-date ratio change
     "factor_dividend_yield",  # daily_basic.dv_ttm (value group)
     "factor_ps_value",  # 1/ps_ttm (value group)
 ]
@@ -35,7 +39,7 @@ VALUE_GROUP = {"factor_value", "factor_earnings_yield", "factor_dividend_yield",
 
 # Score-level value-cluster composite used by the weekly report: equal-weight
 # mean of the four standardized value-group z-scores. Kept out of FACTOR_COLS so
-# the formal 15-factor research set, correlation matrix and charts stay unchanged.
+# the formal style-factor research set, correlation matrix and charts stay unchanged.
 VALUE_CLUSTER_COL = "factor_value_cluster_z"
 VALUE_CLUSTER_MEMBERS = (
     "factor_value",
@@ -371,8 +375,11 @@ def compute_factors(
     when supplied to feed the cashflow-quality sub-indicator.
 
     ``aux`` (optional) carries locally-landed tushare datasets keyed by name:
-    ``moneyflow_ths``, ``holder_structure`` and ``daily_basic_extra``
-    (dv_ttm / ps_ttm).  These add five auxiliary factors with zero network traffic.
+    ``moneyflow_ths``, ``holder_structure``, ``fund_top10_portfolio_features``
+    and ``daily_basic_extra`` (dv_ttm / ps_ttm).  These add auxiliary factors
+    with zero network traffic.  The ``fund_top10_portfolio_features`` slot
+    expects a consistent per-fund top-10 public-fund panel already PIT
+    materialized to the formation dates by the caller.
 
     ``sw_membership`` (optional) is the PIT SW-L1 membership long table from
     ``load_sw_industry_membership``.  When present, every factor is demeaned
