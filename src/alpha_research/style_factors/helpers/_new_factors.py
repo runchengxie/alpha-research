@@ -61,13 +61,14 @@ def _add_public_fund_ownership_factors(
     *,
     fund_portfolio: pd.DataFrame | None,
 ) -> pd.DataFrame:
-    """Public-fund ownership breadth, level and formation-date change signals.
+    """Public-fund top-10 breadth, level and formation-date change signals.
 
-    The caller must provide a PIT materialized stock-date panel. The market-data
-    asset already maps disclosures to an available date; the caller then carries
-    the latest disclosed state to each formation date and computes changes between
-    formation dates. This helper deliberately performs an exact-date merge so it
-    cannot create a new look-ahead path.
+    The caller must provide a PIT materialized stock-date panel built from a
+    consistent per-fund top-10 disclosure scope. The market-data asset maps
+    disclosures to an available date; the caller carries the latest disclosed
+    state to each formation date and computes changes between formation dates.
+    This helper deliberately performs an exact-date merge so it cannot create a
+    new look-ahead path.
     """
     factor_columns = (
         "factor_fund_breadth",
@@ -81,18 +82,20 @@ def _add_public_fund_ownership_factors(
         return df
 
     source_columns = [
-        "fund_count_holding_stock",
-        "fund_count_holding_stock_change",
-        "fund_stk_float_ratio_sum",
-        "fund_stk_float_ratio_sum_change",
+        "fund_top10_count_holding_stock",
+        "fund_top10_count_holding_stock_change",
+        "fund_top10_stk_float_ratio_sum",
+        "fund_top10_stk_float_ratio_sum_change",
     ]
     df = _merge_aux(df, fund_portfolio, source_columns)
 
-    count = pd.to_numeric(df["fund_count_holding_stock"], errors="coerce").clip(lower=0)
-    count_change = pd.to_numeric(df["fund_count_holding_stock_change"], errors="coerce")
-    ownership = pd.to_numeric(df["fund_stk_float_ratio_sum"], errors="coerce")
+    count = pd.to_numeric(df["fund_top10_count_holding_stock"], errors="coerce").clip(lower=0)
+    count_change = pd.to_numeric(
+        df["fund_top10_count_holding_stock_change"], errors="coerce"
+    )
+    ownership = pd.to_numeric(df["fund_top10_stk_float_ratio_sum"], errors="coerce")
     ownership_change = pd.to_numeric(
-        df["fund_stk_float_ratio_sum_change"], errors="coerce"
+        df["fund_top10_stk_float_ratio_sum_change"], errors="coerce"
     )
 
     # log1p reduces mega-cap / large-fund-count tail dominance while preserving
