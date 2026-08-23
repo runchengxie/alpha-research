@@ -22,10 +22,10 @@ FACTOR_COLS = [
     "factor_liquidity_flow",  # moneyflow_ths: main-order net inflow
     "factor_chip_concentration",  # holder_structure: top10 float concentration
     "factor_institution_holding",  # holder_structure: top10 inst float hold ratio
-    "factor_fund_breadth",  # fund_portfolio: log number of public funds holding stock
-    "factor_fund_breadth_change",  # fund_portfolio: signed-log QoQ holder-count change
-    "factor_fund_ownership",  # fund_portfolio: holding market value / float market value
-    "factor_fund_ownership_change",  # fund_portfolio: QoQ change in float-market-value ratio
+    "factor_fund_breadth",  # fund top10: log count of funds listing the stock
+    "factor_fund_breadth_change",  # fund top10: signed-log formation-date count change
+    "factor_fund_ownership",  # fund top10: summed stock float-share holding ratio
+    "factor_fund_ownership_change",  # fund top10: formation-date ratio change
     "factor_dividend_yield",  # daily_basic.dv_ttm (value group)
     "factor_ps_value",  # 1/ps_ttm (value group)
 ]
@@ -377,8 +377,9 @@ def compute_factors(
     ``aux`` (optional) carries locally-landed tushare datasets keyed by name:
     ``moneyflow_ths``, ``holder_structure``, ``fund_portfolio_features`` and
     ``daily_basic_extra`` (dv_ttm / ps_ttm). These add auxiliary factors with
-    zero network traffic. Public-fund ownership inputs must already be PIT
-    materialized to the formation dates by the caller.
+    zero network traffic. The ``fund_portfolio_features`` slot expects a
+    consistent per-fund top-10 public-fund panel already PIT materialized to the
+    formation dates by the caller.
 
     ``sw_membership`` (optional) is the PIT SW-L1 membership long table from
     ``load_sw_industry_membership``. When present, every factor is demeaned
