@@ -26,15 +26,15 @@ def _formation_panel() -> pd.DataFrame:
     )
 
 
-def test_public_fund_factors_use_pit_materialized_formation_values() -> None:
+def test_public_fund_factors_use_pit_materialized_top10_values() -> None:
     fund_portfolio = pd.DataFrame(
         {
             "trade_date": pd.to_datetime(["2025-08-29", "2025-08-29"]),
             "symbol": ["000001.SZ", "000002.SZ"],
-            "fund_count_holding_stock": [9.0, 99.0],
-            "fund_count_holding_stock_change": [-3.0, 8.0],
-            "fund_stk_float_ratio_sum": [1.0, 8.0],
-            "fund_stk_float_ratio_sum_change": [-0.5, 1.2],
+            "fund_top10_count_holding_stock": [9.0, 99.0],
+            "fund_top10_count_holding_stock_change": [-3.0, 8.0],
+            "fund_top10_stk_float_ratio_sum": [1.0, 8.0],
+            "fund_top10_stk_float_ratio_sum_change": [-0.5, 1.2],
         }
     )
 
