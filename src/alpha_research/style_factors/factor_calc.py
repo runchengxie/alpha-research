@@ -18,7 +18,7 @@ FACTOR_COLS = [
     "factor_leverage",
     "factor_beta",
     "factor_liquidity",
-    # Factors from locally-landed tushare datasets (zero network traffic):
+    # New factors from locally-landed tushare datasets (zero network traffic):
     "factor_liquidity_flow",  # moneyflow_ths: main-order net inflow
     "factor_chip_concentration",  # holder_structure: top10 float concentration
     "factor_institution_holding",  # holder_structure: top10 inst float hold ratio
@@ -30,8 +30,16 @@ FACTOR_COLS = [
     "factor_ps_value",  # 1/ps_ttm (value group)
 ]
 
+# Factor grouping for sector-level signal demeaning. Every factor below is
+# demeaned within its SW L1 industry BEFORE the cross-sectional z-score. This
+# reduces industry mean exposure but does not strictly constrain the final
+# long-short portfolio's industry weights. Grouping only affects code
+# organization / reporting; demeaning treats each factor independently.
 VALUE_GROUP = {"factor_value", "factor_earnings_yield", "factor_dividend_yield", "factor_ps_value"}
 
+# Score-level value-cluster composite used by the weekly report: equal-weight
+# mean of the four standardized value-group z-scores. Kept out of FACTOR_COLS so
+# the formal style-factor research set, correlation matrix and charts stay unchanged.
 VALUE_CLUSTER_COL = "factor_value_cluster_z"
 VALUE_CLUSTER_MEMBERS = (
     "factor_value",
@@ -41,6 +49,9 @@ VALUE_CLUSTER_MEMBERS = (
 )
 
 FUNDAMENTAL_COLS = ["roe", "roa", "netprofit_yoy", "or_yoy", "debt_to_assets"]
+
+# Extra fundamental columns pulled from the cashflow table that should be carried
+# into the factor panel for the cashflow-quality sub-indicator.
 EARNINGS_STABILITY_COL = "earnings_stability_8q"
 QUALITY_EXTRA_COLS = ["n_cashflow_act", "net_profit", EARNINGS_STABILITY_COL]
 
@@ -202,6 +213,8 @@ def _add_daily_basic_factors(df: pd.DataFrame) -> pd.DataFrame:
     df["factor_value"] = 1.0 / df["pb_clean"]
 
     df["pe_clean"] = df["pe_ttm"].where(df["pe_ttm"] > 0).clip(lower=1, upper=500)
+    # Earnings yield (1/PE_TTM) is a valuation signal, not an operating-quality
+    # signal.  It is kept (renamed) in the value group for backward compatibility.
     df["factor_earnings_yield"] = 1.0 / df["pe_clean"]
 
     return df
@@ -216,30 +229,41 @@ def _winsorize(series: pd.Series, trade_dates: pd.Series) -> pd.Series:
 
 
 def _add_quality_factor(df: pd.DataFrame, *, has_fina: bool) -> pd.DataFrame:
-    """Composite quality factor from ROE, leverage, earnings stability, OCF quality."""
+    """Composite quality factor from ROE, leverage, earnings stability, OCF quality.
+
+    Each sub-indicator is winsorized (1%, 99%) then z-scored cross-sectionally;
+    the factor is the equal-weighted mean of available sub-indicators.  A stock
+    with a missing sub-indicator gets z=0 for that component.  ROE must be present
+    for a quality score to be assigned.
+    """
     if not has_fina or "roe" not in df.columns:
         return df
 
     components: list[pd.Series] = []
     trade_dates = df["trade_date"]
 
+    # 1) ROE (higher is better)
     roe = df["roe"].astype(float)
     components.append(_winsorize(roe, trade_dates))
 
+    # 2) Leverage: lower debt_to_assets is better
     if "debt_to_assets" in df.columns:
         lev = -df["debt_to_assets"].astype(float)
         components.append(_winsorize(lev, trade_dates))
 
+    # 3) Earnings stability: lower rolling std of YoY net profit is better
     if EARNINGS_STABILITY_COL in df.columns:
         stability = -df[EARNINGS_STABILITY_COL].astype(float)
         components.append(_winsorize(stability, trade_dates))
 
+    # 4) Cashflow quality: OCF / net profit (higher is better); protect 0/neg denom
     if {"n_cashflow_act", "net_profit"} <= set(df.columns):
         np_safe = df["net_profit"].replace(0, np.nan).clip(lower=1e-9)
         cq = df["n_cashflow_act"].astype(float) / np_safe
         cq = cq.where(df["net_profit"] > 0)
         components.append(_winsorize(cq, trade_dates))
 
+    # Cross-sectional z-score of each component, missing -> 0
     z_parts = []
     for comp in components:
         grouped = comp.groupby(df["trade_date"], sort=False)
@@ -266,7 +290,10 @@ def _add_fundamental_factors(df: pd.DataFrame, *, has_fina: bool) -> pd.DataFram
 
 
 def _add_beta_factor(df: pd.DataFrame) -> pd.DataFrame:
-    """252-day CAPM β, using rolling-sum decomposition for speed."""
+    """252-day CAPM β, using rolling-sum decomposition for speed.
+
+    COV(x,y) = E[xy] - E[x]E[y], so this avoids per-group rolling covariance.
+    """
     df["ret"] = df["pct_chg"] / 100.0
     df["mkt_ret"] = df.groupby("trade_date")["ret"].transform("mean")
     df["ret_mkt"] = df["ret"] * df["mkt_ret"]
@@ -288,7 +315,7 @@ def _add_beta_factor(df: pd.DataFrame) -> pd.DataFrame:
     cov_num = sum_rm / n - (sum_r / n) * (sum_m / n)
     var_den = sum_m2 / n - (sum_m / n) ** 2
     raw_beta = cov_num / var_den.replace(0, np.nan)
-    df["factor_beta"] = -raw_beta
+    df["factor_beta"] = -raw_beta  # low-beta long, high-beta short
     return df.drop(columns=["ret_mkt", "mkt_ret_sq"])
 
 
@@ -304,6 +331,7 @@ def _standardize_factors(df: pd.DataFrame) -> pd.DataFrame:
     has_industry = "industry_l1" in df.columns and df["industry_l1"].notna().any()
 
     for column in active:
+        # 1% / 99% cross-sectional winsorization per trade_date.
         grouped = df.groupby("trade_date", sort=False)[column]
         lower = grouped.transform(lambda series: series.quantile(0.01))
         upper = grouped.transform(lambda series: series.quantile(0.99))
@@ -311,12 +339,14 @@ def _standardize_factors(df: pd.DataFrame) -> pd.DataFrame:
 
     for column in active:
         if has_industry:
+            # PIT SW-L1 industry-neutralization: demean within industry first.
             grp = df.groupby(["trade_date", "industry_l1"], sort=False, dropna=False)[column]
             demeaned = df[column] - grp.transform("mean")
             df[f"{column}_z"] = demeaned
         else:
             df[f"{column}_z"] = df[column].copy()
 
+    # Cross-sectional z-score (across industries) of the demeaned signal.
     for column in active:
         zcol = f"{column}_z"
         grouped = df.groupby("trade_date", sort=False)[zcol]
@@ -341,27 +371,30 @@ def compute_factors(
 
     If fina_indicator data is provided, Growth, Leverage and the composite
     Quality factor are aligned by announcement date so the factor frame does
-    not look ahead. ``cashflow`` (OCF / net profit) is merged into ``fina``
+    not look ahead.  ``cashflow`` (OCF / net profit) is merged into ``fina``
     when supplied to feed the cashflow-quality sub-indicator.
 
     ``aux`` (optional) carries locally-landed tushare datasets keyed by name:
     ``moneyflow_ths``, ``holder_structure``, ``fund_top10_portfolio_features``
-    and ``daily_basic_extra`` (dv_ttm / ps_ttm). These add auxiliary factors
-    with zero network traffic. The ``fund_top10_portfolio_features`` slot
+    and ``daily_basic_extra`` (dv_ttm / ps_ttm).  These add auxiliary factors
+    with zero network traffic.  The ``fund_top10_portfolio_features`` slot
     expects a consistent per-fund top-10 public-fund panel already PIT
     materialized to the formation dates by the caller.
 
     ``sw_membership`` (optional) is the PIT SW-L1 membership long table from
-    ``load_sw_industry_membership``. When present, every factor is demeaned
-    within its L1 industry before the cross-sectional z-score.
+    ``load_sw_industry_membership``.  When present, every factor is demeaned
+    within its L1 industry before the cross-sectional z-score, i.e. the factor
+    panel has reduced SW-L1 industry mean exposure (point-in-time membership,
+    not a static map). This is signal demeaning, not a portfolio-level industry
+    neutrality constraint.
 
     ``rebalance_dates`` optionally limits the expensive fundamentals, auxiliary
     and industry joins to formation dates after daily rolling price factors have
-    been calculated. The workflow uses this path because portfolio membership
+    been calculated.  The workflow uses this path because portfolio membership
     changes only at month end.
 
     ``formation_fundamentals`` may provide exact formation-date PIT v2 fields.
-    Non-null values override the corresponding legacy fundamentals. Growth
+    Non-null values override the corresponding legacy fundamentals.  Growth
     remains on legacy ``netprofit_yoy`` / ``or_yoy`` because those fields are
     not present in the current PIT v2 contract.
     """
