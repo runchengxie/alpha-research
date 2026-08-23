@@ -133,7 +133,7 @@ def add_new_factors(df: pd.DataFrame, *, aux: dict | None) -> pd.DataFrame:
     aux = aux or {}
     moneyflow = aux.get("moneyflow_ths")
     holder = aux.get("holder_structure")
-    fund_portfolio = aux.get("fund_portfolio_features")
+    fund_portfolio = aux.get("fund_top10_portfolio_features")
     basics_extra = aux.get("daily_basic_extra")
 
     df = _add_liquidity_flow_factor(df, moneyflow=moneyflow)
