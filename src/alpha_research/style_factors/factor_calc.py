@@ -18,10 +18,14 @@ FACTOR_COLS = [
     "factor_leverage",
     "factor_beta",
     "factor_liquidity",
-    # New factors from locally-landed tushare datasets (zero network traffic):
+    # Factors from locally-landed tushare datasets (zero network traffic):
     "factor_liquidity_flow",  # moneyflow_ths: main-order net inflow
     "factor_chip_concentration",  # holder_structure: top10 float concentration
     "factor_institution_holding",  # holder_structure: top10 inst float hold ratio
+    "factor_fund_breadth",  # fund_portfolio: log number of public funds holding stock
+    "factor_fund_breadth_change",  # fund_portfolio: signed-log QoQ holder-count change
+    "factor_fund_ownership",  # fund_portfolio: holding market value / float market value
+    "factor_fund_ownership_change",  # fund_portfolio: QoQ change in float-market-value ratio
     "factor_dividend_yield",  # daily_basic.dv_ttm (value group)
     "factor_ps_value",  # 1/ps_ttm (value group)
 ]
@@ -35,7 +39,7 @@ VALUE_GROUP = {"factor_value", "factor_earnings_yield", "factor_dividend_yield",
 
 # Score-level value-cluster composite used by the weekly report: equal-weight
 # mean of the four standardized value-group z-scores. Kept out of FACTOR_COLS so
-# the formal 15-factor research set, correlation matrix and charts stay unchanged.
+# the formal style-factor research set, correlation matrix and charts stay unchanged.
 VALUE_CLUSTER_COL = "factor_value_cluster_z"
 VALUE_CLUSTER_MEMBERS = (
     "factor_value",
@@ -210,7 +214,7 @@ def _add_daily_basic_factors(df: pd.DataFrame) -> pd.DataFrame:
 
     df["pe_clean"] = df["pe_ttm"].where(df["pe_ttm"] > 0).clip(lower=1, upper=500)
     # Earnings yield (1/PE_TTM) is a valuation signal, not an operating-quality
-    # signal.  It is kept (renamed) in the value group for backward compatibility.
+    # signal. It is kept (renamed) in the value group for backward compatibility.
     df["factor_earnings_yield"] = 1.0 / df["pe_clean"]
 
     return df
@@ -228,8 +232,8 @@ def _add_quality_factor(df: pd.DataFrame, *, has_fina: bool) -> pd.DataFrame:
     """Composite quality factor from ROE, leverage, earnings stability, OCF quality.
 
     Each sub-indicator is winsorized (1%, 99%) then z-scored cross-sectionally;
-    the factor is the equal-weighted mean of available sub-indicators.  A stock
-    with a missing sub-indicator gets z=0 for that component.  ROE must be present
+    the factor is the equal-weighted mean of available sub-indicators. A stock
+    with a missing sub-indicator gets z=0 for that component. ROE must be present
     for a quality score to be assigned.
     """
     if not has_fina or "roe" not in df.columns:
@@ -367,15 +371,17 @@ def compute_factors(
 
     If fina_indicator data is provided, Growth, Leverage and the composite
     Quality factor are aligned by announcement date so the factor frame does
-    not look ahead.  ``cashflow`` (OCF / net profit) is merged into ``fina``
+    not look ahead. ``cashflow`` (OCF / net profit) is merged into ``fina``
     when supplied to feed the cashflow-quality sub-indicator.
 
     ``aux`` (optional) carries locally-landed tushare datasets keyed by name:
-    ``moneyflow_ths``, ``holder_structure`` and ``daily_basic_extra``
-    (dv_ttm / ps_ttm).  These add five auxiliary factors with zero network traffic.
+    ``moneyflow_ths``, ``holder_structure``, ``fund_portfolio_features`` and
+    ``daily_basic_extra`` (dv_ttm / ps_ttm). These add auxiliary factors with
+    zero network traffic. Public-fund ownership inputs must already be PIT
+    materialized to the formation dates by the caller.
 
     ``sw_membership`` (optional) is the PIT SW-L1 membership long table from
-    ``load_sw_industry_membership``.  When present, every factor is demeaned
+    ``load_sw_industry_membership``. When present, every factor is demeaned
     within its L1 industry before the cross-sectional z-score, i.e. the factor
     panel has reduced SW-L1 industry mean exposure (point-in-time membership,
     not a static map). This is signal demeaning, not a portfolio-level industry
@@ -383,11 +389,11 @@ def compute_factors(
 
     ``rebalance_dates`` optionally limits the expensive fundamentals, auxiliary
     and industry joins to formation dates after daily rolling price factors have
-    been calculated.  The workflow uses this path because portfolio membership
+    been calculated. The workflow uses this path because portfolio membership
     changes only at month end.
 
     ``formation_fundamentals`` may provide exact formation-date PIT v2 fields.
-    Non-null values override the corresponding legacy fundamentals.  Growth
+    Non-null values override the corresponding legacy fundamentals. Growth
     remains on legacy ``netprofit_yoy`` / ``or_yoy`` because those fields are
     not present in the current PIT v2 contract.
     """
