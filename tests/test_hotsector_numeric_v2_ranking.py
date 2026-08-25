@@ -48,9 +48,7 @@ def policy() -> HotsectorNumericV2RankingPolicy:
 
 def _candidates() -> pd.DataFrame:
     rows: list[dict[str, object]] = []
-    for date_index, trade_date in enumerate(
-        pd.to_datetime(["2026-01-05", "2026-01-06"])
-    ):
+    for date_index, trade_date in enumerate(pd.to_datetime(["2026-01-05", "2026-01-06"])):
         for rank in range(1, 32):
             daily = 1.0 - rank / 40
             if date_index == 1 and rank == 11:
@@ -144,9 +142,7 @@ def test_top30_penalties_and_buffer(
 def test_visible_controls_ignore_hidden_fields(
     policy: HotsectorNumericV2RankingPolicy,
 ) -> None:
-    boundary = _candidates().loc[
-        lambda frame: frame["trade_date"].eq("2026-01-05")
-    ].head(8)
+    boundary = _candidates().loc[lambda frame: frame["trade_date"].eq("2026-01-05")].head(8)
     baseline = visible_field_control_ranking(boundary, policy)
     tampered = boundary.copy()
     tampered["candidate_relevance"] = list(reversed(range(len(tampered))))
@@ -154,17 +150,13 @@ def test_visible_controls_ignore_hidden_fields(
     reranked = visible_field_control_ranking(tampered, policy)
 
     assert list(baseline["symbol"]) == list(reranked["symbol"])
-    assert bounded_visible_control_picks(boundary, policy) == tuple(
-        baseline.head(3)["symbol"]
-    )
+    assert bounded_visible_control_picks(boundary, policy) == tuple(baseline.head(3)["symbol"])
 
 
 def test_risk_veto_uses_largest_positive_penalty(
     policy: HotsectorNumericV2RankingPolicy,
 ) -> None:
-    top10 = _candidates().loc[
-        lambda frame: frame["trade_date"].eq("2026-01-05")
-    ].head(10)
+    top10 = _candidates().loc[lambda frame: frame["trade_date"].eq("2026-01-05")].head(10)
     top10.loc[top10["symbol"].eq("000007.SZ"), "ret_5d"] = 0.30
 
     assert risk_veto_visible_control_symbol(top10, policy) == "000007.SZ"

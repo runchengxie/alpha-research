@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -94,9 +94,7 @@ def test_objective_selects_pointwise_pairwise_or_listwise_training(
 
 
 def test_empty_model_params_keep_existing_pairwise_defaults() -> None:
-    ranker = DailyWatch20Ranker(
-        DailyWatch20Config(features=("f1", "f2"), train_window_dates=None)
-    )
+    ranker = DailyWatch20Ranker(DailyWatch20Config(features=("f1", "f2"), train_window_dates=None))
 
     assert ranker.model_type == "xgb_ranker"
     assert ranker.model_params["objective"] == "rank:pairwise"

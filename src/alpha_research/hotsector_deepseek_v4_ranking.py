@@ -149,9 +149,7 @@ def _model_phase1_metrics(
     model: str,
 ) -> dict[str, Any]:
     rows = [
-        indexed[(date, model, arm)]
-        for date in policy.screen_dates
-        for arm in policy.screen_arms
+        indexed[(date, model, arm)] for date in policy.screen_dates for arm in policy.screen_arms
     ]
     shuffle = _pair_metrics(
         indexed,
@@ -199,8 +197,7 @@ def analyze_deepseek_v4_phase1(
         arms=policy.screen_arms,
     )
     model_metrics = {
-        model: _model_phase1_metrics(indexed, policy=policy, model=model)
-        for model in policy.models
+        model: _model_phase1_metrics(indexed, policy=policy, model=model) for model in policy.models
     }
     trial_count = len(policy.screen_dates) * len(policy.screen_arms)
     minimum_model_matches = trial_count - policy.max_invalid_model_responses_per_model

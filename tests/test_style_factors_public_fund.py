@@ -8,7 +8,6 @@ from alpha_research.style_factors.helpers._new_factors import (
     _add_public_fund_ownership_factors,
 )
 
-
 PUBLIC_FUND_FACTOR_COLUMNS = {
     "factor_fund_breadth",
     "factor_fund_breadth_change",
@@ -61,4 +60,4 @@ def test_public_fund_factors_are_missing_without_source_data() -> None:
 
 
 def test_public_fund_factor_columns_are_registered() -> None:
-    assert PUBLIC_FUND_FACTOR_COLUMNS <= set(FACTOR_COLS)
+    assert set(FACTOR_COLS) >= PUBLIC_FUND_FACTOR_COLUMNS

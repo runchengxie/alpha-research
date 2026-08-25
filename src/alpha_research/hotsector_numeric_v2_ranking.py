@@ -297,8 +297,7 @@ def _buffer_selection(
         if previous is None
         else set(
             ranked.loc[
-                ranked["numeric_v2_rank"].le(policy.buffer_rank)
-                & ranked["symbol"].isin(previous),
+                ranked["numeric_v2_rank"].le(policy.buffer_rank) & ranked["symbol"].isin(previous),
                 "symbol",
             ].astype(str)
         )
@@ -308,11 +307,7 @@ def _buffer_selection(
         .sort_values("numeric_v2_rank", kind="mergesort")["symbol"]
         .astype(str)
     )
-    symbols = (
-        ranked.sort_values("numeric_v2_rank", kind="mergesort")["symbol"]
-        .astype(str)
-        .tolist()
-    )
+    symbols = ranked.sort_values("numeric_v2_rank", kind="mergesort")["symbol"].astype(str).tolist()
     for symbol in symbols:
         if len(chosen) >= policy.top_k:
             break
@@ -335,9 +330,7 @@ def build_hotsector_numeric_v2_rankings(
     previous_buffer: set[str] | None = None
     for trade_date, group in work.groupby("trade_date", sort=True):
         ranked = _candidate_pool(group, policy)
-        numeric = ranked.sort_values("candidate_pool_rank", kind="mergesort").head(
-            policy.top_k
-        )
+        numeric = ranked.sort_values("candidate_pool_rank", kind="mergesort").head(policy.top_k)
         v2 = ranked.sort_values("numeric_v2_rank", kind="mergesort").head(policy.top_k)
         buffer = _buffer_selection(ranked, previous_buffer, policy)
         previous_overlap = (
@@ -375,27 +368,18 @@ def build_hotsector_numeric_v2_rankings(
                 "trade_date": trade_date,
                 "source_universe_size": len(group),
                 "candidate_pool_size": len(ranked),
-                "missing_daily_confirm_rows": int(
-                    ranked["daily_confirm_score"].isna().sum()
-                ),
-                "numeric_v2_overheat_penalty_mean": float(
-                    ranked["overheat_penalty"].mean()
-                ),
-                "numeric_v2_overheat_penalty_top10_mean": float(
-                    v2["overheat_penalty"].mean()
-                ),
+                "missing_daily_confirm_rows": int(ranked["daily_confirm_score"].isna().sum()),
+                "numeric_v2_overheat_penalty_mean": float(ranked["overheat_penalty"].mean()),
+                "numeric_v2_overheat_penalty_top10_mean": float(v2["overheat_penalty"].mean()),
                 "numeric_vs_v2_top10_overlap": len(
-                    set(numeric["symbol"].astype(str))
-                    & set(v2["symbol"].astype(str))
+                    set(numeric["symbol"].astype(str)) & set(v2["symbol"].astype(str))
                 ),
                 "buffer_retained_names": int(buffer["hysteresis_retained"].sum()),
                 "buffer_overlap_with_previous": previous_overlap,
             }
         )
     rankings = pd.concat(outputs, ignore_index=True)
-    variant_order = {
-        variant: index for index, variant in enumerate(policy.variants)
-    }
+    variant_order = {variant: index for index, variant in enumerate(policy.variants)}
     rankings["_variant_order"] = rankings["variant"].map(variant_order)
     rankings = rankings.sort_values(
         ["trade_date", "_variant_order", "rank"],

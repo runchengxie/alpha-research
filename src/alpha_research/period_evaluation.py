@@ -269,3 +269,9 @@ def _score_and_record_period_eval_metrics(
         bucket_ic_summary_fn=context.get("bucket_ic_summary_fn", bucket_ic_summary),
     )
     return eval_df_full
+
+
+build_scored_data = _build_scored_data
+score_and_record_period_eval_metrics = _score_and_record_period_eval_metrics
+
+__all__ = ["build_scored_data", "score_and_record_period_eval_metrics"]
