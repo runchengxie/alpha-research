@@ -185,7 +185,7 @@ qlib = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", marker = "extra == 'dev'", specifier = ">=1.2" },
-    { name = "market-data-platform", git = "https://github.com/runchengxie/market-data-platform.git?rev=2e463802e88a3ab760ffb5b4d8b48879a360872c" },
+    { name = "market-data-platform", git = "https://github.com/runchengxie/market-data-platform.git?rev=3936ab47e37978e268a057d7268c137370df99ce" },
     { name = "numpy", specifier = ">=1.23" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pandas-ta", specifier = ">=0.3.14b0" },
@@ -1363,7 +1363,7 @@ name = "gunicorn"
 version = "26.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "packaging", marker = "sys_platform != 'win32'" },
+    { name = "packaging" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6d/b7/a4a3f632f823e432ce6bc65f62961b7980c898c77f075a2f7118cb3846fe/gunicorn-26.0.0.tar.gz", hash = "sha256:ca9346f85e3a4aeeb64d491045c16b9a35647abd37ea15efe53080eb8b090baf", size = 727286, upload-time = "2026-05-05T06:38:25.529Z" }
 wheels = [
@@ -2087,7 +2087,7 @@ wheels = [
 [[package]]
 name = "market-data-platform"
 version = "0.2.0"
-source = { git = "https://github.com/runchengxie/market-data-platform.git?rev=2e463802e88a3ab760ffb5b4d8b48879a360872c#2e463802e88a3ab760ffb5b4d8b48879a360872c" }
+source = { git = "https://github.com/runchengxie/market-data-platform.git?rev=3936ab47e37978e268a057d7268c137370df99ce#3936ab47e37978e268a057d7268c137370df99ce" }
 dependencies = [
     { name = "numpy" },
     { name = "pyyaml" },
@@ -2833,7 +2833,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "ptyprocess" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
