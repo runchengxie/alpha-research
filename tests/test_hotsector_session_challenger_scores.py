@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -28,7 +29,7 @@ def _selection() -> _Selection:
     numeric = tuple(f"{index:06d}.SZ" for index in range(1, 11))
     selected = (*numeric[:7], "000011.SZ", "000012.SZ", "000013.SZ")
     return _Selection(
-        trade_date=pd.Timestamp("2026-05-06"),
+        trade_date=cast(pd.Timestamp, pd.Timestamp("2026-05-06")),
         numeric_symbols=numeric,
         selected_symbols=selected,
         confidence_scores=tuple(range(91, 101)),
