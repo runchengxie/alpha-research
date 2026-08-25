@@ -28,7 +28,7 @@
 - `rank:pairwise`：pairwise，也是当前默认行为。XGBoost 按交易日 query group 训练两两排序偏好。
 - `rank:ndcg`：listwise。训练前把 `[0, 1]` 百分位标签离散到 `0..31` relevance grade，并按交易日 query group 优化 NDCG。
 
-三种 objective 会生成不同的 `model_version`，因此持久化模型不会在不同训练语义之间误恢复；`feature_set_id` 保持只描述特征与标签定义。下游 `signals.parquet` 仍接收统一的相对分数，可在相同组合构造和回测假设下比较三种训练目标。
+三种 objective 会生成不同的 `model_version`，因此持久化模型不会在不同训练语义之间误恢复，`feature_set_id` 保持只描述特征与标签定义。下游 `signals.parquet` 仍接收统一的相对分数，可在相同组合构造和回测假设下比较三种训练目标。
 
 ## 研究后端状态
 
