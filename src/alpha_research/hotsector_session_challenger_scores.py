@@ -74,9 +74,7 @@ def build_session_challenger_scores(
         if len(selection.confidence_scores) != top_k:
             raise ValueError("session challenger confidence scores do not match top_k")
 
-        confidence = dict(
-            zip(selection.selected_symbols, selection.confidence_scores, strict=True)
-        )
+        confidence = dict(zip(selection.selected_symbols, selection.confidence_scores, strict=True))
         available_at = selection.trade_date.tz_localize("Asia/Shanghai") + pd.Timedelta(
             hours=15, minutes=1
         )
@@ -103,9 +101,7 @@ def build_session_challenger_scores(
 
     scores = pd.DataFrame(rows)
     expected_rows = len(manifest.selections) * 2 * top_k
-    if len(scores) != expected_rows or scores.duplicated(
-        ["trade_date", "variant", "symbol"]
-    ).any():
+    if len(scores) != expected_rows or scores.duplicated(["trade_date", "variant", "symbol"]).any():
         raise ValueError("session challenger scores are incomplete or duplicated")
     return scores.sort_values(
         ["trade_date", "variant", "selection_rank"], kind="mergesort"
