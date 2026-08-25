@@ -90,13 +90,9 @@ def _add_public_fund_ownership_factors(
     df = _merge_aux(df, fund_portfolio, source_columns)
 
     count = pd.to_numeric(df["fund_top10_count_holding_stock"], errors="coerce").clip(lower=0)
-    count_change = pd.to_numeric(
-        df["fund_top10_count_holding_stock_change"], errors="coerce"
-    )
+    count_change = pd.to_numeric(df["fund_top10_count_holding_stock_change"], errors="coerce")
     ownership = pd.to_numeric(df["fund_top10_stk_float_ratio_sum"], errors="coerce")
-    ownership_change = pd.to_numeric(
-        df["fund_top10_stk_float_ratio_sum_change"], errors="coerce"
-    )
+    ownership_change = pd.to_numeric(df["fund_top10_stk_float_ratio_sum_change"], errors="coerce")
 
     # log1p reduces mega-cap / large-fund-count tail dominance while preserving
     # the ordering used by the subsequent cross-sectional standardization.

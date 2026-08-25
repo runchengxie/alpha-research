@@ -90,9 +90,42 @@ __all__ = [
     "_target_market",
     "_weighted_complete_row_sum",
     "build_daily_watch20_feature_frame",
+    "future_trade_date",
+    "known_false_flag",
     "label_columns_for_horizon_weights",
+    "lookup_on_dates",
     "normalize_label_horizon_weights",
+    "open_is_away_from_limit",
 ]
+
+
+def future_trade_date(frame: pd.DataFrame, offset: int) -> pd.Series:
+    """Return each row's future trade date at the requested trading-date offset."""
+
+    return _future_date(frame, offset)
+
+
+def lookup_on_dates(frame: pd.DataFrame, values: pd.Series, dates: pd.Series) -> pd.Series:
+    """Lookup symbol-level values on an aligned series of target dates."""
+
+    return _lookup_on_dates(frame, values, dates)
+
+
+def open_is_away_from_limit(
+    open_price: pd.Series,
+    limit_price: pd.Series,
+    *,
+    side: str,
+) -> pd.Series:
+    """Return whether an open price is tradable away from the side-specific limit."""
+
+    return _open_is_away_from_limit(open_price, limit_price, side=side)
+
+
+def known_false_flag(values: pd.Series) -> pd.Series:
+    """Normalize known false-like values while treating unknown values as false."""
+
+    return _known_false_flag(values)
 
 
 def build_daily_watch20_feature_frame(
