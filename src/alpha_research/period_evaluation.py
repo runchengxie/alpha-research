@@ -11,7 +11,7 @@ from .evaluation import (
     _permutation_test_ic,
     _postprocess_pred_column,
     _record_primary_period_metrics,
-    _record_quantile_turnover_bucket_metrics,
+    _record_quantile_churn_bucket_metrics,
 )
 from .freshness_overlay import apply_freshness_overlay
 from .metrics import bucket_ic_summary
@@ -250,7 +250,7 @@ def _score_and_record_period_eval_metrics(
         context=context,
         label_prefix=label_prefix,
     )
-    _record_quantile_turnover_bucket_metrics(
+    _record_quantile_churn_bucket_metrics(
         result,
         eval_df,
         target=context["target"],
@@ -259,9 +259,6 @@ def _score_and_record_period_eval_metrics(
         n_quantiles=context["n_quantiles"],
         top_k=context["top_k"],
         rebalance_dates_eval=rebalance_dates_eval,
-        eval_buffer_exit=context["eval_buffer_exit"],
-        eval_buffer_entry=context["eval_buffer_entry"],
-        transaction_cost_bps=context["transaction_cost_bps"],
         bucket_ic_enabled=context["bucket_ic_enabled"],
         bucket_ic_schemes=context["bucket_ic_schemes"],
         bucket_ic_method=context["bucket_ic_method"],
