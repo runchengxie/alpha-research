@@ -5,62 +5,10 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
-from market_data_platform.symbols import canonicalize_symbol_columns
-
 try:
     from scipy import stats as scipy_stats
 except Exception:  # pragma: no cover - optional dependency
     scipy_stats: Any = None
-
-
-def apply_rebalance_buffer(
-    ranked_codes: list[str],
-    prev_holdings: set[str] | None,
-    k: int,
-    buffer_exit: int,
-    buffer_entry: int,
-) -> list[str]:
-    if not ranked_codes or k <= 0:
-        return []
-    if prev_holdings is None or (buffer_exit <= 0 and buffer_entry <= 0):
-        return list(ranked_codes)
-
-    keep_limit = min(len(ranked_codes), k + max(0, buffer_exit))
-    entry_limit = min(len(ranked_codes), max(0, k - max(0, buffer_entry)))
-
-    keep_set = set(ranked_codes[:keep_limit]) & prev_holdings
-    candidate_order: list[str] = [code for code in ranked_codes if code in keep_set]
-
-    preferred = set(ranked_codes[:entry_limit]) if entry_limit > 0 else set()
-    _append_ranked_candidates(candidate_order, ranked_codes, k, allowed=preferred or None)
-    _append_ranked_candidates(candidate_order, ranked_codes, k)
-    return candidate_order
-
-
-def _append_ranked_candidates(
-    selected: list[str],
-    ranked_codes: list[str],
-    k: int,
-    *,
-    allowed: set[str] | None = None,
-) -> None:
-    for code in ranked_codes:
-        if len(selected) >= k:
-            break
-        if code in selected:
-            continue
-        if allowed is not None and code not in allowed:
-            continue
-        selected.append(code)
-
-
-def apply_rank_offset(ranked_codes: list[str], rank_offset: int = 0) -> list[str]:
-    offset = int(rank_offset or 0)
-    if offset < 0:
-        raise ValueError("rank_offset must be >= 0.")
-    if offset <= 0:
-        return ranked_codes
-    return ranked_codes[offset:]
 
 
 def spearman_corr(x: pd.Series, y: pd.Series) -> float:
@@ -161,7 +109,7 @@ def quantile_returns(
     data = data.copy()
     quantile = data.groupby("trade_date")[pred_col].apply(_add_quantile)
     data["quantile"] = quantile.reset_index(level=0, drop=True)
-    data = data.dropna(subset=["quantile"])  # drop dates with insufficient symbols
+    data = data.dropna(subset=["quantile"])
 
     q_ret = data.groupby(["trade_date", "quantile"])[target_col].mean().unstack()
     q_ret.index = pd.to_datetime(q_ret.index)
@@ -258,57 +206,6 @@ def bucket_ic_summary(
         stats["bucket_col"] = str(bucket_col)
         records.append(stats)
     return pd.DataFrame(records)
-
-
-def estimate_turnover(
-    data: pd.DataFrame,
-    pred_col: str,
-    k: int,
-    rebalance_dates: list[pd.Timestamp],
-    buffer_exit: int = 0,
-    buffer_entry: int = 0,
-    rank_offset: int = 0,
-) -> pd.Series:
-    if data is None or data.empty:
-        return pd.Series(dtype=float, name="turnover")
-    data = canonicalize_symbol_columns(data, context="Turnover data")
-    prev = None
-    turnovers: list[tuple[pd.Timestamp, float]] = []
-    day_groups = {  # noqa: C416 - avoid relying on a shadowable dict() callable here.
-        date: group for date, group in data.groupby("trade_date", sort=False)
-    }
-    for date in rebalance_dates:
-        day = day_groups.get(date)
-        if day is None or len(day) < k:
-            continue
-        ranked = apply_rank_offset(
-            day.sort_values(pred_col, ascending=False)["symbol"].tolist(),
-            rank_offset,
-        )
-        k_final = min(k, len(ranked))
-        if k_final <= 0:
-            continue
-        holdings = set(
-            apply_rebalance_buffer(
-                ranked,
-                prev,
-                k_final,
-                buffer_exit,
-                buffer_entry,
-            )[:k_final]
-        )
-        if prev is not None:
-            overlap = len(holdings & prev)
-            turnovers.append((pd.to_datetime(date), 1 - overlap / k_final))
-        prev = holdings
-    if not turnovers:
-        return pd.Series(dtype=float, name="turnover")
-    turnovers.sort(key=lambda x: x[0])
-    return pd.Series(
-        [value for _, value in turnovers],
-        index=pd.Index([date for date, _ in turnovers], name="trade_date"),
-        name="turnover",
-    )
 
 
 def summarize_active_returns(
