@@ -1,12 +1,15 @@
 # ruff: noqa: RUF002
-"""Signal generator for StyleReplica-A80B20-v0.
+"""Signal generator for the StyleReplica research model.
 
-Orchestrates the full daily signal generation pipeline:
-1. Load price data and build universe
-2. Compute all style factors
-3. Compute A-leg and B-leg scores
-4. Map themes
-5. Output canonical signal artifact DataFrame
+Orchestrates the daily alpha-signal pipeline:
+1. Load price data and build the research universe
+2. Compute style factors
+3. Compute A-leg and B-leg research scores
+4. Attach classification/explanation columns
+5. Output the canonical signal artifact
+
+Final sleeve quotas, portfolio buffers, replacement limits, overlap handling and
+position weights are intentionally outside this module.
 
 Output schema (extends alpha_research.signals):
     signal_date, symbol, raw_pred, signal_eval, signal_backtest,
@@ -21,7 +24,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -41,55 +44,25 @@ from ..signal_artifact import (
 from .factors import compute_all_style_factors
 from .score_a import compute_score_a
 from .score_b import compute_score_b
-from .theme_map import (
-    AI_HARDWARE_THEME_QUOTAS,
-    build_theme_map,
-    get_theme_label,
-)
+from .theme_map import build_theme_map, get_theme_label
 from .universe import filter_style_replica_universe
 
 MODEL_VERSION = "StyleReplica-A80B20-v0"
 FEATURE_SET_ID = "style_replica_v0"
 
-# Output file names
 STYLE_REPLICA_SIGNAL_FILE = "signals_style_replica.parquet"
 STYLE_REPLICA_META_FILE = "signals_style_replica.meta.json"
 
 
 @dataclass
 class StyleReplicaConfig:
-    """Configuration for the StyleReplica signal generator."""
+    """Alpha-signal configuration for StyleReplica research."""
 
-    # A-leg quotas
-    a_slots: int = 80
-    a_capital_weight: float = 0.80
-
-    # B-leg quotas
-    b_slots: int = 20
-    b_capital_weight: float = 0.20
-
-    # Theme quotas (A-leg)
-    theme_quotas: dict[str, int] = field(default_factory=lambda: dict(AI_HARDWARE_THEME_QUOTAS))
-
-    # Industry cap (B-leg): max stocks per industry
-    b_industry_cap: int = 3
-
-    # Overlap
-    overlap_policy: str = "aggregate"  # "aggregate" or "deduplicate"
-    normal_slot_weight: float = 0.01
-    max_name_weight: float = 0.02
-
-    # Daily replacement limits
-    max_daily_replacements: int = 15
-
-    # Factor windows
     resvol_window: int = 60
     beta_window: int = 60
     liquidity_window: int = 20
     mom_short_window: int = 20
     mom_long_window: int = 120
-
-    # Model metadata
     model_version: str = MODEL_VERSION
     feature_set_id: str = FEATURE_SET_ID
 
@@ -101,7 +74,7 @@ def _wide_to_long(
     date_col: str = "signal_date",
     symbol_col: str = "symbol",
 ) -> pd.DataFrame:
-    """Convert wide score DataFrame to long format."""
+    """Convert a wide score frame to the canonical long layout."""
     long = scores.stack(future_stack=True).reset_index()
     long.columns = [date_col, symbol_col, value_col]
     long[date_col] = pd.to_datetime(long[date_col]).dt.strftime("%Y%m%d")
@@ -115,7 +88,6 @@ def _build_explanation_columns(
 ) -> dict[str, pd.Series]:
     """Build per-factor percentile explanation columns for a single date."""
     ts_date = pd.Timestamp(score_date)
-
     explanations: dict[str, pd.Series] = {}
     factor_to_col = {
         "resvol": "resvol_pct",
@@ -131,9 +103,7 @@ def _build_explanation_columns(
         if factor_df is None or factor_df.empty or ts_date not in factor_df.index:
             continue
         row = factor_df.loc[ts_date]
-        ranked = row.rank(pct=True, na_option="bottom")
-        explanations[col_name] = ranked
-
+        explanations[col_name] = row.rank(pct=True, na_option="bottom")
     return explanations
 
 
@@ -262,25 +232,9 @@ def generate_daily_signals(
     concept_frame: pd.DataFrame | None = None,
     config: StyleReplicaConfig | None = None,
 ) -> pd.DataFrame:
-    """Generate daily StyleReplica signals for all dates with sufficient data.
-
-    Args:
-        price_panel: Wide DataFrame (dates × symbols) of adjusted close prices.
-        instruments: DataFrame with symbol, list_date, is_st columns.
-        turnover_panel: Wide DataFrame of daily turnover rates (%).
-        market_cap_panel: Wide DataFrame of market capitalizations.
-        market_returns: Market return series aligned by date.
-        industry_frame: DataFrame with symbol, industry_name columns.
-        concept_frame: DataFrame with symbol, concept_name columns.
-        config: StyleReplica configuration.
-
-    Returns:
-        Long-format DataFrame with canonical signal columns plus style_replica
-        explanatory columns (score_a, score_b, leg, theme, factor percentiles, etc.).
-    """
+    """Generate daily StyleReplica research signals for all usable dates."""
     cfg = config or StyleReplicaConfig()
     filtered_prices = _filter_price_panel(price_panel, instruments)
-
     if filtered_prices.empty:
         return pd.DataFrame()
 
@@ -306,7 +260,7 @@ def generate_daily_signals(
 
 
 def _build_reason(row: pd.Series) -> str:
-    """Build a human-readable selection reason for a single stock."""
+    """Build a human-readable research explanation for a single stock."""
     leg = row.get("leg")
     theme = row.get("theme")
     industry = row.get("industry")
@@ -318,19 +272,11 @@ def _build_reason(row: pd.Series) -> str:
         parts.append(get_theme_label(str(theme)))
     if industry is not None and not pd.isna(industry):
         parts.append(str(industry))
-
     return " / ".join(parts) if parts else "未分类"
 
 
 class StyleReplicaSignalGenerator:
-    """Daily signal generator for StyleReplica-A80B20-v0.
-
-    Usage::
-
-        gen = StyleReplicaSignalGenerator(config)
-        signals = gen.generate(price_panel, ...)
-        gen.write(signals, output_dir)
-    """
+    """Daily alpha-signal generator for the StyleReplica research model."""
 
     def __init__(self, config: StyleReplicaConfig | None = None):
         self.config = config or StyleReplicaConfig()
@@ -346,7 +292,7 @@ class StyleReplicaSignalGenerator:
         industry_frame: pd.DataFrame | None = None,
         concept_frame: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
-        """Generate daily style replica signals."""
+        """Generate daily StyleReplica research signals."""
         return generate_daily_signals(
             price_panel,
             instruments=instruments,
@@ -358,11 +304,8 @@ class StyleReplicaSignalGenerator:
             config=self.config,
         )
 
-    def build_canonical_frame(
-        self,
-        signals: pd.DataFrame,
-    ) -> pd.DataFrame:
-        """Normalize signals into the canonical alpha_research.signals artifact format."""
+    def build_canonical_frame(self, signals: pd.DataFrame) -> pd.DataFrame:
+        """Normalize signals into the canonical alpha-research artifact format."""
         if signals is None or signals.empty:
             return pd.DataFrame(columns=pd.Index(CANONICAL_SIGNAL_COLUMNS))
         return build_signal_artifact_frame(
@@ -383,19 +326,7 @@ class StyleReplicaSignalGenerator:
         run_id: str | None = None,
         lineage: Sequence[tuple[str, str]] = (),
     ) -> tuple[pd.DataFrame, dict[str, Any]]:
-        """Write signals to parquet with metadata.
-
-        Args:
-            signals: Long-format signal DataFrame from ``generate()``.
-            output_dir: Directory to write ``signals_style_replica.parquet``
-                       and ``signals_style_replica.meta.json``.
-            extra_metadata: Additional metadata to include in the meta JSON.
-            run_id: Run identifier recorded in the artifact envelope.
-            lineage: Upstream (artifact_id, sha256) pairs recorded in the envelope.
-
-        Returns:
-            (canonical_frame, summary_dict).
-        """
+        """Write the signal artifact and alpha-owned metadata."""
         out_dir = Path(output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -405,9 +336,11 @@ class StyleReplicaSignalGenerator:
 
         summary = signal_artifact_summary(canonical, path=signal_path)
         config = {
-            "a_slots": self.config.a_slots,
-            "b_slots": self.config.b_slots,
-            "theme_quotas": self.config.theme_quotas,
+            "resvol_window": self.config.resvol_window,
+            "beta_window": self.config.beta_window,
+            "liquidity_window": self.config.liquidity_window,
+            "mom_short_window": self.config.mom_short_window,
+            "mom_long_window": self.config.mom_long_window,
             "model_version": self.config.model_version,
             "feature_set_id": self.config.feature_set_id,
         }
