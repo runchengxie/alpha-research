@@ -11,7 +11,6 @@ from .date_slices import _apply_model_train_window, _slice_trade_dates
 from .evaluation import _permutation_test_ic, _postprocess_pred_column
 from .metrics import (
     daily_ic_series,
-    estimate_turnover,
     hit_rate,
     quantile_returns,
     regression_error_metrics,
@@ -20,6 +19,7 @@ from .metrics import (
 )
 from .modeling import build_model, feature_importance_frame, fit_model
 from .rebalance_calendar import _sample_rebalance_frame
+from .signal_churn import estimate_topk_membership_churn
 from .split import build_sample_weight, time_series_cv_ic
 
 logger = logging.getLogger("alpha_research")
@@ -310,13 +310,11 @@ def _walk_forward_portfolio_metrics(
     symbol_count = int(cast(pd.Series, eval_df_w["symbol"]).nunique())
     k_w = min(top_k, symbol_count)
     if k_w > 0 and rebalance_dates_w:
-        turnover_series_w = estimate_turnover(
+        turnover_series_w = estimate_topk_membership_churn(
             eval_df_w,
             signal_col_w,
             k_w,
             rebalance_dates_w,
-            buffer_exit=context["eval_buffer_exit"],
-            buffer_entry=context["eval_buffer_entry"],
         )
     else:
         turnover_series_w = pd.Series(dtype=float, name="turnover")

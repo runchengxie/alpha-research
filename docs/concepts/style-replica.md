@@ -1,142 +1,81 @@
-# StyleReplica 信号与组合构造
+# StyleReplica Alpha 信号研究
 
-`alpha_research.style_replica` 实现 StyleReplica-A80B20-v0 的信号计算和目标持仓构造。该策略采用日频规则打分，把候选证券分为 A、B 两个组合腿。
+`alpha_research.style_replica` 只维护 StyleReplica 的因子、研究分类、A/B 分数和标准信号产物。最终槽位分配、主题配额、持仓缓冲、替换限制、重叠处理和持仓权重已经移出 alpha owner。
 
-本页说明模型输入、信号产物、组合规则和当前限制。运行编排、数据目录、日报和 `targets.json` 导出由 `strategy-pipeline` 负责。通用持仓回放、成本估算和容量分析由 `portfolio-backtester` 负责。
+运行编排和 `targets.json` 导出由 `strategy-pipeline` 负责，StyleReplica 冻结策略政策由 `strategy-app` 负责，通用目标持仓构造、回测、成本和容量由 `portfolio-backtester` 负责。
 
 ## 模块入口
-
-可以从 `alpha_research.style_replica` 导入：
 
 ```python
 from alpha_research.style_replica import (
     StyleReplicaConfig,
-    StyleReplicaPortfolioConfig,
     StyleReplicaSignalGenerator,
-    build_style_replica_positions,
-    compute_daily_changes,
-    compute_daily_exposure,
+    generate_daily_signals,
+    map_stock_to_theme,
 )
 ```
 
+本包不再公开 `StyleReplicaPortfolioConfig`、`build_style_replica_positions`、持仓变化或组合暴露构造器。
+
 ## 信号层
 
-`StyleReplicaSignalGenerator` 接收价格、换手率、市值、行业和证券基础信息，计算 A、B 两套分数。
+`StyleReplicaSignalGenerator` 接收价格、换手率、市值、行业和证券基础信息，计算 A、B 两套研究分数。
 
-A 组合腿主要使用：
+A 分数主要使用残差波动率、流动性、市值、20 日和 120 日动量、市场 beta、行业动量和可选分钟成交活跃信息。B 分数主要使用波动率收敛、低残差波动率、流动性、20 日和 120 日动量，以及可选 Hermite 稳定性指标。
 
-- 残差波动率
-- 流动性
-- 市值
-- 20 日和 120 日动量
-- 市场 beta
-- 行业动量
-- 可选的分钟级成交活跃度
-
-B 组合腿主要使用：
-
-- 波动率收敛
-- 低残差波动率
-- 流动性
-- 20 日和 120 日动量
-- 可选的 Hermite 稳定性指标
-
-信号输出采用长表格式，主要字段包括：
+信号输出主要字段包括：
 
 | 字段 | 含义 |
 | --- | --- |
 | `signal_date` | 信号日期 |
 | `symbol` | 证券代码 |
-| `score_a` | A 组合腿分数 |
-| `score_b` | B 组合腿分数 |
-| `raw_pred` | 用于统一排序的分数 |
-| `leg` | 初步组合腿分类 |
-| `theme` | 主题分类 |
+| `score_a` | A 研究分数 |
+| `score_b` | B 研究分数 |
+| `raw_pred` | 统一研究排序分数 |
+| `signal_eval` | 评估侧分数 |
+| `signal_backtest` | 下游组合回测使用的最终分数 |
+| `leg` | 基于研究分类得到的候选腿标签 |
+| `theme` | 研究主题分类，不包含主题配额 |
 | `industry` | 行业分类 |
-| `model_version` | 模型版本 |
+| `model_version` | Alpha 模型版本 |
 | `feature_set_id` | 特征集合标识 |
 
 标准信号文件名为 `signals_style_replica.parquet`，元数据文件名为 `signals_style_replica.meta.json`。
 
-## 配置关系
+`signal_backtest` 仍然只是分数，不代表投资组合收益、成交结果或账户净值。
 
-`StyleReplicaConfig` 管理信号和策略共享参数，例如槽位数量、主题配额、行业上限、重叠处理和模型版本。
+## 配置边界
 
-`StyleReplicaPortfolioConfig` 管理持仓构造阶段使用的参数，包括缓冲区和每日替换限制。可以从信号配置生成组合配置：
+`StyleReplicaConfig` 仅包含 alpha 研究参数和模型/特征身份。槽位数量、主题配额、行业持仓上限、buffer、replacement、overlap 和最终权重不属于该配置。
 
-```python
-signal_config = StyleReplicaConfig()
-portfolio_config = StyleReplicaPortfolioConfig.from_signal_config(signal_config)
+策略侧参数由 `strategy_app.style_replica.StyleReplicaPolicy` 冻结，再转换成 `portfolio-backtester` 的通用 sleeve portfolio spec。
+
+```text
+alpha_research.style_replica
+    signals
+      ↓
+strategy_app.style_replica.StyleReplicaPolicy
+      ↓
+portfolio_backtester.sleeve_portfolio
+    positions_by_rebalance
 ```
 
-这样可以让信号层和组合层共享槽位、权重和主题配额，同时保留组合构造特有的缓冲参数。
+## 主题映射
 
-## A 组合腿
+`theme_map` 负责回答证券属于哪个研究主题，保留主题 key、展示标签、行业映射和概念关键词映射。
 
-A 组合腿按主题分别选择证券：
+它不再定义每个主题买几只。主题 quota 是策略政策，因此归 `strategy-app`。
 
-1. 在每个主题内按 `score_a` 从高到低排序
-2. 新持仓需要进入主题配额范围
-3. 原有持仓可以在退出缓冲区内继续保留
-4. 每个主题先按 `theme_quotas` 分配名额
-5. 初始选择不足 `a_slots` 时，从仍未入选的主题证券中按分数补足
+## 信号稳定性
 
-`a_buffer_exit_multiplier` 控制原有持仓的退出范围。例如主题配额为 10，倍率为 1.3 时，原有持仓通常在主题内排名降到约 13 名之后退出初始保留范围。
+Alpha 侧可以检查 Top-K 排名集合的变化，但该指标使用 `topk_membership_churn` 语义，只衡量研究信号集合变化。
 
-## B 组合腿
+它不应用组合 buffer、权重、行业持仓上限、交易可行性或交易成本。正式组合换手率由 `portfolio-backtester` 在目标持仓生成之后计算。
 
-B 组合腿按 `score_b` 从高到低排序，初始选择阶段使用以下约束：
+## 跨层边界
 
-- `b_slots`：目标持仓数量
-- `b_industry_cap`：单一行业数量上限
-- `b_buffer_entry_rank`：新持仓进入范围
-- `b_buffer_exit_rank`：原有持仓保留范围
-- `b_max_daily_replacements`：每日新增数量上限
+修改新因子、score、signal artifact、IC、recency 或其他研究诊断时在本仓处理。
 
-初始选择不足时，当前实现会放宽排名范围并继续补足。补足阶段不会重新应用行业上限和每日新增上限，因此调用方需要检查最终持仓是否仍满足运行要求。
+修改槽位、buffer、replacement、overlap、最终权重、组合成本或容量时在 `portfolio-backtester` 处理。修改 StyleReplica A/B 身份、主题配额和冻结策略版本时在 `strategy-app` 处理。
 
-## 重叠持仓和权重
-
-`overlap_policy` 支持：
-
-- `aggregate`：A、B 同时选中的证券合并权重，最高不超过 `max_name_weight`
-- `deduplicate`：从 B 组合腿移除已经进入 A 组合腿的证券
-
-普通槽位使用 `normal_slot_weight`。当前构造器不会自动把总权重归一化到 1。总权重取决于槽位数量、重叠数量和权重设置。
-
-## 持仓输出
-
-`build_style_replica_positions` 返回满足 `positions_by_rebalance.csv` 基础契约的持仓表，主要字段包括：
-
-- `rebalance_date`
-- `entry_date`
-- `symbol`
-- `weight`
-- `side`
-- `leg`
-- `signal`
-- `score_a`
-- `score_b`
-- `theme`
-- `industry`
-- `rank`
-
-生成后的持仓可以交给 `portfolio-backtester` 的 `run_position_backtest` 进行通用回放。
-
-## 辅助分析
-
-`compute_daily_changes` 比较相邻日期持仓，输出 `new`、`exit`、`weight_change` 和 `stay`。
-
-`compute_style_exposure_summary` 汇总单日组合腿数量、总权重、主题分布和行业分布。
-
-`compute_daily_exposure` 对全部调仓日期逐日生成暴露摘要。
-
-## 当前限制
-
-- `a_capital_weight` 和 `b_capital_weight` 目前用于表达设计目标，实际权重仍由槽位权重和重叠规则决定
-- `max_daily_replacements` 目前没有统一约束 A、B 两个组合腿的合计替换数量
-- B 组合腿补足阶段可能突破行业上限和新增数量上限
-- 组合构造属于策略专用逻辑，修改默认参数可能改变历史持仓
-- 当前实现适合研究和日频目标持仓生成，不能替代逐笔撮合、真实订单状态和券商侧风控
-
-修改组合规则时，应同步更新本页、专用行为测试和 `strategy-pipeline` 的运行配置。
+Alpha 研究代码不得通过运行时导入调用 `portfolio_backtester` 或 `quant_execution_engine`。

@@ -16,7 +16,6 @@ from .benchmarking import build_benchmark_series
 from .date_slices import _apply_model_train_window, _slice_trade_dates
 from .metrics import (
     daily_ic_series,
-    estimate_turnover,
     quantile_returns,
     summarize_active_returns,
     summarize_ic,
@@ -24,6 +23,7 @@ from .metrics import (
 )
 from .modeling import build_model, fit_model
 from .rebalance_calendar import get_rebalance_dates
+from .signal_churn import estimate_topk_membership_churn
 from .split import build_sample_weight, time_series_cv_ic
 from .transform import apply_score_postprocess
 
@@ -347,13 +347,11 @@ def _evaluate_split_eval(
     k = min(period_settings.top_k, eval_df["symbol"].nunique()) if not eval_df.empty else 0
     turnover = pd.Series(dtype=float, name="turnover")
     if k > 0 and eval_rebalance_dates:
-        turnover = estimate_turnover(
+        turnover = estimate_topk_membership_churn(
             eval_df,
             "signal_eval",
             k,
             eval_rebalance_dates,
-            buffer_exit=period_settings.eval_buffer_exit,
-            buffer_entry=period_settings.eval_buffer_entry,
         )
     return _SplitEvalMetrics(
         scored=eval_df,

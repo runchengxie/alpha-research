@@ -10,7 +10,6 @@ import pandas as pd
 from .metrics import (
     assign_daily_quantile_bucket,
     daily_ic_series,
-    estimate_turnover,
     hit_rate,
     quantile_returns,
     regression_error_metrics,
@@ -18,6 +17,7 @@ from .metrics import (
     topk_positive_ratio,
 )
 from .modeling import build_model, fit_model
+from .signal_churn import estimate_topk_membership_churn
 from .split import build_sample_weight
 from .transform import apply_score_postprocess
 
@@ -226,7 +226,7 @@ def _record_quantile_return_metrics(
         )
 
 
-def _record_turnover_topk_metrics(
+def _record_topk_churn_metrics(
     result: dict[str, Any],
     eval_df: pd.DataFrame,
     *,
@@ -235,39 +235,26 @@ def _record_turnover_topk_metrics(
     label_prefix: str,
     top_k: int,
     rebalance_dates_eval: list[pd.Timestamp],
-    eval_buffer_exit: int,
-    eval_buffer_entry: int,
-    transaction_cost_bps: float,
 ) -> None:
     symbol_count = int(cast(pd.Series, eval_df["symbol"]).nunique()) if not eval_df.empty else 0
     k = min(top_k, symbol_count)
     if k > 0 and rebalance_dates_eval:
-        turnover_series = estimate_turnover(
+        churn_series = estimate_topk_membership_churn(
             eval_df,
             signal_col,
             k,
             rebalance_dates_eval,
-            buffer_exit=eval_buffer_exit,
-            buffer_entry=eval_buffer_entry,
         )
     else:
-        turnover_series = pd.Series(dtype=float, name="turnover")
-    result["turnover_series"] = turnover_series
-    if not turnover_series.empty:
-        turnover = turnover_series.mean()
-        cost_drag = 2 * (transaction_cost_bps / 10000.0) * turnover
+        churn_series = pd.Series(dtype=float, name="topk_membership_churn")
+    result["topk_membership_churn_series"] = churn_series
+    if not churn_series.empty:
         logger.info(
-            "%sTop-%s turnover per rebalance: %.2f%% (n=%s)",
+            "%sTop-%s membership churn per evaluation date: %.2f%% (n=%s)",
             label_prefix,
             k,
-            turnover * 100,
-            len(turnover_series),
-        )
-        logger.info(
-            "%sApprox cost drag per rebalance: %.2f%% at %s bps per side",
-            label_prefix,
-            cost_drag * 100,
-            transaction_cost_bps,
+            churn_series.mean() * 100,
+            len(churn_series),
         )
 
     topk_stats = topk_positive_ratio(eval_df, signal_col, target, k)
@@ -332,7 +319,7 @@ def _record_bucket_ic_metrics(
         result["bucket_ic"] = bucket_df.to_dict(orient="records")
 
 
-def _record_quantile_turnover_bucket_metrics(
+def _record_quantile_churn_bucket_metrics(
     result: dict[str, Any],
     eval_df: pd.DataFrame,
     *,
@@ -342,9 +329,6 @@ def _record_quantile_turnover_bucket_metrics(
     n_quantiles: int,
     top_k: int,
     rebalance_dates_eval: list[pd.Timestamp],
-    eval_buffer_exit: int,
-    eval_buffer_entry: int,
-    transaction_cost_bps: float,
     bucket_ic_enabled: bool,
     bucket_ic_schemes: list[dict[str, Any]],
     bucket_ic_method: str,
@@ -359,7 +343,7 @@ def _record_quantile_turnover_bucket_metrics(
         label_prefix=label_prefix,
         n_quantiles=n_quantiles,
     )
-    _record_turnover_topk_metrics(
+    _record_topk_churn_metrics(
         result,
         eval_df,
         target=target,
@@ -367,9 +351,6 @@ def _record_quantile_turnover_bucket_metrics(
         label_prefix=label_prefix,
         top_k=top_k,
         rebalance_dates_eval=rebalance_dates_eval,
-        eval_buffer_exit=eval_buffer_exit,
-        eval_buffer_entry=eval_buffer_entry,
-        transaction_cost_bps=transaction_cost_bps,
     )
     _record_bucket_ic_metrics(
         result,
