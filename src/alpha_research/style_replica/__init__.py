@@ -18,11 +18,10 @@ from .signal_generator import (
     StyleReplicaSignalGenerator,
     generate_daily_signals,
 )
-from .theme_map import AI_HARDWARE_THEME_QUOTAS, map_stock_to_theme
+from .theme_map import map_stock_to_theme
 from .universe import filter_style_replica_universe
 
 __all__ = [
-    "AI_HARDWARE_THEME_QUOTAS",
     "StyleReplicaConfig",
     "StyleReplicaSignalGenerator",
     "compute_beta_factor",
