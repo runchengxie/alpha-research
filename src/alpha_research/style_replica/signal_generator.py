@@ -1,4 +1,3 @@
-# ruff: noqa: RUF002
 """Signal generator for the StyleReplica research model.
 
 Orchestrates the daily alpha-signal pipeline:

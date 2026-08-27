@@ -32,7 +32,10 @@ def estimate_topk_membership_churn(
         raise ValueError("rank_offset must be >= 0")
 
     work = canonicalize_symbol_columns(data, context="Signal churn data")
-    groups = {pd.to_datetime(date): group for date, group in work.groupby("trade_date")}
+    groups = {
+        pd.Timestamp(pd.to_datetime(cast(Any, date))): group
+        for date, group in work.groupby("trade_date")
+    }
     previous: set[str] | None = None
     records: list[tuple[pd.Timestamp, float]] = []
     for raw_date in evaluation_dates:
