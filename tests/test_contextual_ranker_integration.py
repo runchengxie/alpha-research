@@ -4,9 +4,7 @@ from alpha_research.daily_watch20 import DailyWatch20Config, DailyWatch20Ranker
 
 
 def test_existing_ranker_accepts_contextual_feature_names_without_new_model_type():
-    baseline = DailyWatch20Ranker(
-        DailyWatch20Config(features=("momentum_20d", "volatility_20d"))
-    )
+    baseline = DailyWatch20Ranker(DailyWatch20Config(features=("momentum_20d", "volatility_20d")))
     contextual = DailyWatch20Ranker(
         DailyWatch20Config(
             features=(

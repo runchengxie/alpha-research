@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -88,10 +89,12 @@ def _with_minimum_history(values: pd.Series, result: pd.Series, minimum: int) ->
 
 
 def _yoy_delta(period_end: pd.Series, values: pd.Series) -> pd.Series:
-    lookup = {pd.Timestamp(period): float(value) for period, value in zip(period_end, values, strict=True)}
+    lookup = {
+        pd.Timestamp(period): float(value) for period, value in zip(period_end, values, strict=True)
+    }
     result: list[float] = []
     for period, value in zip(period_end, values, strict=True):
-        prior_period = pd.Timestamp(period) - pd.DateOffset(years=1)
+        prior_period = cast(pd.Timestamp, pd.Timestamp(period) - pd.DateOffset(years=1))
         prior = lookup.get(prior_period)
         result.append(float(value) - prior if prior is not None else np.nan)
     return pd.Series(result, index=values.index, dtype=float)
@@ -179,7 +182,9 @@ def build_context_features(
 
     if not outputs:
         columns = [*_METADATA_COLUMNS, *names]
-        return pd.DataFrame(columns=columns)
-    return pd.concat(outputs, ignore_index=True).sort_values(
-        ["series_id", "period_end"], kind="stable"
-    ).reset_index(drop=True)
+        return pd.DataFrame(columns=pd.Index(columns))
+    return (
+        pd.concat(outputs, ignore_index=True)
+        .sort_values(["series_id", "period_end"], kind="stable")
+        .reset_index(drop=True)
+    )

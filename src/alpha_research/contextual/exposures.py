@@ -60,8 +60,7 @@ class ExposureSpec:
             raise ValueError("ExposureSpec clip_min must be below clip_max")
         if self.unknown_industry not in _UNKNOWN_INDUSTRY_POLICIES:
             raise ValueError(
-                "ExposureSpec.unknown_industry must be one of "
-                f"{sorted(_UNKNOWN_INDUSTRY_POLICIES)}"
+                f"ExposureSpec.unknown_industry must be one of {sorted(_UNKNOWN_INDUSTRY_POLICIES)}"
             )
         priors: dict[str, float] = {}
         for raw_name, raw_value in self.industry_prior_map.items():
@@ -227,13 +226,15 @@ def build_company_exposures(
         )
     if not outputs:
         return pd.DataFrame(
-            columns=[
-                "trade_date",
-                "symbol",
-                "exposure_name",
-                "exposure_value",
-                "source_components",
-                "exposure_version",
-            ]
+            columns=pd.Index(
+                [
+                    "trade_date",
+                    "symbol",
+                    "exposure_name",
+                    "exposure_value",
+                    "source_components",
+                    "exposure_version",
+                ]
+            )
         )
     return pd.concat(outputs, ignore_index=True)

@@ -14,11 +14,41 @@ def _stocks() -> pd.DataFrame:
     date = pd.Timestamp("2026-08-28")
     return pd.DataFrame(
         [
-            {"trade_date": date, "symbol": "BANK", "industry": "银行", "leverage": 0.90, "cash_ratio": 0.10},
-            {"trade_date": date, "symbol": "RE", "industry": "房地产", "leverage": 0.80, "cash_ratio": 0.15},
-            {"trade_date": date, "symbol": "CHEM", "industry": "化工", "leverage": 0.50, "cash_ratio": 0.20},
-            {"trade_date": date, "symbol": "SOFT", "industry": "计算机", "leverage": 0.20, "cash_ratio": 0.60},
-            {"trade_date": date, "symbol": "UNKNOWN", "industry": "未映射行业", "leverage": 0.40, "cash_ratio": 0.40},
+            {
+                "trade_date": date,
+                "symbol": "BANK",
+                "industry": "银行",
+                "leverage": 0.90,
+                "cash_ratio": 0.10,
+            },
+            {
+                "trade_date": date,
+                "symbol": "RE",
+                "industry": "房地产",
+                "leverage": 0.80,
+                "cash_ratio": 0.15,
+            },
+            {
+                "trade_date": date,
+                "symbol": "CHEM",
+                "industry": "化工",
+                "leverage": 0.50,
+                "cash_ratio": 0.20,
+            },
+            {
+                "trade_date": date,
+                "symbol": "SOFT",
+                "industry": "计算机",
+                "leverage": 0.20,
+                "cash_ratio": 0.60,
+            },
+            {
+                "trade_date": date,
+                "symbol": "UNKNOWN",
+                "industry": "未映射行业",
+                "leverage": 0.40,
+                "cash_ratio": 0.40,
+            },
         ]
     )
 
@@ -85,7 +115,13 @@ def test_modifier_normalization_never_uses_other_dates():
     frame = pd.concat([first, second], ignore_index=True)
     spec = ExposureSpec(
         name="rate_sensitivity",
-        industry_prior_map={"银行": 0.0, "房地产": 0.0, "化工": 0.0, "计算机": 0.0, "未映射行业": 0.0},
+        industry_prior_map={
+            "银行": 0.0,
+            "房地产": 0.0,
+            "化工": 0.0,
+            "计算机": 0.0,
+            "未映射行业": 0.0,
+        },
         fundamental_modifiers=(
             FundamentalModifier(
                 field="leverage",
@@ -98,8 +134,16 @@ def test_modifier_normalization_never_uses_other_dates():
         unknown_industry="zero_prior",
     )
     result = build_company_exposures(frame, [spec])
-    first_values = result.loc[result["trade_date"] == pd.Timestamp("2026-08-28")].sort_values("symbol")["exposure_value"].tolist()
-    second_values = result.loc[result["trade_date"] == pd.Timestamp("2026-08-29")].sort_values("symbol")["exposure_value"].tolist()
+    first_values = (
+        result.loc[result["trade_date"] == pd.Timestamp("2026-08-28")]
+        .sort_values("symbol")["exposure_value"]
+        .tolist()
+    )
+    second_values = (
+        result.loc[result["trade_date"] == pd.Timestamp("2026-08-29")]
+        .sort_values("symbol")["exposure_value"]
+        .tolist()
+    )
     assert first_values != second_values
     assert max(first_values) <= 1.0
     assert max(second_values) <= 1.0

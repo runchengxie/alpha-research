@@ -37,7 +37,9 @@ def _canonical(value: Any) -> Any:
     if is_dataclass(value) and not isinstance(value, type):
         return {field.name: _canonical(getattr(value, field.name)) for field in fields(value)}
     if isinstance(value, Mapping):
-        return {str(key): _canonical(value[key]) for key in sorted(value, key=lambda item: str(item))}
+        return {
+            str(key): _canonical(value[key]) for key in sorted(value, key=lambda item: str(item))
+        }
     if isinstance(value, tuple | list):
         return [_canonical(item) for item in value]
     if value is None or isinstance(value, str | int | bool):

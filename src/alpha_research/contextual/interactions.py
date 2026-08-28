@@ -79,7 +79,8 @@ def attach_context_as_of(
             kind="stable",
         ).drop_duplicates("__visibility_at", keep="last")
         right = state.loc[
-            :, ["__visibility_at", "period_end", "available_at", "source_retrieved_at", feature_name]
+            :,
+            ["__visibility_at", "period_end", "available_at", "source_retrieved_at", feature_name],
         ].rename(
             columns={
                 "period_end": f"{feature_name}__period_end",
@@ -98,9 +99,7 @@ def attach_context_as_of(
         )
         period_col = f"{feature_name}__period_end"
         age_col = f"{feature_name}__age_days"
-        merged[age_col] = (
-            merged[trade_date_col] - merged[period_col]
-        ).dt.total_seconds() / 86400.0
+        merged[age_col] = (merged[trade_date_col] - merged[period_col]).dt.total_seconds() / 86400.0
         if feature_name in limits:
             stale = merged[age_col] > float(limits[feature_name])
             merged.loc[stale, feature_name] = np.nan
@@ -146,9 +145,7 @@ def build_context_interactions(
     exposures = exposure_frame.copy()
     exposures["trade_date"] = _utc(exposures["trade_date"], name="exposure trade_date")
     exposures["symbol"] = exposures["symbol"].astype(str)
-    duplicate_keys = exposures.duplicated(
-        ["trade_date", "symbol", "exposure_name"], keep=False
-    )
+    duplicate_keys = exposures.duplicated(["trade_date", "symbol", "exposure_name"], keep=False)
     if duplicate_keys.any():
         raise ValueError("exposure_frame contains duplicate date/symbol/exposure_name rows")
 
@@ -176,9 +173,8 @@ def build_context_interactions(
         for duplicate_key in ("trade_date__exposure", "symbol__exposure"):
             if duplicate_key in result:
                 result = result.drop(columns=duplicate_key)
-        result[spec.output_name] = (
-            pd.to_numeric(result[spec.context_feature], errors="coerce")
-            * pd.to_numeric(result[value_col], errors="coerce")
-        )
+        result[spec.output_name] = pd.to_numeric(
+            result[spec.context_feature], errors="coerce"
+        ) * pd.to_numeric(result[value_col], errors="coerce")
         result = result.drop(columns=[value_col])
     return result
