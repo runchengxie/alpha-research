@@ -185,7 +185,7 @@ qlib = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", marker = "extra == 'dev'", specifier = ">=1.2" },
-    { name = "market-data-platform", git = "https://github.com/runchengxie/market-data-platform.git?rev=3936ab47e37978e268a057d7268c137370df99ce" },
+    { name = "market-data-platform", git = "https://github.com/runchengxie/market-data-platform.git?rev=fe44f01e268be2b13aedfb7fbd947fceeacb8ccb" },
     { name = "numpy", specifier = ">=1.23" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pandas-ta", specifier = ">=0.3.14b0" },
@@ -2087,7 +2087,7 @@ wheels = [
 [[package]]
 name = "market-data-platform"
 version = "0.2.0"
-source = { git = "https://github.com/runchengxie/market-data-platform.git?rev=3936ab47e37978e268a057d7268c137370df99ce#3936ab47e37978e268a057d7268c137370df99ce" }
+source = { git = "https://github.com/runchengxie/market-data-platform.git?rev=fe44f01e268be2b13aedfb7fbd947fceeacb8ccb#fe44f01e268be2b13aedfb7fbd947fceeacb8ccb" }
 dependencies = [
     { name = "numpy" },
     { name = "pyyaml" },
