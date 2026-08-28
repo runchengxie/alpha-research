@@ -12,6 +12,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from .experiment_registry import ExperimentRegistry
+
 
 def _resolve_path(path_text: str | Path | None) -> Path | None:
     if path_text is None:
@@ -265,6 +267,7 @@ def _build_pbo_summary(
     n_groups: int,
     test_groups: int,
     periods_per_year: int | None,
+    trial_count: int,
 ) -> dict[str, Any]:
     full_sharpes = {
         column: _sharpe(data[column], periods_per_year=periods_per_year) for column in columns
@@ -273,7 +276,7 @@ def _build_pbo_summary(
     dsr = _deflated_sharpe_ratio(
         data[selected_full],
         selected_sharpe=full_sharpes[selected_full],
-        n_trials=len(columns),
+        n_trials=trial_count,
         periods_per_year=periods_per_year,
     )
     finite_logits = _finite_row_values(rows, "logit_oos_rank")
@@ -284,7 +287,8 @@ def _build_pbo_summary(
         "test_groups": int(test_groups),
         "split_count": len(rows),
         "candidate_count": len(columns),
-        "n_trials": len(columns),
+        "n_trials": trial_count,
+        "registry_trial_count": trial_count,
         "candidate_columns": columns,
         "pbo": float(np.mean([value < 0.0 for value in finite_logits])) if finite_logits else None,
         "logit_oos_rank_mean": float(np.mean(finite_logits)) if finite_logits else None,
@@ -309,6 +313,7 @@ def compute_pbo_report(
     n_groups: int = 8,
     test_groups: int | None = None,
     periods_per_year: int | None = None,
+    trial_registry: ExperimentRegistry | None = None,
 ) -> dict[str, Any]:
     data, columns, groups, resolved_test_groups = _validated_pbo_inputs(
         frame,
@@ -333,6 +338,7 @@ def compute_pbo_report(
         n_groups=n_groups,
         test_groups=resolved_test_groups,
         periods_per_year=periods_per_year,
+        trial_count=max(len(columns), trial_registry.trial_count if trial_registry else 0),
     )
     return {"summary": summary, "rows": rows}
 
@@ -368,6 +374,11 @@ def add_pbo_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         default=None,
         help="Annualization periods for Sharpe. Omit to use per-period Sharpe.",
     )
+    parser.add_argument(
+        "--trial-registry",
+        default=None,
+        help="JSON registry containing all attempted trials, including failed trials.",
+    )
     parser.add_argument("--out", default="artifacts/reports/pbo", help="Output report directory.")
     return parser
 
@@ -377,6 +388,11 @@ def run(args: argparse.Namespace) -> int:
     if returns_path is None or not returns_path.exists():
         raise SystemExit(f"Returns file not found: {args.returns}")
     frame = _read_frame(returns_path)
+    registry = (
+        ExperimentRegistry.read(_resolve_path(args.trial_registry))
+        if getattr(args, "trial_registry", None)
+        else None
+    )
     report = compute_pbo_report(
         frame,
         date_col=args.date_col,
@@ -384,6 +400,7 @@ def run(args: argparse.Namespace) -> int:
         n_groups=args.n_groups,
         test_groups=args.test_groups,
         periods_per_year=args.periods_per_year,
+        trial_registry=registry,
     )
     out_dir = _resolve_path(args.out)
     assert out_dir is not None

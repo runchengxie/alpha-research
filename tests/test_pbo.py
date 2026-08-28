@@ -5,6 +5,7 @@ from typing import cast
 import pandas as pd
 
 from alpha_research import pbo
+from alpha_research.experiment_registry import ExperimentRegistry, ExperimentTrial
 
 
 def test_compute_pbo_report_outputs_summary_and_split_rows(tmp_path):
@@ -26,6 +27,33 @@ def test_compute_pbo_report_outputs_summary_and_split_rows(tmp_path):
     assert 0.0 <= report["summary"]["dsr"] <= 1.0
     assert report["summary"]["dsr_n_trials"] == 3
     assert {row["selected_candidate"] for row in report["rows"]}
+
+
+def test_compute_pbo_report_uses_recorded_trial_count():
+    dates = pd.date_range("2020-01-01", periods=16, freq="D")
+    returns = pd.DataFrame(
+        {
+            "date": dates,
+            "candidate_a": [0.01, 0.02, 0.01, -0.01] * 4,
+            "candidate_b": [0.02, -0.03, 0.01, 0.00] * 4,
+        }
+    )
+    registry = ExperimentRegistry()
+    for index in range(10):
+        registry.record(
+            ExperimentTrial(
+                candidate_id=f"candidate-{index}",
+                feature_set="base",
+                universe="a-share",
+                holding_period=5,
+            )
+        )
+
+    report = pbo.compute_pbo_report(returns, n_groups=4, trial_registry=registry)
+
+    assert report["summary"]["candidate_count"] == 2
+    assert report["summary"]["registry_trial_count"] == 10
+    assert report["summary"]["dsr_n_trials"] == 10
 
 
 def test_pbo_run_writes_summary_and_split_files(tmp_path):
