@@ -12,6 +12,7 @@
 | 过拟合控制 | [concepts/overfitting-controls.md](concepts/overfitting-controls.md) |
 | 结果解读 | [concepts/result-interpretation.md](concepts/result-interpretation.md) |
 | 特征研究协议 | [concepts/feature-research-protocol.md](concepts/feature-research-protocol.md) |
+| Contextual Alpha 特征 | [concepts/contextual-factors.md](concepts/contextual-factors.md) |
 | AFML 方法组件 | [concepts/afml-methodology.md](concepts/afml-methodology.md) |
 | 研究后端与 Qlib 状态 | [concepts/framework-backends.md](concepts/framework-backends.md) |
 | 分钟因子边界 | [concepts/minute-factors.md](concepts/minute-factors.md) |
