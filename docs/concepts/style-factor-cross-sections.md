@@ -27,7 +27,7 @@ symbol
 → 最终截面 z-score
 ```
 
-因此，过滤形成日股票池不会截断保留证券的历史 momentum、volatility 或 beta 窗口；quality 子指标的缩尾和标准化、行业去均值以及最终 z-score 会在过滤后的股票池上重新计算。
+因此，过滤形成日股票池不会截断保留证券的历史 momentum、volatility 或 beta 窗口。quality 子指标的缩尾和标准化、行业去均值以及最终 z-score 会在过滤后的股票池上重新计算。
 
 `formation_universe` 出现重复 `trade_date + symbol` 键时失败关闭。
 
