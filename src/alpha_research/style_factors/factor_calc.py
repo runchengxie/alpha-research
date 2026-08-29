@@ -325,35 +325,77 @@ def _add_liquidity_factor(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _standardize_factors(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    active = [column for column in FACTOR_COLS if column in df.columns]
-    has_industry = "industry_l1" in df.columns and df["industry_l1"].notna().any()
+def standardize_factor_panel(
+    frame: pd.DataFrame,
+    *,
+    factor_columns: tuple[str, ...] | list[str],
+    date_column: str = "trade_date",
+    industry_column: str = "industry_l1",
+    winsor_lower: float = 0.01,
+    winsor_upper: float = 0.99,
+) -> pd.DataFrame:
+    """Winsorize, optionally industry-demean, and z-score factor cross-sections."""
+    if date_column not in frame.columns:
+        raise ValueError(f"frame is missing date column: {date_column}")
+    if not 0.0 <= winsor_lower < winsor_upper <= 1.0:
+        raise ValueError("winsor bounds must satisfy 0 <= lower < upper <= 1")
+    active = [column for column in factor_columns if column in frame.columns]
+    if not active:
+        raise ValueError("no requested factor columns are present")
+
+    out = frame.copy()
+    has_industry = industry_column in out.columns and out[industry_column].notna().any()
 
     for column in active:
-        # 1% / 99% cross-sectional winsorization per trade_date.
-        grouped = df.groupby("trade_date", sort=False)[column]
-        lower = grouped.transform(lambda series: series.quantile(0.01))
-        upper = grouped.transform(lambda series: series.quantile(0.99))
-        df[column] = df[column].clip(lower=lower, upper=upper, axis=0)
+        grouped = out.groupby(date_column, sort=False)[column]
+        lower = grouped.transform(lambda values: values.quantile(winsor_lower))
+        upper = grouped.transform(lambda values: values.quantile(winsor_upper))
+        out[column] = out[column].clip(lower=lower, upper=upper, axis=0)
 
-    for column in active:
-        if has_industry:
-            # PIT SW-L1 industry-neutralization: demean within industry first.
-            grp = df.groupby(["trade_date", "industry_l1"], sort=False, dropna=False)[column]
-            demeaned = df[column] - grp.transform("mean")
-            df[f"{column}_z"] = demeaned
-        else:
-            df[f"{column}_z"] = df[column].copy()
-
-    # Cross-sectional z-score (across industries) of the demeaned signal.
     for column in active:
         zcol = f"{column}_z"
-        grouped = df.groupby("trade_date", sort=False)[zcol]
+        if has_industry:
+            grouped = out.groupby(
+                [date_column, industry_column],
+                sort=False,
+                dropna=False,
+            )[column]
+            out[zcol] = out[column] - grouped.transform("mean")
+        else:
+            out[zcol] = out[column]
+
+        grouped = out.groupby(date_column, sort=False)[zcol]
         mean = grouped.transform("mean")
-        std = grouped.transform("std")
-        df[zcol] = (df[zcol] - mean) / std.replace(0, np.nan)
-    return df
+        std = grouped.transform("std").replace(0, np.nan)
+        out[zcol] = (out[zcol] - mean) / std
+    return out
+
+
+def _apply_formation_universe(
+    frame: pd.DataFrame,
+    formation_universe: pd.DataFrame | None,
+) -> pd.DataFrame:
+    if formation_universe is None:
+        return frame
+
+    required = {"trade_date", "symbol"}
+    missing = sorted(required - set(formation_universe.columns))
+    if missing:
+        raise ValueError(
+            "formation_universe is missing required columns: " + ", ".join(missing)
+        )
+
+    keys = formation_universe[["trade_date", "symbol"]].copy()
+    keys["trade_date"] = pd.to_datetime(keys["trade_date"]).dt.normalize()
+    keys["symbol"] = keys["symbol"].astype(str)
+    if keys.duplicated(["trade_date", "symbol"]).any():
+        raise ValueError("formation_universe contains duplicate trade_date/symbol keys")
+    return frame.merge(
+        keys,
+        on=["trade_date", "symbol"],
+        how="inner",
+        validate="one_to_one",
+    )
 
 
 def compute_factors(
@@ -366,6 +408,7 @@ def compute_factors(
     sw_membership: pd.DataFrame | None = None,
     rebalance_dates: pd.DatetimeIndex | None = None,
     formation_fundamentals: pd.DataFrame | None = None,
+    formation_universe: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Compute style factors per stock per date.
 
@@ -397,6 +440,12 @@ def compute_factors(
     Non-null values override the corresponding legacy fundamentals.  Growth
     remains on legacy ``netprofit_yoy`` / ``or_yoy`` because those fields are
     not present in the current PIT v2 contract.
+
+    ``formation_universe`` optionally supplies unique ``trade_date`` / ``symbol``
+    keys.  The filter is applied after historical rolling price features and PIT
+    raw fundamentals are aligned, but before the quality composite, auxiliary
+    formation factors, industry demeaning and final cross-sectional z-scores.
+    The caller owns the economic meaning of this universe.
     """
     if fina is not None and cashflow is not None and not cashflow.empty:
         merge_on = [c for c in ("symbol", "end_date", "ann_date") if c in cashflow.columns]
@@ -415,12 +464,13 @@ def compute_factors(
     df, has_pit_panel = _overlay_formation_fundamentals(df, formation_fundamentals)
     has_fina = has_fina or has_pit_panel
     df = _add_fundamental_factors(df, has_fina=has_fina)
+    df = _apply_formation_universe(df, formation_universe)
     df = _add_quality_factor(df, has_fina=has_fina)
     df = add_new_factors(df, aux=aux)
     df = merge_sw_industry_pit(df, sw_membership)
     active = [column for column in FACTOR_COLS if column in df.columns]
     df = df[["trade_date", "symbol", "industry_l1", *active]].copy()
-    df = _standardize_factors(df)
+    df = standardize_factor_panel(df, factor_columns=active)
     value_members = [
         f"{column}_z" for column in VALUE_CLUSTER_MEMBERS if f"{column}_z" in df.columns
     ]
