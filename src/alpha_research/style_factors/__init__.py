@@ -16,6 +16,7 @@ from .factor_calc import (
     VALUE_CLUSTER_COL,
     VALUE_CLUSTER_MEMBERS,
     compute_factors,
+    standardize_factor_panel,
 )
 from .helpers import add_new_factors, merge_sw_industry_pit
 
@@ -26,4 +27,5 @@ __all__ = [
     "add_new_factors",
     "compute_factors",
     "merge_sw_industry_pit",
+    "standardize_factor_panel",
 ]

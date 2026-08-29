@@ -20,6 +20,8 @@
 跨仓库交接使用公开 API 和稳定文件契约。工作区 2.0 已删除旧共享命名空间和兼容入口。
 新代码只使用 `alpha_research`。
 
+风格因子形成日股票池需要显式过滤并重新计算截面时，使用 `compute_factors(..., formation_universe=...)`。独立缩尾、行业去均值和 z-score 变换使用 `standardize_factor_panel`。完整语义见[风格因子形成日截面](docs/concepts/style-factor-cross-sections.md)。
+
 ## DailyWatch20 排序目标
 
 `DailyWatch20Ranker` 通过 `DailyWatch20Config.model_params["objective"]` 选择横截面训练思路，输出契约始终保持为按交易日计算的相对百分位和排名：
