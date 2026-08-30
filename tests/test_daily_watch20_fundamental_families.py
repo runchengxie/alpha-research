@@ -145,3 +145,12 @@ def test_horizon_profile_builds_matching_daily_watch20_feature_config(horizon: i
     )
     assert cfg.label_col == f"forward_rank_{horizon}d"
     assert cfg.forward_return_col == f"forward_return_{horizon}d"
+
+
+def test_research_family_features_do_not_enter_production_feature_tuple() -> None:
+    from alpha_research.daily_watch20_features import DAILY_WATCH20_FEATURES
+    from alpha_research.daily_watch20_fundamental_families import VALUE_FEATURES
+
+    assert set(VALUE_FEATURES).isdisjoint(DAILY_WATCH20_FEATURES)
+    assert set(QUALITY_FEATURES).isdisjoint(DAILY_WATCH20_FEATURES)
+    assert set(GROWTH_FEATURES).isdisjoint(DAILY_WATCH20_FEATURES)
