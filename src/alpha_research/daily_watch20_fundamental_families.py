@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+import numpy as np
+import pandas as pd
+
 from .daily_watch20_pit_features import GROWTH_FEATURES, QUALITY_FEATURES
 
 FUNDAMENTAL_FAMILY_SCHEMA = "daily_watch20.fundamental_families.research.v1"
@@ -23,6 +28,20 @@ FUND_CONTEXT_FEATURES = (
     "fund_top10_concentration",
     "fund_accumulation_without_crowding",
 )
+_VALUE_SOURCE_COLUMNS = {
+    "value_book_yield_pct": "pb",
+    "value_earnings_yield_pct": "pe_ttm",
+    "value_sales_yield_pct": "ps_ttm",
+}
+
+
+@dataclass(frozen=True)
+class ValueFeaturePanel:
+    """Research-only same-date valuation ranks and their coverage metadata."""
+
+    frame: pd.DataFrame
+    coverage_daily: pd.DataFrame
+    receipt: dict[str, object]
 
 
 def fundamental_family_registry() -> dict[str, tuple[str, ...]]:
@@ -37,10 +56,40 @@ def fundamental_family_registry() -> dict[str, tuple[str, ...]]:
     }
 
 
+def build_value_feature_panel(frame: pd.DataFrame) -> ValueFeaturePanel:
+    """Build PB/PE/PS valuation yields as same-date percentile ranks."""
+
+    out = frame.loc[:, ["trade_date", "symbol", *_VALUE_SOURCE_COLUMNS.values()]].copy()
+    out["trade_date"] = pd.to_datetime(out["trade_date"], errors="raise").dt.normalize()
+    observed_columns: list[str] = []
+    for target, source in _VALUE_SOURCE_COLUMNS.items():
+        denominator = pd.to_numeric(out[source], errors="coerce").replace(
+            [np.inf, -np.inf], np.nan
+        )
+        raw_yield = 1.0 / denominator.where(denominator > 0)
+        out[target] = raw_yield.groupby(out["trade_date"], sort=False).rank(pct=True)
+        observed = f"{target}__observed"
+        out[observed] = raw_yield.notna()
+        observed_columns.append(observed)
+    coverage = out.groupby("trade_date", sort=True)[observed_columns].mean().reset_index()
+    receipt: dict[str, object] = {
+        "schema_version": FUNDAMENTAL_FAMILY_SCHEMA,
+        "status": "research_only",
+        "source_columns": list(_VALUE_SOURCE_COLUMNS.values()),
+        "value_features": list(VALUE_FEATURES),
+        "cross_section_transform": "same-date percentile rank",
+        "forward_fill": False,
+        "production_feature_schema_changed": False,
+    }
+    return ValueFeaturePanel(out, coverage, receipt)
+
+
 __all__ = [
     "FUNDAMENTAL_FAMILY_SCHEMA",
     "FUND_CONTEXT_FEATURES",
     "STYLE_CONTROL_FEATURES",
     "VALUE_FEATURES",
+    "ValueFeaturePanel",
+    "build_value_feature_panel",
     "fundamental_family_registry",
 ]
