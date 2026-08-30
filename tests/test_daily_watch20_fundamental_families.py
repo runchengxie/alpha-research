@@ -53,3 +53,18 @@ def test_value_panel_uses_positive_finite_denominators_and_same_date_ranks() -> 
     assert out.loc["A", "value_sales_yield_pct"] == pytest.approx(1.0)
     assert panel.receipt["cross_section_transform"] == "same-date percentile rank"
     assert panel.receipt["forward_fill"] is False
+
+
+def test_value_panel_requires_all_owner_input_columns() -> None:
+    from alpha_research.daily_watch20_fundamental_families import build_value_feature_panel
+
+    frame = pd.DataFrame(
+        {
+            "trade_date": pd.to_datetime(["2026-08-28"]),
+            "symbol": ["A"],
+            "pb": [1.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="pe_ttm.*ps_ttm"):
+        build_value_feature_panel(frame)
