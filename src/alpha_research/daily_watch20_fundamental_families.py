@@ -45,6 +45,18 @@ class ValueFeaturePanel:
     receipt: dict[str, object]
 
 
+@dataclass(frozen=True)
+class FundamentalHorizonProfile:
+    """Frozen timing profile for one fundamental-family research horizon."""
+
+    horizon_days: int
+    role: str
+    forward_days: int
+    label_horizon_weights: tuple[tuple[int, float], ...]
+    embargo_trade_days: int
+    rebalance_trade_days: int
+
+
 def fundamental_family_registry() -> dict[str, tuple[str, ...]]:
     """Return the frozen research family membership without duplicating PIT Q/G definitions."""
 
@@ -117,13 +129,32 @@ def family_ablation_feature_sets(
     return result
 
 
+def fundamental_horizon_profiles() -> dict[int, FundamentalHorizonProfile]:
+    """Return frozen 5d/20d/60d timing semantics for the research campaign."""
+
+    roles = {5: "diagnostic", 20: "primary", 60: "slow_challenger"}
+    return {
+        horizon: FundamentalHorizonProfile(
+            horizon_days=horizon,
+            role=role,
+            forward_days=horizon,
+            label_horizon_weights=((horizon, 1.0),),
+            embargo_trade_days=horizon,
+            rebalance_trade_days=horizon,
+        )
+        for horizon, role in roles.items()
+    }
+
+
 __all__ = [
     "FUNDAMENTAL_FAMILY_SCHEMA",
     "FUND_CONTEXT_FEATURES",
     "STYLE_CONTROL_FEATURES",
     "VALUE_FEATURES",
+    "FundamentalHorizonProfile",
     "ValueFeaturePanel",
     "build_value_feature_panel",
     "family_ablation_feature_sets",
     "fundamental_family_registry",
+    "fundamental_horizon_profiles",
 ]
