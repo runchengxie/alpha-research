@@ -65,6 +65,8 @@ def build_value_feature_panel(frame: pd.DataFrame) -> ValueFeaturePanel:
         raise ValueError(f"value feature frame missing columns: {missing}")
     out = frame.loc[:, ["trade_date", "symbol", *_VALUE_SOURCE_COLUMNS.values()]].copy()
     out["trade_date"] = pd.to_datetime(out["trade_date"], errors="raise").dt.normalize()
+    if out.duplicated(["trade_date", "symbol"]).any():
+        raise ValueError("value feature frame contains duplicate stock-date rows")
     observed_columns: list[str] = []
     for target, source in _VALUE_SOURCE_COLUMNS.items():
         denominator = pd.to_numeric(out[source], errors="coerce").replace(
