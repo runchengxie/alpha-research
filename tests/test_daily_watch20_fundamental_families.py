@@ -68,3 +68,20 @@ def test_value_panel_requires_all_owner_input_columns() -> None:
 
     with pytest.raises(ValueError, match="pe_ttm.*ps_ttm"):
         build_value_feature_panel(frame)
+
+
+def test_value_panel_rejects_duplicate_stock_date_rows() -> None:
+    from alpha_research.daily_watch20_fundamental_families import build_value_feature_panel
+
+    frame = pd.DataFrame(
+        {
+            "trade_date": pd.to_datetime(["2026-08-28", "2026-08-28"]),
+            "symbol": ["A", "A"],
+            "pb": [1.0, 1.0],
+            "pe_ttm": [10.0, 10.0],
+            "ps_ttm": [2.0, 2.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="duplicate stock-date"):
+        build_value_feature_panel(frame)
