@@ -59,6 +59,10 @@ def fundamental_family_registry() -> dict[str, tuple[str, ...]]:
 def build_value_feature_panel(frame: pd.DataFrame) -> ValueFeaturePanel:
     """Build PB/PE/PS valuation yields as same-date percentile ranks."""
 
+    required = {"trade_date", "symbol", *_VALUE_SOURCE_COLUMNS.values()}
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(f"value feature frame missing columns: {missing}")
     out = frame.loc[:, ["trade_date", "symbol", *_VALUE_SOURCE_COLUMNS.values()]].copy()
     out["trade_date"] = pd.to_datetime(out["trade_date"], errors="raise").dt.normalize()
     observed_columns: list[str] = []
