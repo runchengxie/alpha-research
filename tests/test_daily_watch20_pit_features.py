@@ -26,3 +26,13 @@ def test_pit_feature_contract_is_frozen() -> None:
 def test_pit_feature_entrypoints_are_callable() -> None:
     assert callable(build_fundamental_feature_panel)
     assert callable(build_fundamental_feature_panel_from_pit_panel)
+
+
+def test_family_registry_references_existing_quality_growth_contract() -> None:
+    from alpha_research.daily_watch20_fundamental_families import (
+        fundamental_family_registry,
+    )
+
+    registry = fundamental_family_registry()
+    assert registry["quality"] == QUALITY_FEATURES
+    assert registry["growth"] == GROWTH_FEATURES
