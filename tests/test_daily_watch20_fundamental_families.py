@@ -85,3 +85,29 @@ def test_value_panel_rejects_duplicate_stock_date_rows() -> None:
 
     with pytest.raises(ValueError, match="duplicate stock-date"):
         build_value_feature_panel(frame)
+
+
+def test_ablation_baseline_removes_existing_value_features_without_mutating_p0() -> None:
+    from alpha_research.daily_watch20_fundamental_families import (
+        VALUE_FEATURES,
+        family_ablation_feature_sets,
+    )
+
+    production = ("mom_20", "value_yield", "earnings_yield", "size_pct")
+
+    sets = family_ablation_feature_sets(production)
+
+    assert sets["P0"] == production
+    assert sets["T0"] == ("mom_20", "size_pct")
+    assert sets["V"] == ("mom_20", "size_pct", *VALUE_FEATURES)
+    assert set(sets) == {"P0", "T0", "V", "Q", "G", "VQ", "VG", "QG", "VQG"}
+    assert production == ("mom_20", "value_yield", "earnings_yield", "size_pct")
+
+
+def test_ablation_builder_rejects_p0_without_current_value_anchor() -> None:
+    from alpha_research.daily_watch20_fundamental_families import (
+        family_ablation_feature_sets,
+    )
+
+    with pytest.raises(ValueError, match="current value anchor"):
+        family_ablation_feature_sets(("mom_20", "size_pct"))
