@@ -33,6 +33,7 @@ _VALUE_SOURCE_COLUMNS = {
     "value_earnings_yield_pct": "pe_ttm",
     "value_sales_yield_pct": "ps_ttm",
 }
+_CURRENT_VALUE_ANCHOR_FEATURES = frozenset({"value_yield", "earnings_yield"})
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,32 @@ def build_value_feature_panel(frame: pd.DataFrame) -> ValueFeaturePanel:
     return ValueFeaturePanel(out, coverage, receipt)
 
 
+def family_ablation_feature_sets(
+    production_features: tuple[str, ...],
+) -> dict[str, tuple[str, ...]]:
+    """Build the frozen P0/T0/V/Q/G family experiment matrix."""
+
+    p0 = tuple(production_features)
+    if not _CURRENT_VALUE_ANCHOR_FEATURES.issubset(p0):
+        raise ValueError("P0 lacks the frozen current value anchor features")
+    t0 = tuple(name for name in p0 if name not in _CURRENT_VALUE_ANCHOR_FEATURES)
+    result = {
+        "P0": p0,
+        "T0": t0,
+        "V": (*t0, *VALUE_FEATURES),
+        "Q": (*t0, *QUALITY_FEATURES),
+        "G": (*t0, *GROWTH_FEATURES),
+        "VQ": (*t0, *VALUE_FEATURES, *QUALITY_FEATURES),
+        "VG": (*t0, *VALUE_FEATURES, *GROWTH_FEATURES),
+        "QG": (*t0, *QUALITY_FEATURES, *GROWTH_FEATURES),
+        "VQG": (*t0, *VALUE_FEATURES, *QUALITY_FEATURES, *GROWTH_FEATURES),
+    }
+    for code, features in result.items():
+        if len(features) != len(set(features)):
+            raise ValueError(f"duplicate features in family arm {code}")
+    return result
+
+
 __all__ = [
     "FUNDAMENTAL_FAMILY_SCHEMA",
     "FUND_CONTEXT_FEATURES",
@@ -97,5 +124,6 @@ __all__ = [
     "VALUE_FEATURES",
     "ValueFeaturePanel",
     "build_value_feature_panel",
+    "family_ablation_feature_sets",
     "fundamental_family_registry",
 ]
