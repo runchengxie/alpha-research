@@ -39,6 +39,7 @@ from .daily_watch20_minute_features import (
     validate_daily_watch20_minute_feature_frame,
 )
 from .daily_watch20_policy import ALPHA_POLICY_SCHEMA, DailyWatch20AlphaPolicy
+from .freshness_overlay import apply_freshness_overlay
 
 __all__ = [
     "ALPHA_POLICY_SCHEMA",
@@ -62,6 +63,7 @@ __all__ = [
     "ExposureSpec",
     "FundamentalModifier",
     "MinuteFeatureTransformResult",
+    "apply_freshness_overlay",
     "artifact_cpcv",
     "attach_context_as_of",
     "backends",
