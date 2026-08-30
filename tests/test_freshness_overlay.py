@@ -87,7 +87,12 @@ def test_freshness_overlay_disabled_is_noop() -> None:
 
 
 def test_freshness_overlay_empty_frame_reports_empty() -> None:
-    frame = pd.DataFrame(columns=["trade_date", "signal"])
+    frame = pd.DataFrame(
+        {
+            "trade_date": pd.Series(dtype="datetime64[ns]"),
+            "signal": pd.Series(dtype=float),
+        }
+    )
 
     overlaid, meta = apply_freshness_overlay(
         frame,
