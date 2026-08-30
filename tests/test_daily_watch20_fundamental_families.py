@@ -111,3 +111,37 @@ def test_ablation_builder_rejects_p0_without_current_value_anchor() -> None:
 
     with pytest.raises(ValueError, match="current value anchor"):
         family_ablation_feature_sets(("mom_20", "size_pct"))
+
+
+def test_fundamental_horizon_profiles_are_frozen_and_horizon_aware() -> None:
+    from alpha_research.daily_watch20_fundamental_families import (
+        fundamental_horizon_profiles,
+    )
+
+    profiles = fundamental_horizon_profiles()
+    assert set(profiles) == {5, 20, 60}
+    assert profiles[5].role == "diagnostic"
+    assert profiles[20].role == "primary"
+    assert profiles[60].role == "slow_challenger"
+    for horizon, profile in profiles.items():
+        assert profile.horizon_days == horizon
+        assert profile.forward_days == horizon
+        assert profile.label_horizon_weights == ((horizon, 1.0),)
+        assert profile.embargo_trade_days == horizon
+        assert profile.rebalance_trade_days == horizon
+
+
+@pytest.mark.parametrize("horizon", [5, 20, 60])
+def test_horizon_profile_builds_matching_daily_watch20_feature_config(horizon: int) -> None:
+    from alpha_research.daily_watch20_features import DailyWatch20FeatureConfig
+    from alpha_research.daily_watch20_fundamental_families import (
+        fundamental_horizon_profiles,
+    )
+
+    profile = fundamental_horizon_profiles()[horizon]
+    cfg = DailyWatch20FeatureConfig(
+        forward_days=profile.forward_days,
+        label_horizon_weights=profile.label_horizon_weights,
+    )
+    assert cfg.label_col == f"forward_rank_{horizon}d"
+    assert cfg.forward_return_col == f"forward_return_{horizon}d"
