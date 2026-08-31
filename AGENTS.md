@@ -99,3 +99,9 @@ scripts/dev/run_tests.sh maintainability
 同一仓库的多个 worktree 共享主工作树的 `core.hooksPath` 配置，不要在独立 worktree
 内重装或改写 hook。新的并行任务必须新建 worktree，不要直接在主检出目录的 `main`
 上提交改动。本仓无运行中的远端 CI，质量事实来源是本地门禁与共享 pre-push。
+
+## Worktree-first 目录规范
+
+开发代码使用 `/home/richard/code/.worktrees/` 下的独立 worktree。生产任务不得直接引用开发
+worktree，应使用 `/home/richard/code/production/` 下固定的生产检出或 release 目录。数据、产物、
+receipt、缓存和凭证放在仓库外。删除或重建 worktree 前，先检查 cron、systemd 和 runbook。
