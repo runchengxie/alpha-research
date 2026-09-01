@@ -205,3 +205,19 @@ def test_forecast_rank_ic_can_average_within_cross_sections() -> None:
     )
 
     assert metrics["rank_ic"] == pytest.approx(0.0)
+
+
+def test_multiple_targets_can_share_the_same_source_column() -> None:
+    specs = (
+        FundamentalTargetSpec("future_roa_1y", "roa", "level"),
+        FundamentalTargetSpec("delta_roa_1y", "roa", "delta"),
+    )
+
+    result = build_annual_fundamental_target_panel(_annual_frame(), specs)
+    mask = (result.frame["symbol"] == "A") & (
+        result.frame["report_period"] == pd.Timestamp("2022-12-31")
+    )
+    row = result.frame.loc[mask].iloc[0]
+
+    assert row["future_roa_1y"] == pytest.approx(0.12)
+    assert row["delta_roa_1y"] == pytest.approx(0.02)
