@@ -351,6 +351,34 @@ def _forecast_fundamental_fold(
     return test, audit
 
 
+def _forecast_run_audit(
+    *,
+    target: str,
+    features: tuple[str, ...],
+    models: Mapping[str, Mapping[str, Any]],
+    fold_audit: list[dict[str, object]],
+    skipped_folds: int,
+    prediction_rows: int,
+    min_train_rows: int,
+    min_train_periods: int,
+) -> dict[str, object]:
+    return {
+        "schema_version": FUNDAMENTAL_STATE_SCHEMA,
+        "target": target,
+        "features": list(features),
+        "model_names": list(models),
+        "leakage_policy": (
+            "prior formation and label_end strictly before earliest test feature date"
+        ),
+        "folds": fold_audit,
+        "completed_folds": len(fold_audit),
+        "skipped_folds": skipped_folds,
+        "prediction_rows": prediction_rows,
+        "min_train_rows": min_train_rows,
+        "min_train_periods": min_train_periods,
+    }
+
+
 def run_walk_forward_fundamental_forecast(
     frame: pd.DataFrame,
     *,
@@ -436,21 +464,16 @@ def run_walk_forward_fundamental_forecast(
         for column in ["pred_persistence", *(f"pred_{name}" for name in models)]:
             predictions[column] = pd.Series(dtype=float)
 
-    audit: dict[str, object] = {
-        "schema_version": FUNDAMENTAL_STATE_SCHEMA,
-        "target": target_spec.name,
-        "features": list(features),
-        "model_names": list(models),
-        "leakage_policy": (
-            "prior formation and label_end strictly before earliest test feature date"
-        ),
-        "folds": fold_audit,
-        "completed_folds": len(fold_audit),
-        "skipped_folds": skipped_folds,
-        "prediction_rows": len(predictions),
-        "min_train_rows": int(min_train_rows),
-        "min_train_periods": int(min_train_periods),
-    }
+    audit = _forecast_run_audit(
+        target=target_spec.name,
+        features=features,
+        models=models,
+        fold_audit=fold_audit,
+        skipped_folds=skipped_folds,
+        prediction_rows=len(predictions),
+        min_train_rows=int(min_train_rows),
+        min_train_periods=int(min_train_periods),
+    )
     return FundamentalForecastRun(predictions, audit)
 
 
