@@ -7,8 +7,8 @@ from alpha_research.daily_watch20_pit_features import GROWTH_FEATURES, QUALITY_F
 
 def test_family_registry_reuses_canonical_qg_and_has_no_overlap() -> None:
     from alpha_research.daily_watch20_fundamental_families import (
-        FUNDAMENTAL_FAMILY_SCHEMA,
         FUND_CONTEXT_FEATURES,
+        FUNDAMENTAL_FAMILY_SCHEMA,
         STYLE_CONTROL_FEATURES,
         VALUE_FEATURES,
         fundamental_family_registry,
@@ -66,7 +66,7 @@ def test_value_panel_requires_all_owner_input_columns() -> None:
         }
     )
 
-    with pytest.raises(ValueError, match="pe_ttm.*ps_ttm"):
+    with pytest.raises(ValueError, match=r"pe_ttm.*ps_ttm"):
         build_value_feature_panel(frame)
 
 
