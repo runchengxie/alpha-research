@@ -272,3 +272,45 @@ def test_walk_forward_runner_compares_persistence_and_ridge_without_future_label
     final_fold = result.audit["folds"][-1]
     assert final_fold["training_label_end_max"] < final_fold["test_cutoff"]
     assert final_fold["training_rows"] == 8
+
+
+def test_walk_forward_runner_skips_rows_with_unavailable_future_labels() -> None:
+    frame = _annual_frame()
+    targets = build_annual_fundamental_target_panel(
+        frame,
+        (FundamentalTargetSpec("future_roa_1y", "roa", "level"),),
+    )
+
+    result = run_walk_forward_fundamental_forecast(
+        targets.frame,
+        target_spec=FundamentalTargetSpec("future_roa_1y", "roa", "level"),
+        feature_cols=("roa",),
+        model_configs={},
+        min_train_rows=1,
+        min_train_periods=1,
+    )
+
+    assert result.frame["target_available_date"].notna().all()
+    assert result.audit["prediction_rows"] == len(result.frame)
+    assert result.audit["prediction_rows"] == 0
+
+
+def test_walk_forward_runner_rejects_future_label_columns_as_features() -> None:
+    with pytest.raises(ValueError, match="future label"):
+        run_walk_forward_fundamental_forecast(
+            _annual_frame().assign(
+                feature_as_of_date=pd.to_datetime(
+                    ["2023-03-20", "2024-03-20", "2025-03-20"] * 2
+                ),
+                fundamental_label_end_date=pd.to_datetime(
+                    ["2024-03-20", "2025-03-20", "2026-03-20"] * 2
+                ),
+                target_available_date=pd.to_datetime(
+                    ["2024-03-20", "2025-03-20", None] * 2
+                ),
+                future_roa_1y=[0.12, 0.11, None, 0.04, 0.06, None],
+            ),
+            target_spec=FundamentalTargetSpec("future_roa_1y", "roa", "level"),
+            feature_cols=("target_available_date",),
+            model_configs={},
+        )

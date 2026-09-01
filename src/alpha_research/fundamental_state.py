@@ -72,6 +72,13 @@ def _normalized_dates(series: pd.Series, *, column: str) -> pd.Series:
     return values.dt.normalize()
 
 
+def _nullable_normalized_dates(series: pd.Series) -> pd.Series:
+    values = pd.to_datetime(series, errors="coerce")
+    if values.dt.tz is not None:
+        values = values.dt.tz_localize(None)
+    return values.dt.normalize()
+
+
 def _numeric(series: pd.Series) -> pd.Series:
     return cast(pd.Series, pd.to_numeric(series, errors="coerce")).replace(
         [np.inf, -np.inf], np.nan
@@ -296,7 +303,11 @@ def _forecast_fundamental_fold(
     ].copy()
     train = train.dropna(subset=[*features, target_spec.name])
     train_periods = int(train[formation_col].nunique())
-    test_valid = test[list(features)].notna().all(axis=1)
+    test_valid = (
+        test[list(features)].notna().all(axis=1)
+        & test[target_spec.name].notna()
+        & test[label_end_col].notna()
+    )
     if (
         len(train) < min_train_rows
         or train_periods < min_train_periods
@@ -359,6 +370,14 @@ def run_walk_forward_fundamental_forecast(
         raise ValueError("feature_cols must contain non-empty names")
     if len(features) != len(set(features)):
         raise ValueError("feature_cols must be unique")
+    future_label_columns = {
+        target_spec.name,
+        "target_available_date",
+        "fundamental_label_end_date",
+    }
+    leaked_features = sorted(future_label_columns.intersection(features))
+    if leaked_features:
+        raise ValueError(f"future label columns cannot be model features: {leaked_features}")
     if int(min_train_rows) <= 0 or int(min_train_periods) <= 0:
         raise ValueError("minimum training requirements must be positive")
     models = {str(name).strip(): dict(config) for name, config in model_configs.items()}
@@ -380,7 +399,7 @@ def run_walk_forward_fundamental_forecast(
     data = frame.copy()
     data[formation_col] = _normalized_dates(data[formation_col], column=formation_col)
     data[feature_date_col] = _normalized_dates(data[feature_date_col], column=feature_date_col)
-    data[label_end_col] = _normalized_dates(data[label_end_col], column=label_end_col)
+    data[label_end_col] = _nullable_normalized_dates(data[label_end_col])
     for column in (*features, target_spec.source_col, target_spec.name):
         data[column] = _numeric(data[column])
 
