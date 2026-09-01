@@ -95,6 +95,7 @@ metrics = evaluate_fundamental_forecast(
     "delta_roa_1y",
     "pred_delta_roa_1y",
     directional=True,
+    date_col="report_period",
 )
 ```
 
@@ -105,6 +106,8 @@ metrics = evaluate_fundamental_forecast(
 - `rmse`
 - `rank_ic`
 - 可选 `direction_accuracy`
+
+提供 `date_col` 时，`rank_ic` 会先在每个形成期或报表期截面内计算，再对有效截面取平均。没有 `date_col` 时才计算全样本 rank correlation。不要把不同年份的数值尺度混成一个看似漂亮的截面 IC。
 
 第一层先验证企业状态能不能预测。股票收益、Sharpe 和组合成本属于下一层问题。
 
