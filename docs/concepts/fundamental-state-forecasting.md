@@ -11,7 +11,7 @@ canonical PIT annual fundamentals
         ↓
 build_annual_fundamental_target_panel
         ↓
-persistence baseline / ResearchModel
+persistence baseline / walk-forward Ridge or XGB
         ↓
 evaluate_fundamental_forecast
         ↓
@@ -68,9 +68,35 @@ baseline = build_persistence_baseline(frame, specs[0])
 
 如果 ML 在 OOS 上不能稳定超过 persistence，研究不应因为模型名字更贵就继续升级复杂度。
 
+## Walk-forward baseline runner
+
+`run_walk_forward_fundamental_forecast` 用 expanding-window 形成真正的 OOS 预测表。每个形成期只能使用更早形成期、并且 `fundamental_label_end_date` 严格早于该测试形成期最早 `feature_as_of_date` 的训练行。
+
+```python
+from alpha_research.fundamental_state import run_walk_forward_fundamental_forecast
+
+run = run_walk_forward_fundamental_forecast(
+    targets.frame,
+    target_spec=specs[0],
+    feature_cols=("roa", "gross_margin", "revenue_growth_history"),
+    model_configs={
+        "ridge": {"type": "ridge", "params": {"alpha": 1.0}},
+        "xgb": {"type": "xgb_regressor", "params": {}},
+    },
+    min_train_rows=500,
+    min_train_periods=5,
+)
+```
+
+返回表会包含 `pred_persistence`、`pred_ridge`、`pred_xgb` 等 OOS 列。模型实现继续复用 `alpha_research.modeling` 的注册表，因此不会为本研究另建训练框架。
+
+一个形成期内公司的财报可用日可能不同。runner 使用该形成期最早的 `feature_as_of_date` 作为训练信息截止点，因此语义偏保守：宁可少用几条刚刚披露的历史标签，也不让较晚披露公司的信息污染同一形成期较早可交易的样本。
+
+该 runner 假定输入特征已经完成研究侧缺失值、缩尾和截面标准化等预处理；它不会静默替调用方拟合 preprocessing。
+
 ## 与 ResearchModel 配合
 
-现有 `ResearchModel` 已经支持任意单目标 `target_col`。第一版保持一个 target 一个模型：
+现有 `ResearchModel` 仍可用于单目标模型训练和现有后端实验。第一版保持一个 target 一个模型，不新增 multi-task deep learning 基础设施。
 
 ```python
 from alpha_research.research_model import ResearchModel
@@ -83,17 +109,15 @@ model = ResearchModel.from_config(
 )
 ```
 
-研究时同时保留 persistence、线性模型和 ML 结果，不新增 multi-task deep learning 基础设施。
-
 ## OOS 评价
 
 ```python
 from alpha_research.fundamental_state import evaluate_fundamental_forecast
 
 metrics = evaluate_fundamental_forecast(
-    oos_frame,
+    run.frame,
     "delta_roa_1y",
-    "pred_delta_roa_1y",
+    "pred_xgb",
     directional=True,
     date_col="report_period",
 )
