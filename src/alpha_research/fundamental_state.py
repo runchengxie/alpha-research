@@ -201,16 +201,36 @@ def _rank_ic(actual: pd.Series, predicted: pd.Series) -> float:
     return float(value) if pd.notna(value) else float("nan")
 
 
+def _mean_cross_sectional_rank_ic(
+    actual: pd.Series,
+    predicted: pd.Series,
+    groups: pd.Series,
+) -> float:
+    values: list[float] = []
+    for _, index_values in groups.groupby(groups, sort=False).groups.items():
+        group_index = pd.Index(index_values)
+        if len(group_index) < 2:
+            continue
+        value = _rank_ic(actual.loc[group_index], predicted.loc[group_index])
+        if np.isfinite(value):
+            values.append(value)
+    return float(np.mean(values)) if values else float("nan")
+
+
 def evaluate_fundamental_forecast(
     frame: pd.DataFrame,
     actual_col: str,
     predicted_col: str,
     *,
     directional: bool = False,
+    date_col: str | None = None,
 ) -> dict[str, float | int | None]:
     """Evaluate one OOS fundamental forecast with scale and rank metrics."""
 
-    missing = sorted({actual_col, predicted_col} - set(frame.columns))
+    required = {actual_col, predicted_col}
+    if date_col is not None:
+        required.add(date_col)
+    missing = sorted(required - set(frame.columns))
     if missing:
         raise ValueError(f"forecast evaluation missing columns: {missing}")
     actual = _numeric(frame[actual_col])
@@ -227,6 +247,10 @@ def evaluate_fundamental_forecast(
             "direction_accuracy": None if not directional else float("nan"),
         }
     error = predicted - actual
+    rank_ic = _rank_ic(actual, predicted)
+    if date_col is not None:
+        groups = frame.loc[valid, date_col]
+        rank_ic = _mean_cross_sectional_rank_ic(actual, predicted, groups)
     direction_accuracy: float | None = None
     if directional:
         direction_accuracy = float((np.sign(predicted) == np.sign(actual)).mean())
@@ -234,7 +258,7 @@ def evaluate_fundamental_forecast(
         "count": int(len(actual)),
         "mae": float(error.abs().mean()),
         "rmse": float(np.sqrt(np.mean(np.square(error.to_numpy(dtype=float))))),
-        "rank_ic": _rank_ic(actual, predicted),
+        "rank_ic": rank_ic,
         "direction_accuracy": direction_accuracy,
     }
 
