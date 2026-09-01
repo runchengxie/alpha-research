@@ -14,6 +14,7 @@ from alpha_research.fundamental_state import (
     build_persistence_baseline,
     evaluate_fundamental_forecast,
     purge_and_embargo_fundamental_rows,
+    run_walk_forward_fundamental_forecast,
 )
 
 
@@ -221,3 +222,53 @@ def test_multiple_targets_can_share_the_same_source_column() -> None:
 
     assert row["future_roa_1y"] == pytest.approx(0.12)
     assert row["delta_roa_1y"] == pytest.approx(0.02)
+
+
+def test_walk_forward_runner_compares_persistence_and_ridge_without_future_labels() -> None:
+    rows = []
+    periods = pd.to_datetime(["2019-12-31", "2020-12-31", "2021-12-31", "2022-12-31"])
+    for period_index, period in enumerate(periods):
+        feature_date = pd.Timestamp(year=period.year + 1, month=3, day=31)
+        for symbol_index, symbol in enumerate(["A", "B", "C"]):
+            feature = float(period_index * 3 + symbol_index + 1)
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "report_period": period,
+                    "feature_as_of_date": feature_date,
+                    "fundamental_label_end_date": (
+                        feature_date + pd.DateOffset(years=1) - pd.Timedelta(days=1)
+                    ),
+                    "roa": feature / 100.0,
+                    "feature_x": feature,
+                    "delta_roa_1y": 0.02 * feature + 0.01,
+                }
+            )
+    frame = pd.DataFrame(rows)
+    # This prior-period row has a label that is not known at the 2023-03-31 test cutoff.
+    poisoned = frame.index[
+        (frame["report_period"] == pd.Timestamp("2021-12-31"))
+        & (frame["symbol"] == "C")
+    ][0]
+    frame.loc[poisoned, "fundamental_label_end_date"] = pd.Timestamp("2023-06-30")
+    frame.loc[poisoned, "delta_roa_1y"] = 999.0
+
+    result = run_walk_forward_fundamental_forecast(
+        frame,
+        target_spec=FundamentalTargetSpec("delta_roa_1y", "roa", "delta"),
+        feature_cols=("feature_x",),
+        model_configs={
+            "ridge": {"type": "ridge", "params": {"alpha": 1e-9}},
+        },
+        min_train_rows=5,
+        min_train_periods=2,
+    )
+
+    test_rows = result.frame[result.frame["report_period"] == pd.Timestamp("2022-12-31")]
+    assert len(test_rows) == 3
+    assert test_rows["pred_ridge"].notna().all()
+    assert test_rows["pred_persistence"].eq(0.0).all()
+    assert np.allclose(test_rows["pred_ridge"], test_rows["delta_roa_1y"], atol=1e-5)
+    final_fold = result.audit["folds"][-1]
+    assert final_fold["training_label_end_max"] < final_fold["test_cutoff"]
+    assert final_fold["training_rows"] == 8
