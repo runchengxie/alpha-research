@@ -2,7 +2,7 @@
 
 `alpha_research.fundamental_state` 支持一条研究专用路线：先预测未来企业经营状态，再把预测结果和当前估值组合成横截面研究分数。
 
-这条路线和 DailyWatch20 的基本面 shadow 不共享标签语义。DailyWatch20 仍以未来股票收益排名为目标；本模块把未来财务状态本身作为监督学习 target。
+这条路线和 DailyWatch20 的基本面 shadow 不共享标签语义。DailyWatch20 仍以未来股票收益排名为目标，本模块把未来财务状态本身作为监督学习 target。
 
 ## 研究链路
 
@@ -92,7 +92,7 @@ run = run_walk_forward_fundamental_forecast(
 
 一个形成期内公司的财报可用日可能不同。runner 使用该形成期最早的 `feature_as_of_date` 作为训练信息截止点，因此语义偏保守：宁可少用几条刚刚披露的历史标签，也不让较晚披露公司的信息污染同一形成期较早可交易的样本。
 
-该 runner 假定输入特征已经完成研究侧缺失值、缩尾和截面标准化等预处理；它不会静默替调用方拟合 preprocessing。
+该 runner 假定输入特征已经完成研究侧缺失值、缩尾和截面标准化等预处理。它不会静默替调用方拟合 preprocessing。
 
 ## 与 ResearchModel 配合
 
@@ -150,7 +150,7 @@ clean = purge_and_embargo_fundamental_rows(
 )
 ```
 
-该函数也会删除测试区间结束后 embargo buffer 内启动的 observation。纯 expanding walk-forward 通常不会把测试期之后的样本放回训练集，因此 embargo 在这种流程里往往不起作用；CPCV 或非单向时间切片更需要显式 embargo。
+该函数也会删除测试区间结束后 embargo buffer 内启动的 observation。纯 expanding walk-forward 通常不会把测试期之后的样本放回训练集，因此 embargo 在这种流程里往往不起作用。CPCV 或非单向时间切片更需要显式 embargo。
 
 ## 预测与估值桥接
 

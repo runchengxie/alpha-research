@@ -181,7 +181,7 @@ def build_annual_fundamental_target_panel(
         "schema_version": FUNDAMENTAL_STATE_SCHEMA,
         "input_contract": "one canonical PIT-audited row per symbol/report_period",
         "horizon_years": int(horizon_years),
-        "rows": int(len(merged)),
+        "rows": len(merged),
         "complete_label_rows": int(complete.sum()),
         "target_names": [spec.name for spec in specs],
         "label_end_semantics": "target_available_date",
@@ -264,12 +264,80 @@ def evaluate_fundamental_forecast(
     if directional:
         direction_accuracy = float((np.sign(predicted) == np.sign(actual)).mean())
     return {
-        "count": int(len(actual)),
+        "count": len(actual),
         "mae": float(error.abs().mean()),
         "rmse": float(np.sqrt(np.mean(np.square(error.to_numpy(dtype=float))))),
         "rank_ic": rank_ic,
         "direction_accuracy": direction_accuracy,
     }
+
+
+def _forecast_fundamental_fold(
+    data: pd.DataFrame,
+    formation: pd.Timestamp,
+    *,
+    target_spec: FundamentalTargetSpec,
+    features: tuple[str, ...],
+    models: Mapping[str, Mapping[str, Any]],
+    formation_col: str,
+    feature_date_col: str,
+    label_end_col: str,
+    min_train_rows: int,
+    min_train_periods: int,
+) -> tuple[pd.DataFrame | None, dict[str, object] | None]:
+    from .modeling import build_model, fit_model, resolve_model_spec
+
+    test = data.loc[data[formation_col] == formation].copy()
+    if test.empty:
+        return None, None
+    test_cutoff = cast(pd.Timestamp, test[feature_date_col].min()).normalize()
+    train = data.loc[
+        (data[formation_col] < formation) & (data[label_end_col] < test_cutoff)
+    ].copy()
+    train = train.dropna(subset=[*features, target_spec.name])
+    train_periods = int(train[formation_col].nunique())
+    test_valid = test[list(features)].notna().all(axis=1)
+    if (
+        len(train) < min_train_rows
+        or train_periods < min_train_periods
+        or not test_valid.any()
+    ):
+        return None, None
+
+    prediction_columns = ["pred_persistence", *(f"pred_{name}" for name in models)]
+    for column in prediction_columns:
+        test[column] = np.nan
+    test.loc[test_valid, "pred_persistence"] = build_persistence_baseline(
+        test.loc[test_valid], target_spec
+    )
+    resolved_models: dict[str, str] = {}
+    for name, config in models.items():
+        model_type, model_params = resolve_model_spec(config)
+        model = build_model(model_type, model_params)
+        fit_model(
+            model,
+            model_type,
+            train,
+            features=features,
+            target_col=target_spec.name,
+            date_col=formation_col,
+        )
+        test.loc[test_valid, f"pred_{name}"] = model.predict(
+            test.loc[test_valid, list(features)]
+        )
+        resolved_models[name] = model_type
+
+    training_label_end_max = cast(pd.Timestamp, train[label_end_col].max()).normalize()
+    audit = {
+        "formation": formation.strftime("%Y-%m-%d"),
+        "test_cutoff": test_cutoff.strftime("%Y-%m-%d"),
+        "training_rows": len(train),
+        "training_periods": train_periods,
+        "training_label_end_max": training_label_end_max.strftime("%Y-%m-%d"),
+        "test_rows": int(test_valid.sum()),
+        "models": resolved_models,
+    }
+    return test, audit
 
 
 def run_walk_forward_fundamental_forecast(
@@ -285,8 +353,6 @@ def run_walk_forward_fundamental_forecast(
     min_train_periods: int = 3,
 ) -> FundamentalForecastRun:
     """Generate leakage-safe expanding-window OOS forecasts by formation period."""
-
-    from .modeling import build_model, fit_model, resolve_model_spec
 
     features = tuple(str(column).strip() for column in feature_cols)
     if not features or any(not column for column in features):
@@ -318,66 +384,28 @@ def run_walk_forward_fundamental_forecast(
     for column in (*features, target_spec.source_col, target_spec.name):
         data[column] = _numeric(data[column])
 
-    prediction_columns = ["pred_persistence", *(f"pred_{name}" for name in models)]
     pieces: list[pd.DataFrame] = []
     fold_audit: list[dict[str, object]] = []
     skipped_folds = 0
     formations = pd.Index(data[formation_col].dropna().unique()).sort_values()
 
     for formation in formations:
-        test_mask = data[formation_col] == formation
-        test = data.loc[test_mask].copy()
-        if test.empty:
-            continue
-        test_cutoff = cast(pd.Timestamp, test[feature_date_col].min()).normalize()
-        train = data.loc[
-            (data[formation_col] < formation) & (data[label_end_col] < test_cutoff)
-        ].copy()
-        train = train.dropna(subset=[*features, target_spec.name])
-        train_periods = int(train[formation_col].nunique())
-        test_valid = test[list(features)].notna().all(axis=1)
-        if (
-            len(train) < int(min_train_rows)
-            or train_periods < int(min_train_periods)
-            or not test_valid.any()
-        ):
+        test, audit = _forecast_fundamental_fold(
+            data,
+            cast(pd.Timestamp, formation),
+            target_spec=target_spec,
+            features=features,
+            models=models,
+            formation_col=formation_col,
+            feature_date_col=feature_date_col,
+            label_end_col=label_end_col,
+            min_train_rows=int(min_train_rows),
+            min_train_periods=int(min_train_periods),
+        )
+        if test is None or audit is None:
             skipped_folds += 1
             continue
-
-        for column in prediction_columns:
-            test[column] = np.nan
-        test.loc[test_valid, "pred_persistence"] = build_persistence_baseline(
-            test.loc[test_valid], target_spec
-        )
-        resolved_models: dict[str, str] = {}
-        for name, config in models.items():
-            model_type, model_params = resolve_model_spec(config)
-            model = build_model(model_type, model_params)
-            fit_model(
-                model,
-                model_type,
-                train,
-                features=features,
-                target_col=target_spec.name,
-                date_col=formation_col,
-            )
-            test.loc[test_valid, f"pred_{name}"] = model.predict(
-                test.loc[test_valid, list(features)]
-            )
-            resolved_models[name] = model_type
-
-        training_label_end_max = cast(pd.Timestamp, train[label_end_col].max()).normalize()
-        fold_audit.append(
-            {
-                "formation": cast(pd.Timestamp, pd.Timestamp(formation)).strftime("%Y-%m-%d"),
-                "test_cutoff": test_cutoff.strftime("%Y-%m-%d"),
-                "training_rows": int(len(train)),
-                "training_periods": train_periods,
-                "training_label_end_max": training_label_end_max.strftime("%Y-%m-%d"),
-                "test_rows": int(test_valid.sum()),
-                "models": resolved_models,
-            }
-        )
+        fold_audit.append(audit)
         pieces.append(test)
 
     if pieces:
@@ -386,7 +414,7 @@ def run_walk_forward_fundamental_forecast(
         )
     else:
         predictions = data.iloc[0:0].copy()
-        for column in prediction_columns:
+        for column in ["pred_persistence", *(f"pred_{name}" for name in models)]:
             predictions[column] = pd.Series(dtype=float)
 
     audit: dict[str, object] = {
@@ -400,7 +428,7 @@ def run_walk_forward_fundamental_forecast(
         "folds": fold_audit,
         "completed_folds": len(fold_audit),
         "skipped_folds": skipped_folds,
-        "prediction_rows": int(len(predictions)),
+        "prediction_rows": len(predictions),
         "min_train_rows": int(min_train_rows),
         "min_train_periods": int(min_train_periods),
     }
@@ -484,7 +512,7 @@ def purge_and_embargo_fundamental_rows(
         "test_start": start.strftime("%Y-%m-%d"),
         "test_end": end.strftime("%Y-%m-%d"),
         "embargo_days": int(embargo_days),
-        "input_rows": int(len(frame)),
+        "input_rows": len(frame),
         "purged_overlap_rows": int(overlaps.sum()),
         "embargoed_rows": int(embargoed.sum()),
         "kept_rows": int(keep.sum()),
