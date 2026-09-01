@@ -160,14 +160,16 @@ def build_annual_fundamental_target_panel(
         raise ValueError("future fundamental labels must become available after feature_as_of_date")
     merged["fundamental_label_end_date"] = merged["target_available_date"]
 
+    future_value_columns = sorted({f"__future__{spec.source_col}" for spec in specs})
     for spec in specs:
         current = _numeric(merged[spec.source_col])
         future_values = _numeric(merged[f"__future__{spec.source_col}"])
         merged[spec.name] = _target_values(current, future_values, transform=spec.transform)
-        merged.drop(columns=[f"__future__{spec.source_col}"], inplace=True)
+    merged.drop(columns=future_value_columns, inplace=True)
 
     complete = merged["target_available_date"].notna()
-    complete &= merged[[spec.name for spec in specs]].notna().all(axis=1)
+    if specs:
+        complete &= merged[[spec.name for spec in specs]].notna().all(axis=1)
     audit: dict[str, object] = {
         "schema_version": FUNDAMENTAL_STATE_SCHEMA,
         "input_contract": "one canonical PIT-audited row per symbol/report_period",
