@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -48,6 +49,12 @@ class FundamentalScoreSpec:
             raise ValueError("FundamentalScoreSpec.column must be non-empty")
         if not np.isfinite(self.weight) or self.weight <= 0:
             raise ValueError("FundamentalScoreSpec.weight must be finite and positive")
+
+
+@dataclass(frozen=True)
+class FundamentalForecastRun:
+    frame: pd.DataFrame
+    audit: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -265,6 +272,141 @@ def evaluate_fundamental_forecast(
     }
 
 
+def run_walk_forward_fundamental_forecast(
+    frame: pd.DataFrame,
+    *,
+    target_spec: FundamentalTargetSpec,
+    feature_cols: tuple[str, ...],
+    model_configs: Mapping[str, Mapping[str, Any]],
+    formation_col: str = "report_period",
+    feature_date_col: str = "feature_as_of_date",
+    label_end_col: str = "fundamental_label_end_date",
+    min_train_rows: int = 50,
+    min_train_periods: int = 3,
+) -> FundamentalForecastRun:
+    """Generate leakage-safe expanding-window OOS forecasts by formation period."""
+
+    from .modeling import build_model, fit_model, resolve_model_spec
+
+    features = tuple(str(column).strip() for column in feature_cols)
+    if not features or any(not column for column in features):
+        raise ValueError("feature_cols must contain non-empty names")
+    if len(features) != len(set(features)):
+        raise ValueError("feature_cols must be unique")
+    if int(min_train_rows) <= 0 or int(min_train_periods) <= 0:
+        raise ValueError("minimum training requirements must be positive")
+    models = {str(name).strip(): dict(config) for name, config in model_configs.items()}
+    if any(not name for name in models) or "persistence" in models:
+        raise ValueError("model names must be non-empty and cannot use persistence")
+
+    required = {
+        target_spec.source_col,
+        target_spec.name,
+        formation_col,
+        feature_date_col,
+        label_end_col,
+        *features,
+    }
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(f"walk-forward fundamental frame missing columns: {missing}")
+
+    data = frame.copy()
+    data[formation_col] = _normalized_dates(data[formation_col], column=formation_col)
+    data[feature_date_col] = _normalized_dates(data[feature_date_col], column=feature_date_col)
+    data[label_end_col] = _normalized_dates(data[label_end_col], column=label_end_col)
+    for column in (*features, target_spec.source_col, target_spec.name):
+        data[column] = _numeric(data[column])
+
+    prediction_columns = ["pred_persistence", *(f"pred_{name}" for name in models)]
+    pieces: list[pd.DataFrame] = []
+    fold_audit: list[dict[str, object]] = []
+    skipped_folds = 0
+    formations = pd.Index(data[formation_col].dropna().unique()).sort_values()
+
+    for formation in formations:
+        test_mask = data[formation_col] == formation
+        test = data.loc[test_mask].copy()
+        if test.empty:
+            continue
+        test_cutoff = cast(pd.Timestamp, test[feature_date_col].min()).normalize()
+        train = data.loc[
+            (data[formation_col] < formation) & (data[label_end_col] < test_cutoff)
+        ].copy()
+        train = train.dropna(subset=[*features, target_spec.name])
+        train_periods = int(train[formation_col].nunique())
+        test_valid = test[list(features)].notna().all(axis=1)
+        if (
+            len(train) < int(min_train_rows)
+            or train_periods < int(min_train_periods)
+            or not test_valid.any()
+        ):
+            skipped_folds += 1
+            continue
+
+        for column in prediction_columns:
+            test[column] = np.nan
+        test.loc[test_valid, "pred_persistence"] = build_persistence_baseline(
+            test.loc[test_valid], target_spec
+        )
+        resolved_models: dict[str, str] = {}
+        for name, config in models.items():
+            model_type, model_params = resolve_model_spec(config)
+            model = build_model(model_type, model_params)
+            fit_model(
+                model,
+                model_type,
+                train,
+                features=features,
+                target_col=target_spec.name,
+                date_col=formation_col,
+            )
+            test.loc[test_valid, f"pred_{name}"] = model.predict(
+                test.loc[test_valid, list(features)]
+            )
+            resolved_models[name] = model_type
+
+        training_label_end_max = cast(pd.Timestamp, train[label_end_col].max()).normalize()
+        fold_audit.append(
+            {
+                "formation": cast(pd.Timestamp, pd.Timestamp(formation)).strftime("%Y-%m-%d"),
+                "test_cutoff": test_cutoff.strftime("%Y-%m-%d"),
+                "training_rows": int(len(train)),
+                "training_periods": train_periods,
+                "training_label_end_max": training_label_end_max.strftime("%Y-%m-%d"),
+                "test_rows": int(test_valid.sum()),
+                "models": resolved_models,
+            }
+        )
+        pieces.append(test)
+
+    if pieces:
+        predictions = pd.concat(pieces, ignore_index=False).sort_values(
+            [formation_col], kind="mergesort"
+        )
+    else:
+        predictions = data.iloc[0:0].copy()
+        for column in prediction_columns:
+            predictions[column] = pd.Series(dtype=float)
+
+    audit: dict[str, object] = {
+        "schema_version": FUNDAMENTAL_STATE_SCHEMA,
+        "target": target_spec.name,
+        "features": list(features),
+        "model_names": list(models),
+        "leakage_policy": (
+            "prior formation and label_end strictly before earliest test feature date"
+        ),
+        "folds": fold_audit,
+        "completed_folds": len(fold_audit),
+        "skipped_folds": skipped_folds,
+        "prediction_rows": int(len(predictions)),
+        "min_train_rows": int(min_train_rows),
+        "min_train_periods": int(min_train_periods),
+    }
+    return FundamentalForecastRun(predictions, audit)
+
+
 def build_fundamental_forecast_score(
     frame: pd.DataFrame,
     score_specs: tuple[FundamentalScoreSpec, ...],
@@ -352,6 +494,7 @@ def purge_and_embargo_fundamental_rows(
 
 __all__ = [
     "FUNDAMENTAL_STATE_SCHEMA",
+    "FundamentalForecastRun",
     "FundamentalPurgeResult",
     "FundamentalScoreSpec",
     "FundamentalTargetPanel",
@@ -361,4 +504,5 @@ __all__ = [
     "build_persistence_baseline",
     "evaluate_fundamental_forecast",
     "purge_and_embargo_fundamental_rows",
+    "run_walk_forward_fundamental_forecast",
 ]
