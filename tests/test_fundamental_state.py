@@ -186,3 +186,22 @@ def test_purge_and_embargo_removes_label_overlap_and_post_test_buffer() -> None:
     assert result.audit["purged_overlap_rows"] == 2
     assert result.audit["embargoed_rows"] == 1
     assert result.audit["kept_rows"] == 2
+
+
+def test_forecast_rank_ic_can_average_within_cross_sections() -> None:
+    frame = pd.DataFrame(
+        {
+            "report_period": ["2023-12-31"] * 3 + ["2024-12-31"] * 3,
+            "actual": [1.0, 2.0, 3.0, 10.0, 20.0, 30.0],
+            "pred": [1.0, 2.0, 3.0, 30.0, 20.0, 10.0],
+        }
+    )
+
+    metrics = evaluate_fundamental_forecast(
+        frame,
+        "actual",
+        "pred",
+        date_col="report_period",
+    )
+
+    assert metrics["rank_ic"] == pytest.approx(0.0)
