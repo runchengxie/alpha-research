@@ -115,13 +115,18 @@ class PromotionGateConfig:
     )
 
 
-def _resolve_path(path_text: str | Path | None) -> Path | None:
+def _resolve_path(
+    path_text: str | Path | None,
+    *,
+    base_dir: Path | None = None,
+) -> Path | None:
     if path_text is None:
         return None
     candidate = Path(path_text).expanduser()
     if candidate.is_absolute():
         return candidate.resolve()
-    return (Path.cwd() / candidate).resolve()
+    root = Path.cwd() if base_dir is None else base_dir
+    return (root / candidate).resolve()
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -184,17 +189,21 @@ def _coerce_str_tuple(value: Any, *, key: str, default: tuple[str, ...]) -> tupl
     return cleaned
 
 
-def _promotion_gate_payload(path_or_payload: str | Path | dict[str, Any]) -> dict[str, Any]:
+def _promotion_gate_payload(
+    path_or_payload: str | Path | dict[str, Any],
+) -> tuple[dict[str, Any], Path | None]:
     if isinstance(path_or_payload, dict):
         payload = path_or_payload
+        base_dir = None
     else:
         path = _resolve_path(path_or_payload)
         assert path is not None
         payload = _load_yaml(path)
+        base_dir = path.parent
     gate_payload = payload.get("promotion_gate", payload)
     if not isinstance(gate_payload, dict):
         raise SystemExit("promotion_gate must be a mapping.")
-    return gate_payload
+    return gate_payload, base_dir
 
 
 def _mapping_section(gate_payload: dict[str, Any], name: str) -> dict[str, Any]:
@@ -258,32 +267,46 @@ def _load_soft_thresholds(gate_payload: dict[str, Any]) -> PromotionSoftThreshol
     )
 
 
-def _load_cpcv_config(gate_payload: dict[str, Any]) -> PromotionCPCVConfig:
+def _load_cpcv_config(
+    gate_payload: dict[str, Any],
+    *,
+    base_dir: Path | None = None,
+) -> PromotionCPCVConfig:
     cpcv_raw = _mapping_section(gate_payload, "cpcv")
     return PromotionCPCVConfig(
         baseline_report=_resolve_path(
-            cpcv_raw.get("baseline_report", gate_payload.get("baseline_cpcv_report"))
+            cpcv_raw.get("baseline_report", gate_payload.get("baseline_cpcv_report")),
+            base_dir=base_dir,
         ),
         candidate_report=_resolve_path(
-            cpcv_raw.get("candidate_report", gate_payload.get("candidate_cpcv_report"))
+            cpcv_raw.get("candidate_report", gate_payload.get("candidate_cpcv_report")),
+            base_dir=base_dir,
         ),
     )
 
 
-def _load_dsr_config(gate_payload: dict[str, Any]) -> PromotionDSRConfig:
+def _load_dsr_config(
+    gate_payload: dict[str, Any],
+    *,
+    base_dir: Path | None = None,
+) -> PromotionDSRConfig:
     dsr_raw = _mapping_section(gate_payload, "dsr")
     return PromotionDSRConfig(
         baseline_report=_resolve_path(
-            dsr_raw.get("baseline_report", gate_payload.get("baseline_dsr_report"))
+            dsr_raw.get("baseline_report", gate_payload.get("baseline_dsr_report")),
+            base_dir=base_dir,
         ),
         candidate_report=_resolve_path(
-            dsr_raw.get("candidate_report", gate_payload.get("candidate_dsr_report"))
+            dsr_raw.get("candidate_report", gate_payload.get("candidate_dsr_report")),
+            base_dir=base_dir,
         ),
     )
 
 
 def _load_dynamic_ensemble_config(
     gate_payload: dict[str, Any],
+    *,
+    base_dir: Path | None = None,
 ) -> PromotionDynamicEnsembleConfig:
     dynamic_raw = _mapping_section(gate_payload, "dynamic_ensemble")
     return PromotionDynamicEnsembleConfig(
@@ -291,13 +314,15 @@ def _load_dynamic_ensemble_config(
             dynamic_raw.get(
                 "baseline_report",
                 gate_payload.get("baseline_dynamic_ensemble_report"),
-            )
+            ),
+            base_dir=base_dir,
         ),
         candidate_report=_resolve_path(
             dynamic_raw.get(
                 "candidate_report",
                 gate_payload.get("candidate_dynamic_ensemble_report"),
-            )
+            ),
+            base_dir=base_dir,
         ),
     )
 
@@ -305,19 +330,24 @@ def _load_dynamic_ensemble_config(
 def load_promotion_gate_config(
     path_or_payload: str | Path | dict[str, Any],
 ) -> PromotionGateConfig:
-    gate_payload = _promotion_gate_payload(path_or_payload)
+    gate_payload, base_dir = _promotion_gate_payload(path_or_payload)
     return PromotionGateConfig(
-        baseline_run=_resolve_path(gate_payload.get("baseline_run")),
-        candidate_run=_resolve_path(gate_payload.get("candidate_run")),
-        benchmark_report=_resolve_path(gate_payload.get("benchmark_report")),
+        baseline_run=_resolve_path(gate_payload.get("baseline_run"), base_dir=base_dir),
+        candidate_run=_resolve_path(gate_payload.get("candidate_run"), base_dir=base_dir),
+        benchmark_report=_resolve_path(
+            gate_payload.get("benchmark_report"),
+            base_dir=base_dir,
+        ),
         baseline_exposure_screen_report=_resolve_path(
-            gate_payload.get("baseline_exposure_screen_report")
+            gate_payload.get("baseline_exposure_screen_report"),
+            base_dir=base_dir,
         ),
         candidate_exposure_screen_report=_resolve_path(
             _first_non_empty(
                 gate_payload.get("candidate_exposure_screen_report"),
                 gate_payload.get("exposure_screen_report"),
-            )
+            ),
+            base_dir=base_dir,
         ),
         comparability_keys=_coerce_str_tuple(
             gate_payload.get("comparability_keys"),
@@ -331,9 +361,9 @@ def load_promotion_gate_config(
         ),
         hard_rejections=_load_hard_rejections(gate_payload),
         soft_thresholds=_load_soft_thresholds(gate_payload),
-        cpcv=_load_cpcv_config(gate_payload),
-        dsr=_load_dsr_config(gate_payload),
-        dynamic_ensemble=_load_dynamic_ensemble_config(gate_payload),
+        cpcv=_load_cpcv_config(gate_payload, base_dir=base_dir),
+        dsr=_load_dsr_config(gate_payload, base_dir=base_dir),
+        dynamic_ensemble=_load_dynamic_ensemble_config(gate_payload, base_dir=base_dir),
     )
 
 
