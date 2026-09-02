@@ -217,6 +217,39 @@ def _rank_ic(actual: pd.Series, predicted: pd.Series) -> float:
     return float(value) if pd.notna(value) else float("nan")
 
 
+def _learning_target(
+    frame: pd.DataFrame,
+    target_col: str,
+    *,
+    date_col: str,
+    model_type: str,
+    model_params: Mapping[str, Any],
+    target_transform: str,
+) -> pd.Series:
+    """Materialize a training target aligned with the model's ranking objective.
+
+    Fundamental-state forecasts remain measured against the numeric future state.  Ranking
+    objectives, however, should train on within-formation relevance rather than arbitrary
+    accounting units.  ``auto`` keeps regressors pointwise and maps XGBoost rankers to
+    non-negative cross-sectional relevance grades.
+    """
+
+    transform = str(target_transform).strip().lower()
+    if transform not in {"auto", "raw", "cross_sectional_rank"}:
+        raise ValueError("target_transform must be auto, raw, or cross_sectional_rank")
+    objective = str(model_params.get("objective", "")).strip().lower()
+    is_ranker = model_type == "xgb_ranker" or objective.startswith("rank:")
+    if transform == "auto":
+        transform = "cross_sectional_rank" if is_ranker else "raw"
+    values = _numeric(frame[target_col])
+    if transform == "raw":
+        return values
+    percentile = values.groupby(frame[date_col], sort=False).rank(method="average", pct=True)
+    if objective == "rank:ndcg":
+        return np.floor(percentile * 31.0).clip(lower=0.0, upper=31.0).astype("Int32")
+    return percentile
+
+
 def _mean_cross_sectional_rank_ic(
     actual: pd.Series,
     predicted: pd.Series,
@@ -298,9 +331,7 @@ def _forecast_fundamental_fold(
     if test.empty:
         return None, None
     test_cutoff = cast(pd.Timestamp, test[feature_date_col].min()).normalize()
-    train = data.loc[
-        (data[formation_col] < formation) & (data[label_end_col] < test_cutoff)
-    ].copy()
+    train = data.loc[(data[formation_col] < formation) & (data[label_end_col] < test_cutoff)].copy()
     train = train.dropna(subset=[*features, target_spec.name])
     train_periods = int(train[formation_col].nunique())
     test_valid = (
@@ -308,11 +339,7 @@ def _forecast_fundamental_fold(
         & test[target_spec.name].notna()
         & test[label_end_col].notna()
     )
-    if (
-        len(train) < min_train_rows
-        or train_periods < min_train_periods
-        or not test_valid.any()
-    ):
+    if len(train) < min_train_rows or train_periods < min_train_periods or not test_valid.any():
         return None, None
 
     prediction_columns = ["pred_persistence", *(f"pred_{name}" for name in models)]
@@ -322,21 +349,40 @@ def _forecast_fundamental_fold(
         test.loc[test_valid], target_spec
     )
     resolved_models: dict[str, str] = {}
+    target_transforms: dict[str, str] = {}
     for name, config in models.items():
         model_type, model_params = resolve_model_spec(config)
         model = build_model(model_type, model_params)
+        target_transform = str(config.get("target_transform", "auto"))
+        fit_data = train.copy()
+        fit_data["__learning_target"] = _learning_target(
+            fit_data,
+            target_spec.name,
+            date_col=formation_col,
+            model_type=model_type,
+            model_params=model_params,
+            target_transform=target_transform,
+        )
+        fit_data = fit_data.dropna(subset=["__learning_target"])
         fit_model(
             model,
             model_type,
-            train,
+            fit_data,
             features=features,
-            target_col=target_spec.name,
+            target_col="__learning_target",
             date_col=formation_col,
         )
-        test.loc[test_valid, f"pred_{name}"] = model.predict(
-            test.loc[test_valid, list(features)]
-        )
+        test.loc[test_valid, f"pred_{name}"] = model.predict(test.loc[test_valid, list(features)])
         resolved_models[name] = model_type
+        target_transforms[name] = (
+            "cross_sectional_rank"
+            if str(target_transform).strip().lower() == "auto"
+            and (
+                model_type == "xgb_ranker"
+                or str(model_params.get("objective", "")).startswith("rank:")
+            )
+            else str(target_transform).strip().lower()
+        )
 
     training_label_end_max = cast(pd.Timestamp, train[label_end_col].max()).normalize()
     audit = {
@@ -347,6 +393,7 @@ def _forecast_fundamental_fold(
         "training_label_end_max": training_label_end_max.strftime("%Y-%m-%d"),
         "test_rows": int(test_valid.sum()),
         "models": resolved_models,
+        "target_transforms": target_transforms,
     }
     return test, audit
 

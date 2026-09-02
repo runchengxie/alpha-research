@@ -9,6 +9,7 @@ import pytest
 from alpha_research.fundamental_state import (
     FundamentalScoreSpec,
     FundamentalTargetSpec,
+    _learning_target,
     build_annual_fundamental_target_panel,
     build_fundamental_forecast_score,
     build_persistence_baseline,
@@ -54,9 +55,7 @@ def test_build_annual_target_panel_tracks_label_availability_and_transforms() ->
 
     result = build_annual_fundamental_target_panel(_annual_frame(), specs)
     frame = result.frame
-    mask = (frame["symbol"] == "A") & (
-        frame["report_period"] == pd.Timestamp("2022-12-31")
-    )
+    mask = (frame["symbol"] == "A") & (frame["report_period"] == pd.Timestamp("2022-12-31"))
     row = frame.loc[mask].iloc[0]
 
     assert row["feature_as_of_date"] == pd.Timestamp("2023-03-20")
@@ -208,6 +207,33 @@ def test_forecast_rank_ic_can_average_within_cross_sections() -> None:
     assert metrics["rank_ic"] == pytest.approx(0.0)
 
 
+def test_learning_target_supports_pointwise_ranker_and_listwise_relevance() -> None:
+    frame = pd.DataFrame(
+        {
+            "formation": ["2024-01-01"] * 4 + ["2024-02-01"] * 4,
+            "target": [1.0, 2.0, 3.0, 4.0, 10.0, 20.0, 30.0, 40.0],
+        }
+    )
+    pointwise = _learning_target(
+        frame,
+        "target",
+        date_col="formation",
+        model_type="xgb_regressor",
+        model_params={"objective": "reg:squarederror"},
+        target_transform="cross_sectional_rank",
+    )
+    listwise = _learning_target(
+        frame,
+        "target",
+        date_col="formation",
+        model_type="xgb_ranker",
+        model_params={"objective": "rank:ndcg"},
+        target_transform="auto",
+    )
+    assert pointwise.iloc[:4].tolist() == pytest.approx([0.25, 0.5, 0.75, 1.0])
+    assert listwise.iloc[:4].tolist() == [7, 15, 23, 31]
+
+
 def test_multiple_targets_can_share_the_same_source_column() -> None:
     specs = (
         FundamentalTargetSpec("future_roa_1y", "roa", "level"),
@@ -247,8 +273,7 @@ def test_walk_forward_runner_compares_persistence_and_ridge_without_future_label
     frame = pd.DataFrame(rows)
     # This prior-period row has a label that is not known at the 2023-03-31 test cutoff.
     poisoned = frame.index[
-        (frame["report_period"] == pd.Timestamp("2021-12-31"))
-        & (frame["symbol"] == "C")
+        (frame["report_period"] == pd.Timestamp("2021-12-31")) & (frame["symbol"] == "C")
     ][0]
     frame.loc[poisoned, "fundamental_label_end_date"] = pd.Timestamp("2023-06-30")
     frame.loc[poisoned, "delta_roa_1y"] = 999.0
@@ -299,15 +324,11 @@ def test_walk_forward_runner_rejects_future_label_columns_as_features() -> None:
     with pytest.raises(ValueError, match="future label"):
         run_walk_forward_fundamental_forecast(
             _annual_frame().assign(
-                feature_as_of_date=pd.to_datetime(
-                    ["2023-03-20", "2024-03-20", "2025-03-20"] * 2
-                ),
+                feature_as_of_date=pd.to_datetime(["2023-03-20", "2024-03-20", "2025-03-20"] * 2),
                 fundamental_label_end_date=pd.to_datetime(
                     ["2024-03-20", "2025-03-20", "2026-03-20"] * 2
                 ),
-                target_available_date=pd.to_datetime(
-                    ["2024-03-20", "2025-03-20", None] * 2
-                ),
+                target_available_date=pd.to_datetime(["2024-03-20", "2025-03-20", None] * 2),
                 future_roa_1y=[0.12, 0.11, None, 0.04, 0.06, None],
             ),
             target_spec=FundamentalTargetSpec("future_roa_1y", "roa", "level"),
