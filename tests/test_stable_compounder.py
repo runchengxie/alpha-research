@@ -46,6 +46,25 @@ def test_stability_label_requires_twelve_contiguous_positive_quarters() -> None:
     assert result["positive_cfo_ratio"].iloc[-1] == 1.0
 
 
+def test_stability_label_does_not_treat_missing_cashflow_as_negative() -> None:
+    periods = pd.date_range("2021-03-31", periods=12, freq="QE")
+    frame = pd.DataFrame(
+        {
+            "symbol": ["A"] * 12,
+            "report_period": periods,
+            "quarter_index": periods.year * 4 + periods.quarter,
+            "standalone_n_income_attr_p": 1.0,
+            "standalone_n_cashflow_act": [1.2] * 11 + [None],
+            "standalone_cfo_margin": 0.12,
+            "standalone_cfo_to_profit": 1.2,
+        }
+    )
+    result = build_rolling_stability_labels(frame)
+    assert result["positive_cfo_ratio"].iloc[-1] == 1.0
+    assert result["operating_quarters_observed"].iloc[-1] == 11
+    assert not result["stable_compounder_strict"].iloc[-1]
+
+
 def test_select_latest_pit_event_is_as_of_safe() -> None:
     frame = pd.DataFrame(
         {

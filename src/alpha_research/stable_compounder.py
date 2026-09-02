@@ -156,16 +156,32 @@ def build_rolling_stability_labels(
         result.index = result.index.droplevel(0)
         return result.reindex(out.index)
 
+    def rolling_count(column: str, min_periods: int) -> pd.Series:
+        values = out.groupby("symbol", sort=False)[column].rolling(
+            window_quarters, min_periods=min_periods
+        )
+        result = values.count()
+        result.index = result.index.droplevel(0)
+        return result.reindex(out.index)
+
     out["cfo_to_profit_median"] = rolling_stat(
         "standalone_cfo_to_profit", "median", minimum_observed
     )
     out["cfo_margin_std"] = rolling_stat("standalone_cfo_margin", "std", minimum_observed)
     # Convert positive/negative observations to ratios after the vectorized window.
+    out["operating_quarters_observed"] = pd.concat(
+        [
+            rolling_count(column, minimum_observed)
+            for column in ("standalone_n_income_attr_p", "standalone_n_cashflow_act")
+        ],
+        axis=1,
+    ).min(axis=1)
     for source, output in (
         ("standalone_n_income_attr_p", "positive_profit_ratio"),
         ("standalone_n_cashflow_act", "positive_cfo_ratio"),
     ):
-        positive = out.assign(_positive=out[source].gt(0)).groupby("symbol", sort=False)["_positive"].rolling(
+        positive_values = out[source].where(out[source].notna()).gt(0).where(out[source].notna())
+        positive = positive_values.groupby(out["symbol"], sort=False).rolling(
             window_quarters, min_periods=minimum_observed
         ).mean()
         positive.index = positive.index.droplevel(0)
@@ -176,6 +192,7 @@ def build_rolling_stability_labels(
     out["stable_compounder_strict"] = (
         out["stable_compounder_eligible"]
         & out["quarters_observed"].ge(window_quarters)
+        & out["operating_quarters_observed"].ge(window_quarters)
         & out["positive_profit_ratio"].ge(minimum_positive_quarters / window_quarters)
         & out["positive_cfo_ratio"].ge(minimum_positive_quarters / window_quarters)
         & out["cfo_to_profit_median"].ge(minimum_cfo_to_profit)
