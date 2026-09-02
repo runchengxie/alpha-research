@@ -28,10 +28,17 @@ def _population_stability_index(
     bins: int,
     epsilon: float = 1e-8,
 ) -> float:
-    quantiles = np.linspace(0.0, 1.0, bins + 1)
-    raw_edges = np.quantile(reference, quantiles)
-    interior = np.unique(raw_edges[1:-1])
-    edges = np.concatenate(([-np.inf], interior, [np.inf]))
+    reference_span = float(np.ptp(reference))
+    scale = max(abs(float(reference[0])), 1.0)
+    if reference_span <= np.finfo(float).eps * scale:
+        center = float(reference[0])
+        half_width = max(abs(center) * 1e-6, 1e-12)
+        edges = np.array([-np.inf, center - half_width, center + half_width, np.inf])
+    else:
+        quantiles = np.linspace(0.0, 1.0, bins + 1)
+        raw_edges = np.quantile(reference, quantiles)
+        interior = np.unique(raw_edges[1:-1])
+        edges = np.concatenate(([-np.inf], interior, [np.inf]))
     reference_counts, _ = np.histogram(reference, bins=edges)
     current_counts, _ = np.histogram(current, bins=edges)
     reference_share = reference_counts.astype(float) / len(reference)
