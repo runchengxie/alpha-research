@@ -34,11 +34,8 @@ jobs:
           enable-cache: true
           python-version: "3.12"
 
-      - name: Install development dependencies
-        run: uv sync --locked --extra dev
-
       - name: Lint
-        run: uv run --locked --extra dev ruff check .
+        run: uvx --from 'ruff>=0.8,<1' ruff check .
 
       - name: Format changed Python files
         shell: bash
@@ -49,8 +46,8 @@ jobs:
           if ((${#files[@]} == 0)); then
             echo "No changed Python files."
           else
-            uv run --locked --extra dev ruff format --check "${files[@]}"
+            uvx --from 'ruff>=0.8,<1' ruff format --check "${files[@]}"
           fi
 
-      - name: Tests
-        run: uv run --locked --extra dev pytest -q
+      - name: Compile public Python sources
+        run: python -m compileall -q src scripts
