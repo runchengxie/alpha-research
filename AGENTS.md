@@ -41,6 +41,17 @@ scripts/dev/run_tests.sh maintainability
 
 `fast` 和 `unit` 是 `all` 的兼容别名。
 
+## GitHub Actions 策略
+
+工作区统一采用以下默认规则：
+
+- public 仓库默认启用 GitHub Actions，用于拉取请求的轻量自动检查。
+- private 仓库默认关闭 GitHub Actions，避免持续占用私有仓库的 Actions 额度。
+- private 仓库如需启用远端 CI，应在仓库文档中记录原因、检查范围和资源成本，并由维护者明确批准。
+- 本地完整门禁继续由仓库自身检查和工作区共享 `pre-push` 承担。
+
+本仓库是 private 仓库，远端 CI 默认关闭。质量事实来源是本地门禁与共享 `pre-push`。
+
 ## 文档范围
 
 本仓库文档维护：
@@ -98,7 +109,7 @@ scripts/dev/run_tests.sh maintainability
 作为 `research-workspace` 子模块时，本仓提交推送合并完成后，再回到顶层更新 gitlink。
 同一仓库的多个 worktree 共享主工作树的 `core.hooksPath` 配置，不要在独立 worktree
 内重装或改写 hook。新的并行任务必须新建 worktree，不要直接在主检出目录的 `main`
-上提交改动。本仓的 `Lightweight pull request quality` workflow 运行轻量 PR 检查；完整研究门禁仍由本地门禁与共享 pre-push 负责。
+上提交改动。
 
 ## Worktree-first 目录规范
 
