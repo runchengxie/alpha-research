@@ -187,17 +187,16 @@ class FactorEvidenceSummary:
 
     @classmethod
     def from_mapping(cls, payload: dict[str, Any]) -> FactorEvidenceSummary:
-        raw_decay = payload.get("decay_horizon_days")
         return cls(
             as_of=date.fromisoformat(_text(payload.get("as_of"), "as_of")),
-            observations=int(payload.get("observations", 0)),
+            observations=payload.get("observations", 0),
             status=payload.get("status", ""),
             ic_mean=payload.get("ic_mean"),
             rank_ic_mean=payload.get("rank_ic_mean"),
             icir=payload.get("icir"),
             turnover=payload.get("turnover"),
             neutralized_rank_ic_mean=payload.get("neutralized_rank_ic_mean"),
-            decay_horizon_days=None if raw_decay is None else int(raw_decay),
+            decay_horizon_days=payload.get("decay_horizon_days"),
         )
 
 
@@ -234,7 +233,9 @@ class FactorCatalog:
         return tuple(self._evidence[key])
 
     def versions(self, factor_id: str) -> tuple[str, ...]:
-        return tuple(sorted(version for current_id, version in self._specs if current_id == factor_id))
+        return tuple(
+            sorted(version for current_id, version in self._specs if current_id == factor_id)
+        )
 
     def to_mapping(self) -> dict[str, Any]:
         entries = []
