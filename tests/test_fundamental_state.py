@@ -10,6 +10,7 @@ from alpha_research.fundamental_state import (
     FundamentalScoreSpec,
     FundamentalTargetSpec,
     _learning_target,
+    add_cashflow_yield,
     build_annual_fundamental_target_panel,
     build_fundamental_forecast_score,
     build_persistence_baseline,
@@ -110,6 +111,18 @@ def test_persistence_baseline_matches_target_semantics() -> None:
     assert build_persistence_baseline(
         frame, FundamentalTargetSpec("growth_roa", "roa", "pct_change")
     ).tolist() == [0.0, 0.0]
+
+
+def test_cashflow_yield_requires_positive_same_date_market_cap() -> None:
+    frame = pd.DataFrame(
+        {
+            "n_cashflow_act": [20.0, 10.0, 5.0],
+            "total_mv": [100.0, 0.0, None],
+        }
+    )
+    result = add_cashflow_yield(frame)
+    assert result["cashflow_yield"].iloc[0] == pytest.approx(0.20)
+    assert result["cashflow_yield"].iloc[1:].isna().all()
 
 
 def test_forecast_metrics_are_cross_sectionally_interpretable() -> None:

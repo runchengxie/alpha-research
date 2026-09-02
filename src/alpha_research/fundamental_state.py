@@ -210,6 +210,35 @@ def build_persistence_baseline(
     return pd.Series(0.0, index=frame.index, dtype=float)
 
 
+def add_cashflow_yield(
+    frame: pd.DataFrame,
+    *,
+    cashflow_col: str = "n_cashflow_act",
+    market_cap_col: str = "total_mv",
+    output_col: str = "cashflow_yield",
+) -> pd.DataFrame:
+    """Add a transparent cash-flow-to-market-cap valuation feature.
+
+    The caller must supply a PIT-safe cash-flow measure and same-date market
+    capitalization.  Invalid or non-positive market caps remain missing rather
+    than being converted into an extreme valuation score.  The input cash-flow
+    may be CFO or already-defined FCF; this function does not silently invent a
+    capex convention.
+    """
+
+    missing = sorted({cashflow_col, market_cap_col} - set(frame.columns))
+    if missing:
+        raise ValueError(f"cashflow yield frame missing columns: {missing}")
+    if not output_col.strip():
+        raise ValueError("output_col must be non-empty")
+    out = frame.copy()
+    cashflow = _numeric(out[cashflow_col])
+    market_cap = _numeric(out[market_cap_col])
+    valid_market_cap = market_cap.where(market_cap.gt(0))
+    out[output_col] = (cashflow / valid_market_cap).replace([np.inf, -np.inf], np.nan)
+    return out
+
+
 def _rank_ic(actual: pd.Series, predicted: pd.Series) -> float:
     actual_rank = actual.rank(method="average")
     predicted_rank = predicted.rank(method="average")
@@ -616,6 +645,7 @@ __all__ = [
     "FundamentalScoreSpec",
     "FundamentalTargetPanel",
     "FundamentalTargetSpec",
+    "add_cashflow_yield",
     "build_annual_fundamental_target_panel",
     "build_fundamental_forecast_score",
     "build_persistence_baseline",
