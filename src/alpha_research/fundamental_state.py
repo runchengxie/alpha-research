@@ -278,9 +278,7 @@ def build_operating_quality_persistence_targets(
     )
     label = pd.Series(pd.NA, index=out.index, dtype="boolean")
     label.loc[known] = persistent.loc[known]
-    out["quality_persistent_1y"] = (
-        label if int(horizon_years) == 1 else label.rename(f"quality_persistent_{horizon_years}y")
-    )
+    out[f"quality_persistent_{horizon_years}y"] = label
     out["quality_label_end_date"] = out["fundamental_label_end_date"]
     out.attrs["audit"] = {
         **targets.audit,

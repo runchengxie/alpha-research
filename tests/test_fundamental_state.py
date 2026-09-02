@@ -53,7 +53,7 @@ def test_quality_persistence_target_column_tracks_non_default_horizon() -> None:
     assert "future_roa_2y" in result.columns
     assert "future_gross_margin_2y" in result.columns
     assert "future_revenue_growth_2y" in result.columns
-    assert "quality_persistent_1y" in result.columns
+    assert "quality_persistent_2y" in result.columns
 
 
 def _annual_frame() -> pd.DataFrame:
