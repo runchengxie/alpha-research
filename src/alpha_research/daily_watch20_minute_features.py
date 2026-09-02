@@ -6,12 +6,22 @@ import hashlib
 import importlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 import numpy as np
 import pandas as pd
 
-from market_data_platform.research_views.daily_watch20_minute_source import MinuteSourceCatalog
+
+class MinuteSourceCatalog(Protocol):
+    """Minimal source-catalog interface required by the transform."""
+
+    files: tuple[Path, ...]
+    source_contract: str
+
+    def partition_records(self) -> dict[str, dict[str, Any]]: ...
+
+    def source_record(self) -> dict[str, Any]: ...
+
 
 MINUTE_FEATURE_SCHEMA = "daily_watch20.minute_features.v3"
 MINUTE_TRANSFORM_CONTRACT = "daily_watch20.minute_features.close_open.v3"

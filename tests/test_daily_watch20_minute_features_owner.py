@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from alpha_research.daily_watch20_minute_features import (
     MINUTE_FEATURE_COLUMNS,
@@ -12,7 +13,9 @@ from alpha_research.daily_watch20_minute_features import (
     transform_daily_watch20_minute_catalog,
 )
 from alpha_research.daily_watch20_policy import DailyWatch20AlphaPolicy
-from market_data_platform.research_views.daily_watch20_minute_source import (
+
+market_data_platform = pytest.importorskip("market_data_platform")
+from market_data_platform.research_views.daily_watch20_minute_source import (  # noqa: E402
     MINUTE_SOURCE_CONTRACT,
     MinutePartitionState,
     MinuteSourceCatalog,

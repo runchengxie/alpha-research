@@ -15,8 +15,6 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
-from market_data_platform.symbols import canonicalize_symbol_columns
-
 from ._factor_diagnostics_rows import (
     _by_factor_summary,
     _correlation_rows,
@@ -34,6 +32,7 @@ from .factor_diagnostics_config import (
     FactorDiagnosticsResult,
 )
 from .factor_diagnostics_math import column_mean as _column_mean
+from .symbols import canonicalize_symbol_columns
 
 
 def compute_factor_diagnostics(

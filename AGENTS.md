@@ -50,7 +50,7 @@ scripts/dev/run_tests.sh maintainability
 - private 仓库如需启用远端 CI，应在仓库文档中记录原因、检查范围和资源成本，并由维护者明确批准。
 - 本地完整门禁继续由仓库自身检查和工作区共享 `pre-push` 承担。
 
-本仓库是 private 仓库，远端 CI 默认关闭。质量事实来源是本地门禁与共享 `pre-push`。
+本仓库是 public 仓库，GitHub Actions 在拉取请求时运行不依赖私有数据平台的静态检查和离线测试。需要真实数据平台的功能通过 `market-data` extra 单独安装，本地完整门禁仍由仓库检查和共享 `pre-push` 承担。
 
 ## 文档范围
 

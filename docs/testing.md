@@ -95,4 +95,4 @@ uv run --extra dev python -m pytest tests/test_cpcv.py -q
 
 ## 自动化状态
 
-当前仓库没有启用 GitHub Actions 远端测试。本地脚本、`pyproject.toml` 和工作区验证记录共同构成本地质量门禁。
+本仓库是 public，GitHub Actions 在拉取请求时运行不依赖私有数据平台的 Ruff 检查、格式检查和离线测试。本地脚本、`pyproject.toml` 和工作区验证记录继续构成本地完整质量门禁，`ty` 当前仍需在本地环境中单独处理可选 Qlib 后端和既有类型债务。需要真实数据平台的分钟源目录测试通过 `market-data` extra 单独运行。

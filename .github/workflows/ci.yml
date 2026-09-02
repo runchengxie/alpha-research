@@ -1,0 +1,39 @@
+name: Lightweight pull request quality
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alpha-research-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install public dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Run static checks
+        run: |
+          uv run --locked --extra dev ruff check src scripts tests
+          uv run --locked --extra dev ruff format --check src scripts tests
+
+      - name: Run offline tests
+        run: uv run --locked --extra dev pytest -q

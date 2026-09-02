@@ -7,7 +7,7 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
-from market_data_platform.symbols import canonicalize_symbol_columns
+from .symbols import canonicalize_symbol_columns
 
 _RECENCY_WINDOW_PATTERN = re.compile(r"^\s*(\d+)\s*([dwm])\s*$", re.IGNORECASE)
 DEFAULT_RECENCY_WINDOWS = ["6m", "1m", "1w"]

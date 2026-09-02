@@ -9,7 +9,6 @@ description = "Alpha research, factor diagnostics, and signal artifact tooling f
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "market-data-platform>=0.2.0",
   "numpy>=1.23",
   "pandas>=2.0",
   "pandas-ta>=0.3.14b0",
@@ -32,6 +31,9 @@ dev = [
 ]
 qlib = [
   "pyqlib>=0.9.5",
+]
+market-data = [
+  "market-data-platform>=0.2.0",
 ]
 
 [tool.setuptools]

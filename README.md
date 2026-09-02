@@ -56,7 +56,7 @@ scripts/dev/run_tests.sh all
 scripts/dev/run_tests.sh maintainability
 ```
 
-`market-data-platform` 固定到 `pyproject.toml` 和 `uv.lock` 记录的 Git commit。
+默认安装不需要私有数据平台。需要分钟数据源目录等数据平台能力时，再通过 `market-data` extra 安装 `market-data-platform`。版本固定信息记录在 `pyproject.toml` 和 `uv.lock` 中。
 独立检出时需要对应私有仓库的 GitHub 读取权限。
 
 `fast` 和 `unit` 是 `all` 的兼容别名。详细范围见 [docs/testing.md](docs/testing.md)。

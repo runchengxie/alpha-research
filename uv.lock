@@ -157,7 +157,6 @@ name = "alpha-research"
 version = "0.4.0"
 source = { editable = "." }
 dependencies = [
-    { name = "market-data-platform" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pandas-ta" },
@@ -178,6 +177,9 @@ dev = [
     { name = "ruff" },
     { name = "ty" },
 ]
+market-data = [
+    { name = "market-data-platform" },
+]
 qlib = [
     { name = "pyqlib" },
 ]
@@ -185,7 +187,7 @@ qlib = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", marker = "extra == 'dev'", specifier = ">=1.2" },
-    { name = "market-data-platform", git = "https://github.com/runchengxie/market-data-platform.git?rev=42d1d8045cf9fbfeda9be1178dacda8549df1132" },
+    { name = "market-data-platform", marker = "extra == 'market-data'", git = "https://github.com/runchengxie/market-data-platform.git?rev=42d1d8045cf9fbfeda9be1178dacda8549df1132" },
     { name = "numpy", specifier = ">=1.23" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pandas-ta", specifier = ">=0.3.14b0" },
@@ -202,7 +204,7 @@ requires-dist = [
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.55" },
     { name = "xgboost", specifier = ">=1.7" },
 ]
-provides-extras = ["dev", "qlib"]
+provides-extras = ["dev", "qlib", "market-data"]
 
 [[package]]
 name = "annotated-doc"
