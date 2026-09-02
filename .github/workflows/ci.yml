@@ -45,4 +45,4 @@ jobs:
           uv run --no-sync ruff format --check src scripts tests
 
       - name: Run offline tests
-        run: uv run --no-sync pytest -q
+        run: uv run --no-sync pytest tests -q
