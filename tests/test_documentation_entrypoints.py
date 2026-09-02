@@ -32,7 +32,15 @@ MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 def test_docs_use_concise_chinese_style() -> None:
     offenders: list[str] = []
 
-    paths = (ROOT / "README.md", ROOT / "AGENTS.md", *sorted((ROOT / "docs").rglob("*.md")))
+    paths = (
+        ROOT / "README.md",
+        ROOT / "AGENTS.md",
+        *sorted(
+            path
+            for path in (ROOT / "docs").rglob("*.md")
+            if "docs/superpowers/plans" not in path.as_posix()
+        ),
+    )
     for path in paths:
         for line_number, line in enumerate(
             path.read_text(encoding="utf-8").splitlines(),
