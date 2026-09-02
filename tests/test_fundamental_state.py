@@ -13,11 +13,37 @@ from alpha_research.fundamental_state import (
     add_cashflow_yield,
     build_annual_fundamental_target_panel,
     build_fundamental_forecast_score,
+    build_operating_quality_persistence_targets,
     build_persistence_baseline,
     evaluate_fundamental_forecast,
     purge_and_embargo_fundamental_rows,
     run_walk_forward_fundamental_forecast,
 )
+
+
+def test_build_operating_quality_persistence_targets_is_future_and_auditable() -> None:
+    frame = pd.DataFrame(
+        {
+            "symbol": ["A", "A", "A", "B", "B", "B"],
+            "report_period": pd.to_datetime(["2021-12-31", "2022-12-31", "2023-12-31"] * 2),
+            "available_date": pd.to_datetime(["2022-03-01", "2023-03-01", "2024-03-01"] * 2),
+            "roa": [0.10, 0.11, 0.12, 0.10, 0.08, 0.04],
+            "gross_margin": [0.30, 0.31, 0.32, 0.30, 0.29, 0.20],
+            "revenue_growth": [0.12, 0.11, 0.10, 0.12, 0.03, -0.05],
+        }
+    )
+    result = build_operating_quality_persistence_targets(frame, horizon_years=1)
+    row_a = result.loc[
+        result["symbol"].eq("A") & result["report_period"].eq(pd.Timestamp("2021-12-31"))
+    ].iloc[0]
+    row_b = result.loc[
+        result["symbol"].eq("B") & result["report_period"].eq(pd.Timestamp("2022-12-31"))
+    ].iloc[0]
+    assert row_a["future_roa_1y"] == 0.11
+    assert bool(row_a["quality_persistent_1y"])
+    assert not bool(row_b["quality_persistent_1y"])
+    assert row_a["quality_label_end_date"] == pd.Timestamp("2023-03-01")
+    assert result.attrs["audit"]["pit_policy"] == "future target availability is retained"
 
 
 def _annual_frame() -> pd.DataFrame:

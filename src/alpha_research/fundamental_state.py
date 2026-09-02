@@ -210,6 +210,90 @@ def build_persistence_baseline(
     return pd.Series(0.0, index=frame.index, dtype=float)
 
 
+def build_operating_quality_persistence_targets(
+    frame: pd.DataFrame,
+    *,
+    horizon_years: int = 1,
+    symbol_col: str = "symbol",
+    report_period_col: str = "report_period",
+    available_date_col: str = "available_date",
+    roa_col: str = "roa",
+    margin_col: str = "gross_margin",
+    growth_col: str = "revenue_growth",
+    roa_retention: float = 0.8,
+    margin_retention: float = 0.9,
+) -> pd.DataFrame:
+    """Build PIT-auditable targets for whether operating quality persists.
+
+    This is deliberately a one-step operating-state target, not a long-horizon return
+    label.  A company is labelled persistent when its next annual observation remains
+    profitable, keeps at least the configured fraction of current ROA and margin, and
+    continues to grow revenue.  Missing future observations remain unknown (``<NA>``).
+    The returned frame carries an audit in ``DataFrame.attrs``.
+    """
+
+    if int(horizon_years) <= 0:
+        raise ValueError("horizon_years must be positive")
+    if not 0 < float(roa_retention) <= 1 or not 0 < float(margin_retention) <= 1:
+        raise ValueError("retention thresholds must be in (0, 1]")
+    required = {
+        symbol_col,
+        report_period_col,
+        available_date_col,
+        roa_col,
+        margin_col,
+        growth_col,
+    }
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(f"quality persistence frame missing columns: {missing}")
+
+    specs = (
+        FundamentalTargetSpec(f"future_roa_{horizon_years}y", roa_col, "level"),
+        FundamentalTargetSpec(f"future_gross_margin_{horizon_years}y", margin_col, "level"),
+        FundamentalTargetSpec(f"future_revenue_growth_{horizon_years}y", growth_col, "level"),
+    )
+    targets = build_annual_fundamental_target_panel(
+        frame,
+        specs,
+        horizon_years=horizon_years,
+        symbol_col=symbol_col,
+        report_period_col=report_period_col,
+        available_date_col=available_date_col,
+    )
+    out = targets.frame
+    current_roa = _numeric(out[roa_col])
+    current_margin = _numeric(out[margin_col])
+    future_roa = _numeric(out[f"future_roa_{horizon_years}y"])
+    future_margin = _numeric(out[f"future_gross_margin_{horizon_years}y"])
+    future_growth = _numeric(out[f"future_revenue_growth_{horizon_years}y"])
+    known = future_roa.notna() & future_margin.notna() & future_growth.notna()
+    persistent = (
+        known
+        & current_roa.gt(0)
+        & current_margin.gt(0)
+        & future_roa.ge(current_roa * float(roa_retention))
+        & future_margin.ge(current_margin * float(margin_retention))
+        & future_growth.gt(0)
+    )
+    label = pd.Series(pd.NA, index=out.index, dtype="boolean")
+    label.loc[known] = persistent.loc[known]
+    out["quality_persistent_1y"] = (
+        label if int(horizon_years) == 1 else label.rename(f"quality_persistent_{horizon_years}y")
+    )
+    out["quality_label_end_date"] = out["fundamental_label_end_date"]
+    out.attrs["audit"] = {
+        **targets.audit,
+        "target_type": "operating_quality_persistence",
+        "pit_policy": "future target availability is retained",
+        "roa_retention": float(roa_retention),
+        "margin_retention": float(margin_retention),
+        "known_label_rows": int(known.sum()),
+        "persistent_label_rows": int(persistent.sum()),
+    }
+    return out
+
+
 def add_cashflow_yield(
     frame: pd.DataFrame,
     *,
@@ -648,6 +732,7 @@ __all__ = [
     "add_cashflow_yield",
     "build_annual_fundamental_target_panel",
     "build_fundamental_forecast_score",
+    "build_operating_quality_persistence_targets",
     "build_persistence_baseline",
     "evaluate_fundamental_forecast",
     "purge_and_embargo_fundamental_rows",
