@@ -5,7 +5,9 @@ import yaml
 from alpha_research import promotion_gate
 
 
-def test_promotion_gate_file_config_resolves_relative_paths_from_config_directory(tmp_path: Path) -> None:
+def test_promotion_gate_file_config_resolves_relative_paths_from_config_directory(
+    tmp_path: Path,
+) -> None:
     config_dir = tmp_path / "research" / "protocols"
     config_dir.mkdir(parents=True)
     config_path = config_dir / "promotion.yml"
