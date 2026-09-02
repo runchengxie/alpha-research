@@ -116,7 +116,7 @@ def summarize_signal_drift(
     current_mean = float(np.mean(cur))
     reference_std = float(np.std(ref, ddof=1))
     current_std = float(np.std(cur, ddof=1))
-    reference_constant = reference_std <= np.finfo(float).eps
+    reference_constant = bool(reference_std <= np.finfo(float).eps)
     mean_shift_std = None if reference_constant else (current_mean - reference_mean) / reference_std
     std_ratio = None if reference_constant else current_std / reference_std
 
