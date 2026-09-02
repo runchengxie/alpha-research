@@ -55,14 +55,19 @@ def build_quarterly_operating_panel(
     aggregations = {column: "first" for column in out.columns if column not in keys}
     out = out.groupby(keys, as_index=False, sort=True).agg(aggregations)
     out = out.sort_values([symbol_col, report_period_col, available_date_col]).reset_index(drop=True)
+    out["_report_year"] = out[report_period_col].dt.year
+    out["_report_quarter"] = out[report_period_col].dt.quarter
+    flow_groups = [out[symbol_col], out["_report_year"]]
     for column in flow_cols:
-        standalone = pd.Series(np.nan, index=out.index, dtype=float)
-        for _, indices in out.groupby(symbol_col, sort=False).groups.items():
-            group = out.loc[indices]
-            standalone.loc[indices] = _standalone_flow(
-                group[column], group[report_period_col]
-            ).to_numpy()
-        out[f"standalone_{column}"] = standalone
+        previous = out.groupby(flow_groups, sort=False)[column].shift(1)
+        previous_quarter = out.groupby(flow_groups, sort=False)["_report_quarter"].shift(1)
+        sequential = previous_quarter.eq(out["_report_quarter"] - 1)
+        standalone = out[column].where(~sequential, out[column] - previous)
+        q3_cumulative = out[column].where(out["_report_quarter"].eq(3)).groupby(
+            flow_groups, sort=False
+        ).shift(1)
+        standalone = standalone.where(~out["_report_quarter"].eq(4), out[column] - q3_cumulative)
+        out[f"standalone_{column}"] = standalone.replace([np.inf, -np.inf], np.nan)
     out["quarter_index"] = out[report_period_col].dt.year * 4 + out[report_period_col].dt.quarter
     out["standalone_cfo_margin"] = (
         out["standalone_n_cashflow_act"] / out["standalone_revenue"].where(out["standalone_revenue"].ne(0))
@@ -71,6 +76,7 @@ def build_quarterly_operating_panel(
         out["standalone_n_cashflow_act"]
         / out["standalone_n_income_attr_p"].where(out["standalone_n_income_attr_p"].ne(0))
     )
+    out = out.drop(columns=["_report_year", "_report_quarter"])
     out = out.replace([np.inf, -np.inf], np.nan)
     return out
 
@@ -99,37 +105,49 @@ def build_rolling_stability_labels(
         raise ValueError(f"stability label panel missing columns: {missing}")
     if not 2 <= minimum_observed <= window_quarters:
         raise ValueError("minimum_observed must be between 2 and window_quarters")
-    out_parts: list[pd.DataFrame] = []
-    for _, group in quarterly_panel.groupby("symbol", sort=False):
-        out_group = group.sort_values("report_period").copy()
-        rolling = out_group.rolling(window_quarters, min_periods=minimum_observed)
-        out_group["quarters_observed"] = rolling["quarter_index"].count()
-        out_group["quarters_contiguous"] = rolling["quarter_index"].apply(
-            lambda values: float(values.max() - values.min() == window_quarters - 1)
-            if values.notna().sum() >= window_quarters
-            else 0.0,
-            raw=False,
-        ).astype(bool)
-        out_group["positive_profit_ratio"] = rolling["standalone_n_income_attr_p"].apply(
-            lambda values: values.gt(0).mean(), raw=False
+    out = quarterly_panel.sort_values(["symbol", "report_period"]).reset_index(drop=True).copy()
+    grouped = out.groupby("symbol", sort=False)["quarter_index"]
+    observed = grouped.rolling(window_quarters, min_periods=minimum_observed).count()
+    observed.index = observed.index.droplevel(0)
+    minimum = grouped.rolling(window_quarters, min_periods=window_quarters).min()
+    minimum.index = minimum.index.droplevel(0)
+    maximum = grouped.rolling(window_quarters, min_periods=window_quarters).max()
+    maximum.index = maximum.index.droplevel(0)
+    out["quarters_observed"] = observed.reindex(out.index)
+    out["quarters_contiguous"] = (
+        minimum.reindex(out.index).sub(maximum.reindex(out.index)).abs().eq(window_quarters - 1)
+    )
+
+    def rolling_stat(column: str, statistic: str, min_periods: int) -> pd.Series:
+        values = out.groupby("symbol", sort=False)[column].rolling(
+            window_quarters, min_periods=min_periods
         )
-        out_group["positive_cfo_ratio"] = rolling["standalone_n_cashflow_act"].apply(
-            lambda values: values.gt(0).mean(), raw=False
-        )
-        out_group["cfo_to_profit_median"] = rolling["standalone_cfo_to_profit"].median()
-        out_group["cfo_margin_std"] = rolling["standalone_cfo_margin"].std(ddof=0)
-        out_group["stable_compounder_eligible"] = (
-            out_group["quarters_observed"].ge(minimum_observed)
-            & out_group["quarters_contiguous"]
-        )
-        out_group["stable_compounder_strict"] = (
-            out_group["stable_compounder_eligible"]
-            & out_group["quarters_observed"].ge(window_quarters)
-            & out_group["positive_profit_ratio"].ge(minimum_positive_quarters / window_quarters)
-            & out_group["positive_cfo_ratio"].ge(minimum_positive_quarters / window_quarters)
-            & out_group["cfo_to_profit_median"].ge(minimum_cfo_to_profit)
-        )
-        out_parts.append(out_group)
-    if not out_parts:
-        return quarterly_panel.copy()
-    return pd.concat(out_parts, ignore_index=True).sort_values(["symbol", "report_period"])
+        result = getattr(values, statistic)()
+        result.index = result.index.droplevel(0)
+        return result.reindex(out.index)
+
+    out["cfo_to_profit_median"] = rolling_stat(
+        "standalone_cfo_to_profit", "median", minimum_observed
+    )
+    out["cfo_margin_std"] = rolling_stat("standalone_cfo_margin", "std", minimum_observed)
+    # Convert positive/negative observations to ratios after the vectorized window.
+    for source, output in (
+        ("standalone_n_income_attr_p", "positive_profit_ratio"),
+        ("standalone_n_cashflow_act", "positive_cfo_ratio"),
+    ):
+        positive = out.assign(_positive=out[source].gt(0)).groupby("symbol", sort=False)["_positive"].rolling(
+            window_quarters, min_periods=minimum_observed
+        ).mean()
+        positive.index = positive.index.droplevel(0)
+        out[output] = positive.reindex(out.index)
+    out["stable_compounder_eligible"] = (
+        out["quarters_observed"].ge(minimum_observed) & out["quarters_contiguous"]
+    )
+    out["stable_compounder_strict"] = (
+        out["stable_compounder_eligible"]
+        & out["quarters_observed"].ge(window_quarters)
+        & out["positive_profit_ratio"].ge(minimum_positive_quarters / window_quarters)
+        & out["positive_cfo_ratio"].ge(minimum_positive_quarters / window_quarters)
+        & out["cfo_to_profit_median"].ge(minimum_cfo_to_profit)
+    )
+    return out
