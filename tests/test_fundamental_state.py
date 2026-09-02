@@ -9,6 +9,8 @@ import pytest
 from alpha_research.fundamental_state import (
     FundamentalScoreSpec,
     FundamentalTargetSpec,
+    _learning_target,
+    add_cashflow_yield,
     build_annual_fundamental_target_panel,
     build_fundamental_forecast_score,
     build_persistence_baseline,
@@ -54,9 +56,7 @@ def test_build_annual_target_panel_tracks_label_availability_and_transforms() ->
 
     result = build_annual_fundamental_target_panel(_annual_frame(), specs)
     frame = result.frame
-    mask = (frame["symbol"] == "A") & (
-        frame["report_period"] == pd.Timestamp("2022-12-31")
-    )
+    mask = (frame["symbol"] == "A") & (frame["report_period"] == pd.Timestamp("2022-12-31"))
     row = frame.loc[mask].iloc[0]
 
     assert row["feature_as_of_date"] == pd.Timestamp("2023-03-20")
@@ -111,6 +111,18 @@ def test_persistence_baseline_matches_target_semantics() -> None:
     assert build_persistence_baseline(
         frame, FundamentalTargetSpec("growth_roa", "roa", "pct_change")
     ).tolist() == [0.0, 0.0]
+
+
+def test_cashflow_yield_requires_positive_same_date_market_cap() -> None:
+    frame = pd.DataFrame(
+        {
+            "n_cashflow_act": [20.0, 10.0, 5.0],
+            "total_mv": [100.0, 0.0, None],
+        }
+    )
+    result = add_cashflow_yield(frame)
+    assert result["cashflow_yield"].iloc[0] == pytest.approx(0.20)
+    assert result["cashflow_yield"].iloc[1:].isna().all()
 
 
 def test_forecast_metrics_are_cross_sectionally_interpretable() -> None:
@@ -208,6 +220,33 @@ def test_forecast_rank_ic_can_average_within_cross_sections() -> None:
     assert metrics["rank_ic"] == pytest.approx(0.0)
 
 
+def test_learning_target_supports_pointwise_ranker_and_listwise_relevance() -> None:
+    frame = pd.DataFrame(
+        {
+            "formation": ["2024-01-01"] * 4 + ["2024-02-01"] * 4,
+            "target": [1.0, 2.0, 3.0, 4.0, 10.0, 20.0, 30.0, 40.0],
+        }
+    )
+    pointwise = _learning_target(
+        frame,
+        "target",
+        date_col="formation",
+        model_type="xgb_regressor",
+        model_params={"objective": "reg:squarederror"},
+        target_transform="cross_sectional_rank",
+    )
+    listwise = _learning_target(
+        frame,
+        "target",
+        date_col="formation",
+        model_type="xgb_ranker",
+        model_params={"objective": "rank:ndcg"},
+        target_transform="auto",
+    )
+    assert pointwise.iloc[:4].tolist() == pytest.approx([0.25, 0.5, 0.75, 1.0])
+    assert listwise.iloc[:4].tolist() == [7, 15, 23, 31]
+
+
 def test_multiple_targets_can_share_the_same_source_column() -> None:
     specs = (
         FundamentalTargetSpec("future_roa_1y", "roa", "level"),
@@ -247,8 +286,7 @@ def test_walk_forward_runner_compares_persistence_and_ridge_without_future_label
     frame = pd.DataFrame(rows)
     # This prior-period row has a label that is not known at the 2023-03-31 test cutoff.
     poisoned = frame.index[
-        (frame["report_period"] == pd.Timestamp("2021-12-31"))
-        & (frame["symbol"] == "C")
+        (frame["report_period"] == pd.Timestamp("2021-12-31")) & (frame["symbol"] == "C")
     ][0]
     frame.loc[poisoned, "fundamental_label_end_date"] = pd.Timestamp("2023-06-30")
     frame.loc[poisoned, "delta_roa_1y"] = 999.0
@@ -272,6 +310,63 @@ def test_walk_forward_runner_compares_persistence_and_ridge_without_future_label
     final_fold = result.audit["folds"][-1]
     assert final_fold["training_label_end_max"] < final_fold["test_cutoff"]
     assert final_fold["training_rows"] == 8
+
+
+def test_walk_forward_runner_supports_pairwise_and_listwise_fundamental_targets() -> None:
+    rows = []
+    periods = pd.to_datetime(["2019-12-31", "2020-12-31", "2021-12-31", "2022-12-31"])
+    for period_index, period in enumerate(periods):
+        feature_date = pd.Timestamp(year=period.year + 1, month=3, day=31)
+        for symbol_index, symbol in enumerate(["A", "B", "C"]):
+            feature = float(period_index * 3 + symbol_index + 1)
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "report_period": period,
+                    "feature_as_of_date": feature_date,
+                    "fundamental_label_end_date": (
+                        feature_date + pd.DateOffset(years=1) - pd.Timedelta(days=1)
+                    ),
+                    "roa": feature / 100.0,
+                    "feature_x": feature,
+                    "delta_roa_1y": 0.02 * feature + 0.01,
+                }
+            )
+    result = run_walk_forward_fundamental_forecast(
+        pd.DataFrame(rows),
+        target_spec=FundamentalTargetSpec("delta_roa_1y", "roa", "delta"),
+        feature_cols=("feature_x",),
+        model_configs={
+            "pairwise": {
+                "type": "xgb_ranker",
+                "params": {
+                    "n_estimators": 3,
+                    "max_depth": 1,
+                    "learning_rate": 0.1,
+                    "objective": "rank:pairwise",
+                    "random_state": 42,
+                },
+            },
+            "listwise": {
+                "type": "xgb_ranker",
+                "params": {
+                    "n_estimators": 3,
+                    "max_depth": 1,
+                    "learning_rate": 0.1,
+                    "objective": "rank:ndcg",
+                    "random_state": 42,
+                },
+            },
+        },
+        min_train_rows=5,
+        min_train_periods=2,
+    )
+    assert result.frame["pred_pairwise"].notna().any()
+    assert result.frame["pred_listwise"].notna().any()
+    assert result.audit["folds"][-1]["target_transforms"] == {
+        "pairwise": "cross_sectional_rank",
+        "listwise": "cross_sectional_rank",
+    }
 
 
 def test_walk_forward_runner_skips_rows_with_unavailable_future_labels() -> None:
@@ -299,15 +394,11 @@ def test_walk_forward_runner_rejects_future_label_columns_as_features() -> None:
     with pytest.raises(ValueError, match="future label"):
         run_walk_forward_fundamental_forecast(
             _annual_frame().assign(
-                feature_as_of_date=pd.to_datetime(
-                    ["2023-03-20", "2024-03-20", "2025-03-20"] * 2
-                ),
+                feature_as_of_date=pd.to_datetime(["2023-03-20", "2024-03-20", "2025-03-20"] * 2),
                 fundamental_label_end_date=pd.to_datetime(
                     ["2024-03-20", "2025-03-20", "2026-03-20"] * 2
                 ),
-                target_available_date=pd.to_datetime(
-                    ["2024-03-20", "2025-03-20", None] * 2
-                ),
+                target_available_date=pd.to_datetime(["2024-03-20", "2025-03-20", None] * 2),
                 future_roa_1y=[0.12, 0.11, None, 0.04, 0.06, None],
             ),
             target_spec=FundamentalTargetSpec("future_roa_1y", "roa", "level"),
