@@ -51,6 +51,89 @@ class StableCompounderResult:
     audit: dict[str, object]
 
 
+def build_stable_compounder_features(
+    panel: pd.DataFrame,
+    *,
+    date_col: str = "available_date",
+    symbol_col: str = "symbol",
+    report_period_col: str = "report_period",
+    revenue_col: str = "revenue",
+    profit_col: str = "n_income_attr_p",
+    assets_col: str = "total_assets",
+    cfo_col: str = "n_cashflow_act",
+    margin_col: str = "grossprofit_margin",
+    growth_col: str = "or_yoy",
+    leverage_col: str = "debt_to_assets",
+    window: int = 3,
+) -> pd.DataFrame:
+    """Derive PIT-safe rolling features for a stable-compounder profile.
+
+    The function uses only rows available at each row's ``date_col``.  The
+    rolling window is measured in observed report rows, so callers should pass
+    an annualized panel (or explicitly document the report frequency) when
+    interpreting the ``*_3y`` fields.  It deliberately does not create a
+    future-outcome label.
+    """
+
+    required = {
+        date_col,
+        symbol_col,
+        report_period_col,
+        revenue_col,
+        profit_col,
+        assets_col,
+        cfo_col,
+        margin_col,
+        growth_col,
+        leverage_col,
+    }
+    missing = sorted(required - set(panel.columns))
+    if missing:
+        raise ValueError(f"stable-compounder feature panel missing columns: {missing}")
+    if window < 2:
+        raise ValueError("stable-compounder rolling window must be at least 2")
+
+    out = panel.copy()
+    out[date_col] = pd.to_datetime(out[date_col], errors="coerce").dt.normalize()
+    out[report_period_col] = pd.to_datetime(out[report_period_col], errors="coerce").dt.normalize()
+    if out[[date_col, report_period_col]].isna().any().any():
+        raise ValueError("stable-compounder feature panel requires valid dates")
+    out = out.sort_values([symbol_col, report_period_col, date_col]).reset_index(drop=True)
+    numeric = [revenue_col, profit_col, assets_col, cfo_col, margin_col, growth_col, leverage_col]
+    for column in numeric:
+        out[column] = pd.to_numeric(out[column], errors="coerce")
+    out["stable_roa"] = _safe_ratio(out[profit_col], out[assets_col])
+    out["stable_cfo_margin"] = _safe_ratio(out[cfo_col], out[revenue_col])
+    out["stable_cfo_to_profit"] = _safe_ratio(out[cfo_col], out[profit_col])
+
+    grouped = out.groupby(symbol_col, sort=False, group_keys=False)
+    for source, suffix, statistic in (
+        ("stable_roa", "roa", "mean"),
+        (growth_col, "growth", "mean"),
+        (margin_col, "margin", "std"),
+        ("stable_cfo_margin", "cfo_margin", "mean"),
+        ("stable_cfo_to_profit", "cfo_to_profit", "median"),
+    ):
+        rolling = grouped[source].rolling(window=window, min_periods=window)
+        values = getattr(rolling, statistic)().reset_index(level=0, drop=True)
+        out[f"stable_{suffix}_{statistic}_{window}obs"] = values.reindex(out.index)
+    out[f"stable_positive_cfo_ratio_{window}obs"] = grouped[cfo_col].transform(
+        lambda values: values.gt(0).rolling(window=window, min_periods=window).mean()
+    )
+    out["stable_debt_to_assets"] = out[leverage_col]
+    out["stable_feature_coverage"] = out[
+        [
+            "stable_roa",
+            "stable_cfo_margin",
+            "stable_cfo_to_profit",
+            f"stable_roa_mean_{window}obs",
+            f"stable_margin_std_{window}obs",
+            f"stable_positive_cfo_ratio_{window}obs",
+        ]
+    ].notna().mean(axis=1)
+    return out
+
+
 _GROUPS = (
     "quality",
     "growth",
@@ -59,6 +142,11 @@ _GROUPS = (
     "risk",
     "valuation",
 )
+
+
+def _safe_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
+    denominator = denominator.where(denominator.ne(0))
+    return (numerator / denominator).replace([np.inf, -np.inf], np.nan)
 
 
 def _percentile(

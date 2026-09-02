@@ -5,6 +5,7 @@ import pytest
 
 from alpha_research.fundamental_compounder import (
     StableCompounderSpec,
+    build_stable_compounder_features,
     build_stable_compounder_label,
 )
 
@@ -74,3 +75,28 @@ def test_stable_compounder_rejects_missing_columns_and_empty_groups() -> None:
 
     with pytest.raises(ValueError, match="at least one component"):
         build_stable_compounder_label(_frame(), StableCompounderSpec())
+
+
+def test_stable_compounder_features_are_rolling_and_pit_ordered() -> None:
+    rows = []
+    for symbol, multiplier in (("A", 2.0), ("B", 1.0)):
+        for index, period in enumerate(pd.date_range("2022-12-31", periods=3, freq="YE")):
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "available_date": period + pd.Timedelta(days=30),
+                    "report_period": period,
+                    "revenue": 100.0 + index,
+                    "n_income_attr_p": 10.0 * multiplier + index,
+                    "total_assets": 100.0,
+                    "n_cashflow_act": 12.0 * multiplier,
+                    "grossprofit_margin": 30.0 + index,
+                    "or_yoy": 5.0 + index,
+                    "debt_to_assets": 40.0,
+                }
+            )
+    result = build_stable_compounder_features(pd.DataFrame(rows))
+    assert result["stable_roa"].notna().all()
+    assert result["stable_roa_mean_3obs"].isna().sum() == 4
+    assert result["stable_positive_cfo_ratio_3obs"].dropna().eq(1.0).all()
+    assert result["stable_feature_coverage"].between(0.0, 1.0).all()
