@@ -10,7 +10,6 @@ from alpha_research.factor_catalog import (
     FactorSpec,
 )
 
-
 SHA = "a" * 64
 
 

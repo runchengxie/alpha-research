@@ -101,15 +101,15 @@ def test_full_shrinkage_removes_factor_covariance_cross_terms() -> None:
 def test_manual_estimate_rejects_nonsymmetric_or_indefinite_factor_covariance() -> None:
     exposures, _, _ = _inputs()
     specific_risk = pd.Series(0.1, index=exposures.index)
-    base = dict(
-        as_of=pd.Timestamp("2025-04-01"),
-        exposures=exposures,
-        specific_risk=specific_risk,
-        history_start=pd.Timestamp("2025-01-01"),
-        history_end=pd.Timestamp("2025-03-31"),
-        observations=60,
-        covariance_shrinkage=0.0,
-    )
+    base = {
+        "as_of": pd.Timestamp("2025-04-01"),
+        "exposures": exposures,
+        "specific_risk": specific_risk,
+        "history_start": pd.Timestamp("2025-01-01"),
+        "history_end": pd.Timestamp("2025-03-31"),
+        "observations": 60,
+        "covariance_shrinkage": 0.0,
+    }
 
     nonsymmetric = FactorRiskModelEstimate(
         factor_covariance=pd.DataFrame(
