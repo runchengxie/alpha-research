@@ -54,7 +54,9 @@ def build_quarterly_operating_panel(
     keys = [symbol_col, report_period_col, available_date_col, trade_date_col]
     aggregations = {column: "first" for column in out.columns if column not in keys}
     out = out.groupby(keys, as_index=False, sort=True).agg(aggregations)
-    out = out.sort_values([symbol_col, report_period_col, available_date_col]).reset_index(drop=True)
+    out = out.sort_values([symbol_col, report_period_col, available_date_col]).reset_index(
+        drop=True
+    )
     out["_report_year"] = out[report_period_col].dt.year
     out["_report_quarter"] = out[report_period_col].dt.quarter
     flow_groups = [out[symbol_col], out["_report_year"]]
@@ -63,22 +65,23 @@ def build_quarterly_operating_panel(
         previous_quarter = out.groupby(flow_groups, sort=False)["_report_quarter"].shift(1)
         sequential = previous_quarter.eq(out["_report_quarter"] - 1)
         standalone = out[column].where(~sequential, out[column] - previous)
-        q3_cumulative = out[column].where(out["_report_quarter"].eq(3)).groupby(
-            flow_groups, sort=False
-        ).shift(1)
+        q3_cumulative = (
+            out[column]
+            .where(out["_report_quarter"].eq(3))
+            .groupby(flow_groups, sort=False)
+            .shift(1)
+        )
         standalone = standalone.where(~out["_report_quarter"].eq(4), out[column] - q3_cumulative)
         out[f"standalone_{column}"] = standalone.replace([np.inf, -np.inf], np.nan)
     out["quarter_index"] = out[report_period_col].dt.year * 4 + out[report_period_col].dt.quarter
-    out["standalone_cfo_margin"] = (
-        out["standalone_n_cashflow_act"] / out["standalone_revenue"].where(out["standalone_revenue"].ne(0))
-    )
-    out["standalone_cfo_to_profit"] = (
-        out["standalone_n_cashflow_act"]
-        / out["standalone_n_income_attr_p"].where(out["standalone_n_income_attr_p"].ne(0))
-    )
+    out["standalone_cfo_margin"] = out["standalone_n_cashflow_act"] / out[
+        "standalone_revenue"
+    ].where(out["standalone_revenue"].ne(0))
+    out["standalone_cfo_to_profit"] = out["standalone_n_cashflow_act"] / out[
+        "standalone_n_income_attr_p"
+    ].where(out["standalone_n_income_attr_p"].ne(0))
     out = out.drop(columns=["_report_year", "_report_quarter"])
-    out = out.replace([np.inf, -np.inf], np.nan)
-    return out
+    return out.replace([np.inf, -np.inf], np.nan)
 
 
 def select_latest_pit_report_events(
@@ -97,7 +100,9 @@ def select_latest_pit_report_events(
         raise ValueError(f"PIT event panel missing columns: {missing}")
     as_of = pd.Timestamp(as_of_date).normalize()
     out = pit_panel.copy()
-    out[available_date_col] = pd.to_datetime(out[available_date_col], errors="coerce").dt.normalize()
+    out[available_date_col] = pd.to_datetime(
+        out[available_date_col], errors="coerce"
+    ).dt.normalize()
     out[report_period_col] = pd.to_datetime(out[report_period_col], errors="coerce").dt.normalize()
     out = out.loc[out[available_date_col].le(as_of)].dropna(
         subset=[symbol_col, report_period_col, available_date_col]
@@ -181,9 +186,11 @@ def build_rolling_stability_labels(
         ("standalone_n_cashflow_act", "positive_cfo_ratio"),
     ):
         positive_values = out[source].where(out[source].notna()).gt(0).where(out[source].notna())
-        positive = positive_values.groupby(out["symbol"], sort=False).rolling(
-            window_quarters, min_periods=minimum_observed
-        ).mean()
+        positive = (
+            positive_values.groupby(out["symbol"], sort=False)
+            .rolling(window_quarters, min_periods=minimum_observed)
+            .mean()
+        )
         positive.index = positive.index.droplevel(0)
         out[output] = positive.reindex(out.index)
     out["stable_compounder_eligible"] = (
