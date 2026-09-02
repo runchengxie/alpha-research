@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from alpha_research.fundamentals import derive_post_merge_fundamental_features
+from alpha_research.fundamentals_post_merge import derive_post_merge_fundamental_features
 
 
 def test_derives_report_and_valuation_age_days():
