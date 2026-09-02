@@ -46,6 +46,16 @@ def test_build_operating_quality_persistence_targets_is_future_and_auditable() -
     assert result.attrs["audit"]["pit_policy"] == "future target availability is retained"
 
 
+def test_quality_persistence_target_column_tracks_non_default_horizon() -> None:
+    frame = _annual_frame()
+    frame["revenue_growth"] = frame["revenue"].groupby(frame["symbol"]).pct_change()
+    result = build_operating_quality_persistence_targets(frame, horizon_years=2)
+    assert "future_roa_2y" in result.columns
+    assert "future_gross_margin_2y" in result.columns
+    assert "future_revenue_growth_2y" in result.columns
+    assert "quality_persistent_1y" in result.columns
+
+
 def _annual_frame() -> pd.DataFrame:
     return pd.DataFrame(
         {
@@ -69,6 +79,7 @@ def _annual_frame() -> pd.DataFrame:
             "roa": [0.10, 0.12, 0.11, 0.05, 0.04, 0.06],
             "revenue": [100.0, 120.0, 150.0, 80.0, 88.0, 96.8],
             "gross_margin": [0.30, 0.33, 0.32, 0.20, 0.19, 0.21],
+            "revenue_growth": [0.20, 0.25, 0.10, 0.10, 0.08, 0.10],
         }
     )
 
