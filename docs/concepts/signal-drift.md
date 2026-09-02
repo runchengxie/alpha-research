@@ -11,6 +11,6 @@ The first report includes:
 - reference/current finite observation counts;
 - explicit constant-reference status.
 
-The module deliberately does **not** convert these metrics into a strategy lifecycle verdict. Thresholds, invalidation conditions, claims, and stop/continue decisions remain in the workspace evidence/decision-governance layer.
+The module deliberately does not convert these metrics into a strategy lifecycle verdict. Thresholds, invalidation conditions, claims, and stop/continue decisions remain in the workspace evidence/decision-governance layer.
 
 Evidently can later be evaluated as an optional differential/monitoring backend. Any adapter should normalize results back to the platform drift contract rather than making Evidently's project model a cross-repository dependency.
