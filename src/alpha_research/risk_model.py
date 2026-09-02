@@ -23,9 +23,18 @@ def _numeric_frame(frame: pd.DataFrame, *, label: str) -> pd.DataFrame:
         raise ValueError(f"{label} index must be unique")
     if numeric.columns.has_duplicates:
         raise ValueError(f"{label} columns must be unique")
-    numeric.index = numeric.index.map(str) if not isinstance(numeric.index, pd.DatetimeIndex) else numeric.index
+    numeric.index = (
+        numeric.index.map(str)
+        if not isinstance(numeric.index, pd.DatetimeIndex)
+        else numeric.index
+    )
     numeric.columns = numeric.columns.map(str)
     return numeric.astype(float)
+
+
+def _comparison_timestamp(value: pd.Timestamp) -> pd.Timestamp:
+    timestamp = pd.Timestamp(value)
+    return timestamp.tz_convert(None) if timestamp.tzinfo is not None else timestamp
 
 
 def _history_frame(frame: pd.DataFrame, *, label: str, as_of: pd.Timestamp) -> pd.DataFrame:
@@ -35,7 +44,7 @@ def _history_frame(frame: pd.DataFrame, *, label: str, as_of: pd.Timestamp) -> p
     index = pd.DatetimeIndex(numeric.index)
     if index.tz is not None:
         index = index.tz_convert(None)
-    normalized_as_of = as_of.tz_convert(None) if as_of.tzinfo is not None else as_of
+    normalized_as_of = _comparison_timestamp(as_of)
     if (index > normalized_as_of).any():
         raise ValueError(f"{label} contains observations after as_of")
     numeric.index = index
@@ -83,6 +92,26 @@ class FactorRiskModelEstimate:
         if any(not np.isfinite(values).all() for values in arrays):
             raise ValueError("risk model values must be finite")
 
+        factor_covariance = self.factor_covariance.to_numpy(dtype=float)
+        if not np.allclose(
+            factor_covariance,
+            factor_covariance.T,
+            atol=1e-12,
+            rtol=1e-12,
+        ):
+            raise ValueError("factor_covariance must be symmetric")
+        eigenvalues = np.linalg.eigvalsh((factor_covariance + factor_covariance.T) / 2.0)
+        if float(eigenvalues.min()) < -1e-10:
+            raise ValueError("factor_covariance must be positive semidefinite")
+
+        as_of = _comparison_timestamp(self.as_of)
+        history_start = _comparison_timestamp(self.history_start)
+        history_end = _comparison_timestamp(self.history_end)
+        if history_start > history_end:
+            raise ValueError("history_start must be <= history_end")
+        if history_end > as_of:
+            raise ValueError("history_end must be at or before as_of")
+
     def asset_covariance(self) -> pd.DataFrame:
         """Project factor covariance plus specific variance into asset space."""
 
@@ -92,7 +121,11 @@ class FactorRiskModelEstimate:
         specific_variance = np.diag(np.square(self.specific_risk.to_numpy(dtype=float)))
         covariance = exposures @ factor_covariance @ exposures.T + specific_variance
         covariance = (covariance + covariance.T) / 2.0
-        return pd.DataFrame(covariance, index=self.exposures.index, columns=self.exposures.index)
+        return pd.DataFrame(
+            covariance,
+            index=self.exposures.index,
+            columns=self.exposures.index,
+        )
 
     def receipt(self) -> dict[str, object]:
         self.validate()
