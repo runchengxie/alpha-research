@@ -105,7 +105,7 @@ def test_docs_record_current_automation_status() -> None:
     assert "本仓库是 public" in docs
     assert "GitHub Actions" in docs
     assert "离线测试" in docs
-    assert "本地质量门禁" in docs
+    assert "本地完整质量门禁" in docs
     assert ".github/workflows/tests.yml" not in docs
 
 
