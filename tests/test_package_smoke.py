@@ -37,6 +37,7 @@ OWNED_MODULES = (
     "alpha_research.research_dataset",
     "alpha_research.research_model",
     "alpha_research.return_metrics",
+    "alpha_research.risk_model",
     "alpha_research.signal_stability",
     "alpha_research.style_replica",
     "alpha_research.train_eval_contracts",
@@ -77,6 +78,11 @@ def test_alpha_root_exports_daily_watch20_feature_api() -> None:
     assert alpha.MINUTE_FEATURES
     assert alpha.DailyWatch20FeatureConfig().forward_days == 5
     assert callable(alpha.build_daily_watch20_feature_frame)
+
+
+def test_alpha_root_exports_risk_model_api() -> None:
+    assert alpha.FACTOR_RISK_MODEL_SCHEMA == "alpha_research.factor_risk_model.v1"
+    assert callable(alpha.build_factor_risk_model)
 
 
 def test_owned_alpha_modules_do_not_load_backtesting_or_pipeline() -> None:

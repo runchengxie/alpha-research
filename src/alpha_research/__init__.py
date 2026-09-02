@@ -40,6 +40,7 @@ from .daily_watch20_minute_features import (
 )
 from .daily_watch20_policy import ALPHA_POLICY_SCHEMA, DailyWatch20AlphaPolicy
 from .freshness_overlay import apply_freshness_overlay
+from .risk_model import FACTOR_RISK_MODEL_SCHEMA, FactorRiskModelEstimate, build_factor_risk_model
 
 __all__ = [
     "ALPHA_POLICY_SCHEMA",
@@ -49,6 +50,7 @@ __all__ = [
     "DAILY_WATCH20_MARKET_SHADOW_DIAGNOSTICS",
     "DAILY_WATCH20_MARKET_SHADOW_FEATURES",
     "DEFAULT_LABEL_HORIZON_WEIGHTS",
+    "FACTOR_RISK_MODEL_SCHEMA",
     "LEGACY_FIVE_DAY_LABEL_HORIZON_WEIGHTS",
     "LIMIT_AWARE_NEXT_OPEN_LABEL_POLICY_ID",
     "MINUTE_FEATURES",
@@ -61,6 +63,7 @@ __all__ = [
     "DailyWatch20AlphaPolicy",
     "DailyWatch20FeatureConfig",
     "ExposureSpec",
+    "FactorRiskModelEstimate",
     "FundamentalModifier",
     "MinuteFeatureTransformResult",
     "apply_freshness_overlay",
@@ -75,6 +78,7 @@ __all__ = [
     "build_context_interactions",
     "build_contextual_feature_evidence",
     "build_daily_watch20_feature_frame",
+    "build_factor_risk_model",
     "compat",
     "contextual",
     "contextual_feature_set_id",
@@ -116,6 +120,7 @@ __all__ = [
     "research_dataset",
     "research_model",
     "return_metrics",
+    "risk_model",
     "sample_weighting",
     "signal_artifact",
     "signal_stability",
