@@ -299,6 +299,63 @@ def test_walk_forward_runner_compares_persistence_and_ridge_without_future_label
     assert final_fold["training_rows"] == 8
 
 
+def test_walk_forward_runner_supports_pairwise_and_listwise_fundamental_targets() -> None:
+    rows = []
+    periods = pd.to_datetime(["2019-12-31", "2020-12-31", "2021-12-31", "2022-12-31"])
+    for period_index, period in enumerate(periods):
+        feature_date = pd.Timestamp(year=period.year + 1, month=3, day=31)
+        for symbol_index, symbol in enumerate(["A", "B", "C"]):
+            feature = float(period_index * 3 + symbol_index + 1)
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "report_period": period,
+                    "feature_as_of_date": feature_date,
+                    "fundamental_label_end_date": (
+                        feature_date + pd.DateOffset(years=1) - pd.Timedelta(days=1)
+                    ),
+                    "roa": feature / 100.0,
+                    "feature_x": feature,
+                    "delta_roa_1y": 0.02 * feature + 0.01,
+                }
+            )
+    result = run_walk_forward_fundamental_forecast(
+        pd.DataFrame(rows),
+        target_spec=FundamentalTargetSpec("delta_roa_1y", "roa", "delta"),
+        feature_cols=("feature_x",),
+        model_configs={
+            "pairwise": {
+                "type": "xgb_ranker",
+                "params": {
+                    "n_estimators": 3,
+                    "max_depth": 1,
+                    "learning_rate": 0.1,
+                    "objective": "rank:pairwise",
+                    "random_state": 42,
+                },
+            },
+            "listwise": {
+                "type": "xgb_ranker",
+                "params": {
+                    "n_estimators": 3,
+                    "max_depth": 1,
+                    "learning_rate": 0.1,
+                    "objective": "rank:ndcg",
+                    "random_state": 42,
+                },
+            },
+        },
+        min_train_rows=5,
+        min_train_periods=2,
+    )
+    assert result.frame["pred_pairwise"].notna().any()
+    assert result.frame["pred_listwise"].notna().any()
+    assert result.audit["folds"][-1]["target_transforms"] == {
+        "pairwise": "cross_sectional_rank",
+        "listwise": "cross_sectional_rank",
+    }
+
+
 def test_walk_forward_runner_skips_rows_with_unavailable_future_labels() -> None:
     frame = _annual_frame()
     targets = build_annual_fundamental_target_panel(
