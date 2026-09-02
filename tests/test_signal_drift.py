@@ -50,3 +50,12 @@ def test_constant_reference_reports_mean_shift_as_unavailable_when_current_moves
     assert report.mean_shift_std is None
     assert report.reference_constant is True
     assert report.ks_statistic == pytest.approx(1.0)
+    assert report.psi > 1.0
+
+
+def test_identical_constant_populations_keep_zero_psi() -> None:
+    report = summarize_signal_drift([1.0] * 20, [1.0] * 20, min_observations=10)
+
+    assert report.reference_constant is True
+    assert report.psi == pytest.approx(0.0, abs=1e-12)
+    assert report.ks_statistic == pytest.approx(0.0, abs=1e-12)
