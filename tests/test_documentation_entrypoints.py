@@ -102,7 +102,9 @@ def test_ty_is_the_only_configured_type_checker() -> None:
 def test_docs_record_current_automation_status() -> None:
     docs = (ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
 
-    assert "当前仓库没有启用 GitHub Actions 远端测试" in docs
+    assert "本仓库是 public" in docs
+    assert "GitHub Actions" in docs
+    assert "离线测试" in docs
     assert "本地质量门禁" in docs
     assert ".github/workflows/tests.yml" not in docs
 
