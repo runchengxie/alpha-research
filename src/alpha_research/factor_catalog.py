@@ -41,6 +41,13 @@ def _optional_finite(value: object, field_name: str) -> float | None:
     return number
 
 
+def _optional_ic(value: object, field_name: str) -> float | None:
+    number = _optional_finite(value, field_name)
+    if number is not None and not -1.0 <= number <= 1.0:
+        raise ValueError(f"{field_name} must be in [-1, 1]")
+    return number
+
+
 @dataclass(frozen=True)
 class FactorSpec:
     factor_id: str
@@ -131,6 +138,8 @@ class FactorEvidenceSummary:
     def __post_init__(self) -> None:
         if not isinstance(self.as_of, date):
             raise TypeError("as_of must be a date")
+        if isinstance(self.observations, bool) or not isinstance(self.observations, int):
+            raise TypeError("observations must be an integer")
         if self.observations <= 0:
             raise ValueError("observations must be > 0")
         status = _text(self.status, "status")
@@ -139,20 +148,29 @@ class FactorEvidenceSummary:
                 "status must be one of " + ", ".join(sorted(FACTOR_LIFECYCLE_STATUSES))
             )
         object.__setattr__(self, "status", status)
-        for field_name in (
-            "ic_mean",
+        object.__setattr__(self, "ic_mean", _optional_ic(self.ic_mean, "ic_mean"))
+        object.__setattr__(
+            self,
             "rank_ic_mean",
-            "icir",
-            "turnover",
+            _optional_ic(self.rank_ic_mean, "rank_ic_mean"),
+        )
+        object.__setattr__(self, "icir", _optional_finite(self.icir, "icir"))
+        object.__setattr__(
+            self,
             "neutralized_rank_ic_mean",
-        ):
-            object.__setattr__(
-                self,
-                field_name,
-                _optional_finite(getattr(self, field_name), field_name),
-            )
-        if self.decay_horizon_days is not None and self.decay_horizon_days < 0:
-            raise ValueError("decay_horizon_days must be >= 0")
+            _optional_ic(self.neutralized_rank_ic_mean, "neutralized_rank_ic_mean"),
+        )
+        turnover = _optional_finite(self.turnover, "turnover")
+        if turnover is not None and turnover < 0:
+            raise ValueError("turnover must be >= 0")
+        object.__setattr__(self, "turnover", turnover)
+        if self.decay_horizon_days is not None:
+            if isinstance(self.decay_horizon_days, bool) or not isinstance(
+                self.decay_horizon_days, int
+            ):
+                raise ValueError("decay_horizon_days must be a non-negative integer")
+            if self.decay_horizon_days < 0:
+                raise ValueError("decay_horizon_days must be >= 0")
 
     def to_mapping(self) -> dict[str, Any]:
         return {
@@ -169,6 +187,7 @@ class FactorEvidenceSummary:
 
     @classmethod
     def from_mapping(cls, payload: dict[str, Any]) -> FactorEvidenceSummary:
+        raw_decay = payload.get("decay_horizon_days")
         return cls(
             as_of=date.fromisoformat(_text(payload.get("as_of"), "as_of")),
             observations=int(payload.get("observations", 0)),
@@ -178,7 +197,7 @@ class FactorEvidenceSummary:
             icir=payload.get("icir"),
             turnover=payload.get("turnover"),
             neutralized_rank_ic_mean=payload.get("neutralized_rank_ic_mean"),
-            decay_horizon_days=payload.get("decay_horizon_days"),
+            decay_horizon_days=None if raw_decay is None else int(raw_decay),
         )
 
 
@@ -198,7 +217,9 @@ class FactorCatalog:
             raise KeyError(f"unknown factor version: {key[0]}@{key[1]}")
         existing = self._evidence[key]
         if any(item.as_of == evidence.as_of for item in existing):
-            raise ValueError(f"evidence already exists for {key[0]}@{key[1]} on {evidence.as_of}")
+            raise ValueError(
+                f"evidence already exists for {key[0]}@{key[1]} on {evidence.as_of}"
+            )
         existing.append(evidence)
         existing.sort(key=lambda item: item.as_of)
 
@@ -213,11 +234,12 @@ class FactorCatalog:
         return tuple(self._evidence[key])
 
     def versions(self, factor_id: str) -> tuple[str, ...]:
-        return tuple(version for current_id, version in self._specs if current_id == factor_id)
+        return tuple(sorted(version for current_id, version in self._specs if current_id == factor_id))
 
     def to_mapping(self) -> dict[str, Any]:
         entries = []
-        for key, spec in self._specs.items():
+        for key in sorted(self._specs):
+            spec = self._specs[key]
             entries.append(
                 {
                     "spec": spec.to_mapping(),
@@ -229,7 +251,9 @@ class FactorCatalog:
     @classmethod
     def from_mapping(cls, payload: dict[str, Any]) -> FactorCatalog:
         if payload.get("schema_version") != FACTOR_CATALOG_SCHEMA:
-            raise ValueError(f"unsupported factor catalog schema: {payload.get('schema_version')!r}")
+            raise ValueError(
+                f"unsupported factor catalog schema: {payload.get('schema_version')!r}"
+            )
         entries = payload.get("entries")
         if not isinstance(entries, list):
             raise ValueError("entries must be a list")
@@ -248,7 +272,10 @@ class FactorCatalog:
             for raw_evidence in evidence_payload:
                 if not isinstance(raw_evidence, dict):
                     raise ValueError(f"entries[{index}].evidence items must be objects")
-                catalog.add_evidence(spec.key, FactorEvidenceSummary.from_mapping(raw_evidence))
+                catalog.add_evidence(
+                    spec.key,
+                    FactorEvidenceSummary.from_mapping(raw_evidence),
+                )
         return catalog
 
 
