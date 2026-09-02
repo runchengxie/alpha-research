@@ -54,6 +54,17 @@ def test_catalog_round_trip_preserves_factor_identity_and_evidence() -> None:
     assert payload["schema_version"] == "alpha_research.factor_catalog.v1"
 
 
+def test_catalog_serialization_is_stable_across_registration_order() -> None:
+    first = FactorCatalog()
+    first.register(_spec("v2"))
+    first.register(_spec("v1"))
+    second = FactorCatalog()
+    second.register(_spec("v1"))
+    second.register(_spec("v2"))
+
+    assert first.to_mapping() == second.to_mapping()
+
+
 def test_catalog_rejects_duplicate_factor_version() -> None:
     catalog = FactorCatalog()
     catalog.register(_spec())
@@ -95,4 +106,28 @@ def test_evidence_rejects_nonfinite_statistics() -> None:
             observations=100,
             status="research",
             rank_ic_mean=float("nan"),
+        )
+
+
+def test_evidence_rejects_invalid_ic_turnover_and_decay() -> None:
+    with pytest.raises(ValueError, match="rank_ic_mean"):
+        FactorEvidenceSummary(
+            as_of=date(2026, 9, 1),
+            observations=100,
+            status="research",
+            rank_ic_mean=1.01,
+        )
+    with pytest.raises(ValueError, match="turnover"):
+        FactorEvidenceSummary(
+            as_of=date(2026, 9, 1),
+            observations=100,
+            status="research",
+            turnover=-0.01,
+        )
+    with pytest.raises(ValueError, match="decay_horizon_days"):
+        FactorEvidenceSummary(
+            as_of=date(2026, 9, 1),
+            observations=100,
+            status="research",
+            decay_horizon_days=1.5,
         )
