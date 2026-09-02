@@ -381,9 +381,7 @@ def _apply_formation_universe(
     required = {"trade_date", "symbol"}
     missing = sorted(required - set(formation_universe.columns))
     if missing:
-        raise ValueError(
-            "formation_universe is missing required columns: " + ", ".join(missing)
-        )
+        raise ValueError("formation_universe is missing required columns: " + ", ".join(missing))
 
     keys = formation_universe[["trade_date", "symbol"]].copy()
     keys["trade_date"] = pd.to_datetime(keys["trade_date"]).dt.normalize()

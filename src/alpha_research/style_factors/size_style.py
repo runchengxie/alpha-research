@@ -103,8 +103,7 @@ def compute_crowding_series(
     n = len(common_dates)
 
     momentum_diff = {
-        window: _rolling_momentum(small_close, window)
-        - _rolling_momentum(large_close, window)
+        window: _rolling_momentum(small_close, window) - _rolling_momentum(large_close, window)
         for window in MOMENTUM_WINDOWS
     }
     turnover = small_amount / large_amount
@@ -126,9 +125,7 @@ def compute_crowding_series(
             diff_history = diff[window : index + 1]
             diff_pct[index] = float(np.mean(diff_history <= diff[index]))
             turnover_history = rolling[window : index + 1]
-            turnover_window_pct[index] = float(
-                np.mean(turnover_history <= rolling[index])
-            )
+            turnover_window_pct[index] = float(np.mean(turnover_history <= rolling[index]))
         momentum_pct[window] = diff_pct
         turnover_pct[window] = turnover_window_pct
 
@@ -137,9 +134,7 @@ def compute_crowding_series(
     for index in range(max(MOMENTUM_WINDOWS), n):
         momentum = np.array([momentum_pct[w][index] for w in MOMENTUM_WINDOWS])
         turnover_rank = np.array([turnover_pct[w][index] for w in MOMENTUM_WINDOWS])
-        small_values[index] = (
-            _top3_average(momentum) + _top3_average(turnover_rank)
-        ) / 2
+        small_values[index] = (_top3_average(momentum) + _top3_average(turnover_rank)) / 2
         large_values[index] = (
             _top3_average(1.0 - momentum) + _top3_average(1.0 - turnover_rank)
         ) / 2
@@ -178,8 +173,7 @@ def compute_size_style_signal(
         if actual is None or actual < expected:
             actual_label = actual.strftime("%Y-%m-%d") if actual is not None else "none"
             raise ValueError(
-                "size-style data is stale: "
-                f"actual={actual_label}, expected={expected:%Y-%m-%d}"
+                f"size-style data is stale: actual={actual_label}, expected={expected:%Y-%m-%d}"
             )
 
     cutoff = _timestamp(as_of, "as-of cutoff") if as_of is not None else expected

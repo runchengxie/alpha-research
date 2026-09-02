@@ -24,9 +24,7 @@ def _numeric_frame(frame: pd.DataFrame, *, label: str) -> pd.DataFrame:
     if numeric.columns.has_duplicates:
         raise ValueError(f"{label} columns must be unique")
     numeric.index = (
-        numeric.index.map(str)
-        if not isinstance(numeric.index, pd.DatetimeIndex)
-        else numeric.index
+        numeric.index.map(str) if not isinstance(numeric.index, pd.DatetimeIndex) else numeric.index
     )
     numeric.columns = numeric.columns.map(str)
     return numeric.astype(float)
@@ -185,9 +183,7 @@ def build_factor_risk_model(
 
     common_index = factor_history.index.intersection(specific_history.index)
     if len(common_index) < min_observations:
-        raise ValueError(
-            f"risk model requires at least {min_observations} common observations"
-        )
+        raise ValueError(f"risk model requires at least {min_observations} common observations")
     factor_history = factor_history.loc[common_index]
     specific_history = specific_history.loc[common_index]
 
@@ -199,8 +195,7 @@ def build_factor_risk_model(
             columns=factor_covariance.columns,
         )
         factor_covariance = (
-            factor_covariance * (1.0 - covariance_shrinkage)
-            + diagonal * covariance_shrinkage
+            factor_covariance * (1.0 - covariance_shrinkage) + diagonal * covariance_shrinkage
         )
     specific_variance = specific_history.var(ddof=1)
     if (specific_variance <= 0).any() or specific_variance.isna().any():

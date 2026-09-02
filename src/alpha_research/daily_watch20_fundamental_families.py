@@ -82,9 +82,7 @@ def build_value_feature_panel(frame: pd.DataFrame) -> ValueFeaturePanel:
         raise ValueError("value feature frame contains duplicate stock-date rows")
     observed_columns: list[str] = []
     for target, source in _VALUE_SOURCE_COLUMNS.items():
-        denominator = pd.to_numeric(out[source], errors="coerce").replace(
-            [np.inf, -np.inf], np.nan
-        )
+        denominator = pd.to_numeric(out[source], errors="coerce").replace([np.inf, -np.inf], np.nan)
         raw_yield = 1.0 / denominator.where(denominator > 0)
         out[target] = raw_yield.groupby(out["trade_date"], sort=False).rank(pct=True)
         observed = f"{target}__observed"

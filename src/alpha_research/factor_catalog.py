@@ -216,9 +216,7 @@ class FactorCatalog:
             raise KeyError(f"unknown factor version: {key[0]}@{key[1]}")
         existing = self._evidence[key]
         if any(item.as_of == evidence.as_of for item in existing):
-            raise ValueError(
-                f"evidence already exists for {key[0]}@{key[1]} on {evidence.as_of}"
-            )
+            raise ValueError(f"evidence already exists for {key[0]}@{key[1]} on {evidence.as_of}")
         existing.append(evidence)
         existing.sort(key=lambda item: item.as_of)
 

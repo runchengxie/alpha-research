@@ -22,11 +22,7 @@ def test_family_registry_reuses_canonical_qg_and_has_no_overlap() -> None:
     assert registry["style_controls"] == STYLE_CONTROL_FEATURES
     assert registry["fund_context"] == FUND_CONTEXT_FEATURES
 
-    primary_names = [
-        name
-        for family in ("value", "quality", "growth")
-        for name in registry[family]
-    ]
+    primary_names = [name for family in ("value", "quality", "growth") for name in registry[family]]
     assert len(primary_names) == len(set(primary_names))
 
 

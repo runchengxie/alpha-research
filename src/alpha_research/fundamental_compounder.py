@@ -121,16 +121,20 @@ def build_stable_compounder_features(
         lambda values: values.gt(0).rolling(window=window, min_periods=window).mean()
     )
     out["stable_debt_to_assets"] = out[leverage_col]
-    out["stable_feature_coverage"] = out[
-        [
-            "stable_roa",
-            "stable_cfo_margin",
-            "stable_cfo_to_profit",
-            f"stable_roa_mean_{window}obs",
-            f"stable_margin_std_{window}obs",
-            f"stable_positive_cfo_ratio_{window}obs",
+    out["stable_feature_coverage"] = (
+        out[
+            [
+                "stable_roa",
+                "stable_cfo_margin",
+                "stable_cfo_to_profit",
+                f"stable_roa_mean_{window}obs",
+                f"stable_margin_std_{window}obs",
+                f"stable_positive_cfo_ratio_{window}obs",
+            ]
         ]
-    ].notna().mean(axis=1)
+        .notna()
+        .mean(axis=1)
+    )
     return out
 
 
