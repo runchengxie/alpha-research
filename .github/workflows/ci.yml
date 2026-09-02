@@ -19,6 +19,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Check out public shared contracts
+        uses: actions/checkout@v4
+        with:
+          repository: runchengxie/research-workspace
+          path: research-workspace
+          submodules: false
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -28,7 +35,9 @@ jobs:
         run: uv python install 3.12
 
       - name: Install public dependencies
-        run: uv sync --locked --extra dev
+        run: |
+          uv sync --locked --extra dev --no-install-package research-contracts
+          uv pip install --python .venv/bin/python -e research-workspace/src/research_contracts
 
       - name: Run static checks
         run: |
