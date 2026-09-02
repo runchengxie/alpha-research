@@ -81,6 +81,36 @@ def build_quarterly_operating_panel(
     return out
 
 
+def select_latest_pit_report_events(
+    pit_panel: pd.DataFrame,
+    *,
+    as_of_date: str | pd.Timestamp,
+    symbol_col: str = "symbol",
+    report_period_col: str = "report_period",
+    available_date_col: str = "available_date",
+) -> pd.DataFrame:
+    """Select the latest available event per report period at a formation date."""
+
+    required = {symbol_col, report_period_col, available_date_col}
+    missing = sorted(required - set(pit_panel.columns))
+    if missing:
+        raise ValueError(f"PIT event panel missing columns: {missing}")
+    as_of = pd.Timestamp(as_of_date).normalize()
+    out = pit_panel.copy()
+    out[available_date_col] = pd.to_datetime(out[available_date_col], errors="coerce").dt.normalize()
+    out[report_period_col] = pd.to_datetime(out[report_period_col], errors="coerce").dt.normalize()
+    out = out.loc[out[available_date_col].le(as_of)].dropna(
+        subset=[symbol_col, report_period_col, available_date_col]
+    )
+    if out.empty:
+        return out
+    return (
+        out.sort_values([symbol_col, report_period_col, available_date_col])
+        .drop_duplicates([symbol_col, report_period_col], keep="last")
+        .reset_index(drop=True)
+    )
+
+
 def build_rolling_stability_labels(
     quarterly_panel: pd.DataFrame,
     *,

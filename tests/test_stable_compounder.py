@@ -5,6 +5,7 @@ import pandas as pd
 from alpha_research.stable_compounder import (
     build_quarterly_operating_panel,
     build_rolling_stability_labels,
+    select_latest_pit_report_events,
 )
 
 
@@ -43,3 +44,16 @@ def test_stability_label_requires_twelve_contiguous_positive_quarters() -> None:
     result = build_rolling_stability_labels(frame)
     assert result["stable_compounder_strict"].iloc[-1]
     assert result["positive_cfo_ratio"].iloc[-1] == 1.0
+
+
+def test_select_latest_pit_event_is_as_of_safe() -> None:
+    frame = pd.DataFrame(
+        {
+            "symbol": ["A", "A", "A"],
+            "report_period": ["2023-12-31"] * 3,
+            "available_date": ["2024-03-01", "2024-04-01", "2025-01-01"],
+            "value": [1, 2, 3],
+        }
+    )
+    result = select_latest_pit_report_events(frame, as_of_date="2024-06-01")
+    assert result["value"].tolist() == [2]
