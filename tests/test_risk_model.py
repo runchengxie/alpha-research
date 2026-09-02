@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from alpha_research.risk_model import build_factor_risk_model
+from alpha_research.risk_model import FactorRiskModelEstimate, build_factor_risk_model
 
 
 def _inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -96,3 +96,60 @@ def test_full_shrinkage_removes_factor_covariance_cross_terms() -> None:
     off_diagonal = estimate.factor_covariance.to_numpy().copy()
     np.fill_diagonal(off_diagonal, 0.0)
     assert np.allclose(off_diagonal, 0.0)
+
+
+def test_manual_estimate_rejects_nonsymmetric_or_indefinite_factor_covariance() -> None:
+    exposures, _, _ = _inputs()
+    specific_risk = pd.Series(0.1, index=exposures.index)
+    base = dict(
+        as_of=pd.Timestamp("2025-04-01"),
+        exposures=exposures,
+        specific_risk=specific_risk,
+        history_start=pd.Timestamp("2025-01-01"),
+        history_end=pd.Timestamp("2025-03-31"),
+        observations=60,
+        covariance_shrinkage=0.0,
+    )
+
+    nonsymmetric = FactorRiskModelEstimate(
+        factor_covariance=pd.DataFrame(
+            [[0.04, 0.02], [0.0, 0.03]],
+            index=exposures.columns,
+            columns=exposures.columns,
+        ),
+        **base,
+    )
+    with pytest.raises(ValueError, match="symmetric"):
+        nonsymmetric.validate()
+
+    indefinite = FactorRiskModelEstimate(
+        factor_covariance=pd.DataFrame(
+            [[0.01, 0.02], [0.02, 0.01]],
+            index=exposures.columns,
+            columns=exposures.columns,
+        ),
+        **base,
+    )
+    with pytest.raises(ValueError, match="positive semidefinite"):
+        indefinite.validate()
+
+
+def test_manual_estimate_rejects_history_after_as_of() -> None:
+    exposures, _, _ = _inputs()
+    estimate = FactorRiskModelEstimate(
+        as_of=pd.Timestamp("2025-03-01"),
+        exposures=exposures,
+        factor_covariance=pd.DataFrame(
+            [[0.04, 0.0], [0.0, 0.03]],
+            index=exposures.columns,
+            columns=exposures.columns,
+        ),
+        specific_risk=pd.Series(0.1, index=exposures.index),
+        history_start=pd.Timestamp("2025-01-01"),
+        history_end=pd.Timestamp("2025-03-02"),
+        observations=40,
+        covariance_shrinkage=0.0,
+    )
+
+    with pytest.raises(ValueError, match="history_end"):
+        estimate.validate()
