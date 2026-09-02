@@ -44,22 +44,26 @@ def test_promotion_gate_file_config_resolves_relative_paths_from_config_director
     assert cfg.baseline_run == (config_dir / "runs/baseline").resolve()
     assert cfg.candidate_run == (config_dir / "runs/candidate").resolve()
     assert cfg.benchmark_report == (config_dir / "evidence/benchmark.json").resolve()
-    assert cfg.baseline_exposure_screen_report == (
-        config_dir / "evidence/baseline_exposure.json"
-    ).resolve()
-    assert cfg.candidate_exposure_screen_report == (
-        config_dir / "evidence/candidate_exposure.json"
-    ).resolve()
+    assert (
+        cfg.baseline_exposure_screen_report
+        == (config_dir / "evidence/baseline_exposure.json").resolve()
+    )
+    assert (
+        cfg.candidate_exposure_screen_report
+        == (config_dir / "evidence/candidate_exposure.json").resolve()
+    )
     assert cfg.cpcv.baseline_report == (config_dir / "evidence/baseline_cpcv.json").resolve()
     assert cfg.cpcv.candidate_report == (config_dir / "evidence/candidate_cpcv.json").resolve()
     assert cfg.dsr.baseline_report == (config_dir / "evidence/baseline_dsr.json").resolve()
     assert cfg.dsr.candidate_report == (config_dir / "evidence/candidate_dsr.json").resolve()
-    assert cfg.dynamic_ensemble.baseline_report == (
-        config_dir / "evidence/baseline_dynamic.json"
-    ).resolve()
-    assert cfg.dynamic_ensemble.candidate_report == (
-        config_dir / "evidence/candidate_dynamic.json"
-    ).resolve()
+    assert (
+        cfg.dynamic_ensemble.baseline_report
+        == (config_dir / "evidence/baseline_dynamic.json").resolve()
+    )
+    assert (
+        cfg.dynamic_ensemble.candidate_report
+        == (config_dir / "evidence/candidate_dynamic.json").resolve()
+    )
 
 
 def test_promotion_gate_mapping_config_keeps_cwd_relative_path_semantics(
