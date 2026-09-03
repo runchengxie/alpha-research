@@ -186,3 +186,17 @@ def test_overfitting_docs_use_owner_relative_source_path() -> None:
     assert "`src/alpha_research/split.py`" in docs
     assert "../alpha-research/src/alpha_research/split.py" not in docs
     assert "根目录 `docs/platform-workflow.md`" in docs
+
+
+def test_research_output_docs_point_to_current_pipeline_owner() -> None:
+    outputs = (ROOT / "docs" / "reference" / "research-outputs.md").read_text(encoding="utf-8")
+    interpretation = (ROOT / "docs" / "concepts" / "result-interpretation.md").read_text(
+        encoding="utf-8"
+    )
+    assert "strategy-pipeline-internal/docs/outputs.md" in outputs
+    assert (
+        "strategy-pipeline-internal/blob/main/docs/reference/outputs/full-reference.md" in outputs
+    )
+    assert "strategy-pipeline-internal/blob/main/docs/metrics.md" in interpretation
+    assert "strategy-pipeline/docs/" not in outputs
+    assert "strategy-pipeline/docs/" not in interpretation

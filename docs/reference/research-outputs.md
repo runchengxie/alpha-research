@@ -1,7 +1,8 @@
 # alpha 研究产物契约
 
 本页记录 alpha 研究层产出的报告文件与字段契约。运行编排、产物目录和 `summary.json` 顶层结构见
-`strategy-pipeline/docs/outputs.md` 与 `strategy-pipeline/docs/reference/outputs/full-reference.md`。
+`strategy-pipeline-internal/docs/outputs.md` 与
+`strategy-pipeline-internal/docs/reference/outputs/full-reference.md`。
 
 ## CPCV 稳健性审计报告
 
@@ -100,7 +101,7 @@ schema_version,artifact_type,no_level2,rolling_metrics_shifted,date_count,signal
 - `summarize-ablation`：汇总相对 baseline 的指标变化
 - `factor-ic`：单因子独立 IC 证据
 
-字段与协议细节见 `docs/concepts/feature-research-protocol.md`。
+字段与协议细节见 [特征研究协议](../concepts/feature-research-protocol.md)。
 
 ## 防过拟合 sidecar 报告
 
@@ -119,7 +120,7 @@ schema_version,artifact_type,no_level2,rolling_metrics_shifted,date_count,signal
 ## 模型调参与线性搜索
 
 `strategy alpha tune` 与 `strategy alpha sweep-linear` 输出模型调参搜索产物，默认写入
-`artifacts/sweeps/<tag>/`。字段契约与 `strategy-pipeline/docs/reference/outputs/full-reference.md`
+`artifacts/sweeps/<tag>/`。字段契约与 pipeline 的[输出产物交接索引](https://github.com/runchengxie/strategy-pipeline-internal/blob/main/docs/reference/outputs/full-reference.md)
 一致。
 
 ## 信号产物

@@ -1,13 +1,15 @@
 # 结果解读：预测质量与稳健性
 
 本页说明 alpha 研究侧的结果如何解读。回测收益、成本、换手、容量和暴露的解读见
-`portfolio-backtester/docs/concepts/backtest-interpretation.md`。运行编排、产物目录和
-`summary.json` 顶层结构见 `strategy-pipeline/docs/metrics.md` 与
-`strategy-pipeline/docs/outputs.md`。
+[`portfolio-backtester/docs/concepts/backtest-interpretation.md`](https://github.com/runchengxie/portfolio-backtester/blob/main/docs/concepts/backtest-interpretation.md)。运行编排、产物目录和
+`summary.json` 顶层结构见
+[`strategy-pipeline-internal/docs/metrics.md`](https://github.com/runchengxie/strategy-pipeline-internal/blob/main/docs/metrics.md) 与
+[`strategy-pipeline-internal/docs/outputs.md`](https://github.com/runchengxie/strategy-pipeline-internal/blob/main/docs/outputs.md)。
 
 ## 标签与分数
 
-标签定义回答模型到底在预测什么。相关配置主要在 `strategy-pipeline/docs/config.md` 的
+标签定义回答模型到底在预测什么。相关配置主要在
+[`strategy-pipeline-internal/docs/config.md`](https://github.com/runchengxie/strategy-pipeline-internal/blob/main/docs/config.md) 的
 `label` 下。
 
 常看字段：
@@ -145,4 +147,4 @@ Walk-Forward、CPCV、PBO、DSR 和特征重要度都属于 alpha 稳健性诊�
 
 ## 推荐阅读顺序
 
-按 `strategy-pipeline/docs/metrics.md` 的阅读顺序，先看预测质量，再回测，最后做稳健性诊断。
+按 pipeline 的 metrics 文档阅读顺序，先看预测质量，再回测，最后做稳健性诊断。
