@@ -7,6 +7,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import ElasticNet, Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRanker, XGBRegressor
 
 FitFn = Callable[
@@ -200,6 +202,22 @@ _MODEL_REGISTRY: dict[str, ModelSpec] = {
             "random_state": 42,
         },
         factory=lambda params: Ridge(**dict(params)),
+        fit=_fit_regressor_model,
+    ),
+    "ridge_scaled": ModelSpec(
+        name="ridge_scaled",
+        aliases=("ridge_scaled", "scaled_ridge", "standardized_ridge"),
+        default_params={
+            "alpha": 1.0,
+            "fit_intercept": True,
+            "random_state": 42,
+        },
+        factory=lambda params: Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("ridge", Ridge(**dict(params))),
+            ]
+        ),
         fit=_fit_regressor_model,
     ),
     "elasticnet": ModelSpec(
