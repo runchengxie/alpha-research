@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
 
 from alpha_research.dataset import DatasetSchema
@@ -45,4 +47,4 @@ def test_date_slices_group_rows_by_sorted_trade_date() -> None:
     ]
     assert start_rows.tolist() == [0, 1]
     assert end_rows.tolist() == [1, 3]
-    assert date_to_pos[pd.Timestamp("2026-01-06")] == 1
+    assert date_to_pos[cast(pd.Timestamp, pd.Timestamp("2026-01-06"))] == 1
