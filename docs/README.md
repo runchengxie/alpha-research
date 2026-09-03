@@ -10,6 +10,7 @@
 | 模型选择 | [concepts/model-selection.md](concepts/model-selection.md) |
 | 模型版图 | [concepts/model-landscape.md](concepts/model-landscape.md) |
 | 过拟合控制 | [concepts/overfitting-controls.md](concepts/overfitting-controls.md) |
+| 分级研究协议 | [concepts/research-protocols.md](concepts/research-protocols.md) |
 | 结果解读 | [concepts/result-interpretation.md](concepts/result-interpretation.md) |
 | 特征研究协议 | [concepts/feature-research-protocol.md](concepts/feature-research-protocol.md) |
 | 基本面状态预测 | [concepts/fundamental-state-forecasting.md](concepts/fundamental-state-forecasting.md) |
