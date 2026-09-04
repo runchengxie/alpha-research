@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Any, SupportsInt, cast
 
 from .metrics import normalize_window_months
 from .recency_diagnostics import DEFAULT_RECENCY_WINDOWS, normalize_recency_windows
+
+logger = logging.getLogger("alpha_research")
 
 
 def normalize_signal_settings(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
@@ -196,6 +199,31 @@ def normalize_artifact_settings(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
     return fields
 
 
+def warn_if_purge_too_small(
+    *,
+    purge_days_cfg: object | None,
+    purge_days: int,
+    label_horizon_effective: int,
+    label_shift_days: int,
+) -> None:
+    """Warn when a configured purge window is shorter than the label span."""
+    if purge_days_cfg is None:
+        return
+    required = max(0, int(label_horizon_effective) + int(label_shift_days))
+    actual = max(0, int(purge_days))
+    if actual >= required:
+        return
+    logger.warning(
+        "eval.purge_days=%s is smaller than label span "
+        "(%s = horizon_effective %s + shift_days %s); "
+        "this may cause label leakage.",
+        actual,
+        required,
+        int(label_horizon_effective),
+        int(label_shift_days),
+    )
+
+
 __all__ = [
     "normalize_artifact_settings",
     "normalize_final_oos",
@@ -205,4 +233,5 @@ __all__ = [
     "normalize_score_postprocess",
     "normalize_signal_settings",
     "normalize_walk_forward_permutation",
+    "warn_if_purge_too_small",
 ]
