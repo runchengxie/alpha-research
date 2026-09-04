@@ -4,6 +4,7 @@ import pytest
 
 from alpha_research.evaluation_config import (
     normalize_artifact_settings,
+    normalize_bucket_ic,
     normalize_final_oos,
     normalize_permutation_test,
     normalize_recency_settings,
@@ -56,6 +57,26 @@ def test_normalize_score_postprocess_rejects_invalid_config() -> None:
         normalize_score_postprocess(
             {"score_postprocess": {"method": "rank_blend", "enabled": True}}
         )
+
+
+def test_normalize_bucket_ic_returns_evaluation_settings() -> None:
+    assert normalize_bucket_ic(
+        {
+            "bucket_ic": {
+                "enabled": True,
+                "method": "pearson",
+                "min_count": 12,
+                "schemes": ["industry"],
+            }
+        }
+    ) == {
+        "BUCKET_IC_ENABLED": True,
+        "BUCKET_IC_METHOD": "pearson",
+        "BUCKET_IC_MIN_COUNT": 12,
+        "BUCKET_IC_SCHEMES": [
+            {"name": "industry", "column": "industry", "type": "category", "n_bins": 0}
+        ],
+    }
 
 
 def test_warn_if_purge_too_small(caplog: pytest.LogCaptureFixture) -> None:

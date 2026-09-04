@@ -6,7 +6,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any, SupportsInt, cast
 
-from .metrics import normalize_window_months
+from .metrics import normalize_bucket_schemes, normalize_window_months
 from .recency_diagnostics import DEFAULT_RECENCY_WINDOWS, normalize_recency_windows
 
 logger = logging.getLogger("alpha_research")
@@ -33,6 +33,31 @@ def normalize_signal_settings(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
         "SIGNAL_DIRECTION_MODE": signal_direction_mode,
         "SIGNAL_DIRECTION": signal_direction,
         "MIN_ABS_IC_TO_FLIP": min_abs_ic_to_flip,
+    }
+
+
+def normalize_bucket_ic(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize bucket IC evaluation settings."""
+
+    bucket_cfg = eval_cfg.get("bucket_ic")
+    enabled = False
+    method = "spearman"
+    min_count = 0
+    schemes: list[dict[str, Any]] = []
+    if isinstance(bucket_cfg, Mapping):
+        enabled = bool(bucket_cfg.get("enabled", False))
+        method = str(bucket_cfg.get("method", "spearman")).strip().lower()
+        min_count = int(bucket_cfg.get("min_count", 0) or 0)
+        schemes = normalize_bucket_schemes(bucket_cfg.get("schemes"))
+    elif bucket_cfg is not None:
+        enabled = bool(bucket_cfg)
+    if method not in {"spearman", "pearson"}:
+        raise SystemExit("eval.bucket_ic.method must be one of: spearman, pearson.")
+    return {
+        "BUCKET_IC_ENABLED": enabled,
+        "BUCKET_IC_METHOD": method,
+        "BUCKET_IC_MIN_COUNT": min_count,
+        "BUCKET_IC_SCHEMES": schemes,
     }
 
 
@@ -226,6 +251,7 @@ def warn_if_purge_too_small(
 
 __all__ = [
     "normalize_artifact_settings",
+    "normalize_bucket_ic",
     "normalize_final_oos",
     "normalize_permutation_test",
     "normalize_recency_settings",
