@@ -68,8 +68,74 @@ def normalize_walk_forward_permutation(
     return bool(wf_perm_cfg), perm_test_runs, perm_test_seed
 
 
+def _normalize_text_list(value: object | None) -> list[str]:
+    if not value:
+        return []
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def normalize_score_postprocess(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize score post-processing options for cross-sectional evaluation."""
+
+    raw_config = eval_cfg.get("score_postprocess")
+    if raw_config is None:
+        return {
+            "SCORE_POSTPROCESS_ENABLED": False,
+            "SCORE_POSTPROCESS_METHOD": "none",
+            "SCORE_POSTPROCESS_COLUMNS": [],
+            "SCORE_POSTPROCESS_STRENGTH": 1.0,
+            "SCORE_POSTPROCESS_MIN_OBS": None,
+        }
+    if not isinstance(raw_config, Mapping):
+        raise SystemExit("eval.score_postprocess must be a mapping when provided.")
+
+    method = str(raw_config.get("method", "none")).strip().lower()
+    columns = _normalize_text_list(raw_config.get("columns"))
+    strength = float(raw_config.get("strength", 1.0))
+    min_obs_raw = raw_config.get("min_obs")
+    min_obs = int(min_obs_raw) if min_obs_raw is not None else None
+    enabled_raw = raw_config.get("enabled")
+    enabled = bool(enabled_raw) if enabled_raw is not None else method != "none"
+
+    if method not in {"none", "neutralize", "rank_blend"}:
+        raise SystemExit(
+            "eval.score_postprocess.method must be one of: none, neutralize, rank_blend."
+        )
+    if strength < 0 or strength > 1:
+        raise SystemExit("eval.score_postprocess.strength must be between 0 and 1.")
+    if min_obs is not None and min_obs < 2:
+        raise SystemExit("eval.score_postprocess.min_obs must be >= 2.")
+    if not enabled or method == "none":
+        return {
+            "SCORE_POSTPROCESS_ENABLED": enabled,
+            "SCORE_POSTPROCESS_METHOD": "none",
+            "SCORE_POSTPROCESS_COLUMNS": [],
+            "SCORE_POSTPROCESS_STRENGTH": strength,
+            "SCORE_POSTPROCESS_MIN_OBS": None,
+        }
+    if not columns:
+        raise SystemExit(f"eval.score_postprocess.columns is required when method={method}.")
+    if method == "neutralize":
+        required_min_obs = len(columns) + 1
+        if min_obs is not None and min_obs < required_min_obs:
+            raise SystemExit("eval.score_postprocess.min_obs must be >= len(columns) + 1.")
+        min_obs = max(5, required_min_obs) if min_obs is None else min_obs
+    else:
+        min_obs = None
+    return {
+        "SCORE_POSTPROCESS_ENABLED": enabled,
+        "SCORE_POSTPROCESS_METHOD": method,
+        "SCORE_POSTPROCESS_COLUMNS": columns,
+        "SCORE_POSTPROCESS_STRENGTH": strength,
+        "SCORE_POSTPROCESS_MIN_OBS": min_obs,
+    }
+
+
 __all__ = [
     "normalize_permutation_test",
+    "normalize_score_postprocess",
     "normalize_signal_settings",
     "normalize_walk_forward_permutation",
 ]

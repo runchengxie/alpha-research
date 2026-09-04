@@ -4,9 +4,32 @@ import pytest
 
 from alpha_research.evaluation_config import (
     normalize_permutation_test,
+    normalize_score_postprocess,
     normalize_signal_settings,
     normalize_walk_forward_permutation,
 )
+
+
+def test_normalize_score_postprocess_defaults_and_neutralize() -> None:
+    assert normalize_score_postprocess({}) == {
+        "SCORE_POSTPROCESS_ENABLED": False,
+        "SCORE_POSTPROCESS_METHOD": "none",
+        "SCORE_POSTPROCESS_COLUMNS": [],
+        "SCORE_POSTPROCESS_STRENGTH": 1.0,
+        "SCORE_POSTPROCESS_MIN_OBS": None,
+    }
+    settings = normalize_score_postprocess(
+        {"score_postprocess": {"method": "neutralize", "columns": ["size"]}}
+    )
+    assert settings["SCORE_POSTPROCESS_ENABLED"] is True
+    assert settings["SCORE_POSTPROCESS_MIN_OBS"] == 5
+
+
+def test_normalize_score_postprocess_rejects_invalid_config() -> None:
+    with pytest.raises(SystemExit, match="columns is required"):
+        normalize_score_postprocess(
+            {"score_postprocess": {"method": "rank_blend", "enabled": True}}
+        )
 
 
 def test_normalize_signal_settings_defaults_and_aliases() -> None:
