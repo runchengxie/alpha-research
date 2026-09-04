@@ -6,7 +6,7 @@
 > source_of_truth: yes
 > superseded_by: n/a
 
-本页帮助研究者在四个可训练模型中选择起点。模型注册范围和扩展条件见 [model-landscape.md](model-landscape.md)。参数定义和命令说明见 `strategy-pipeline/docs/config.md` 与 `strategy-pipeline/docs/cli.md`。
+本页帮助研究者在四个可训练模型中选择起点。模型注册范围和扩展条件见 [model-landscape.md](model-landscape.md)。参数定义和命令说明见 `strategy-pipeline/docs/configuration.md` 与 `strategy-pipeline/docs/cli-helpers.md`。
 
 模型注册表还包含 `fixed_score_artifact`。它读取外部冻结分数，不训练预测模型，因此单独放在产物回放流程中使用。
 

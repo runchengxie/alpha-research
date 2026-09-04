@@ -3,13 +3,13 @@
 本页说明 alpha 研究侧的结果如何解读。回测收益、成本、换手、容量和暴露的解读见
 [`portfolio-backtester/docs/concepts/backtest-interpretation.md`](https://github.com/runchengxie/portfolio-backtester/blob/main/docs/concepts/backtest-interpretation.md)。运行编排、产物目录和
 `summary.json` 顶层结构见
-[`strategy-pipeline-internal/docs/metrics.md`](https://github.com/runchengxie/strategy-pipeline-internal/blob/main/docs/metrics.md) 与
-[`strategy-pipeline-internal/docs/outputs.md`](https://github.com/runchengxie/strategy-pipeline-internal/blob/main/docs/outputs.md)。
+[`research-workspace` 产物契约](https://github.com/runchengxie/research-workspace/blob/main/docs/contracts.md) 与
+[`strategy-pipeline` 输出摘要](https://github.com/runchengxie/strategy-pipeline/blob/main/docs/output-summary.md)。
 
 ## 标签与分数
 
 标签定义回答模型到底在预测什么。相关配置主要在
-[`strategy-pipeline-internal/docs/config.md`](https://github.com/runchengxie/strategy-pipeline-internal/blob/main/docs/config.md) 的
+[`strategy-research` 实验配置](https://github.com/runchengxie/strategy-research/blob/main/research/experiments/configs/README.md) 的
 `label` 下。
 
 常看字段：

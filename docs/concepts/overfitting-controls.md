@@ -6,7 +6,7 @@
 > source_of_truth: yes
 > superseded_by: n/a
 
-本页汇总研究流程中的数据防泄漏、时间切分、特征证据、多重试验控制和候选晋升要求。具体命令见 `strategy-pipeline/docs/cli.md`，配置键见 `strategy-pipeline/docs/config.md`，输出字段见 `strategy-pipeline/docs/outputs.md`。
+本页汇总研究流程中的数据防泄漏、时间切分、特征证据、多重试验控制和候选晋升要求。具体命令见 `strategy-pipeline/docs/cli-helpers.md`，配置键见 `strategy-pipeline/docs/configuration.md`，输出字段见 `strategy-pipeline/docs/output-artifacts.md`。
 
 `alpha-research` 维护模型验证、特征证据、CPCV、PBO 和信号诊断。数据、回测、流程编排和执行边界见根目录 `docs/platform-workflow.md`。
 

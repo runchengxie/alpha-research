@@ -45,7 +45,7 @@
 
 新增仓库模板时，至少同步以下内容：
 
-1. `strategy-pipeline/docs/config.md`
+1. `strategy-pipeline/docs/configuration.md`
 2. `strategy-pipeline/docs/README.md` 中的入口
 3. 新资产对应的数据准备说明
 4. 配置加载和模板冒烟测试
