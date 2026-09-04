@@ -5,9 +5,19 @@ from alpha_research.metrics import (
     assign_daily_quantile_bucket,
     bucket_ic_summary,
     hit_rate,
+    normalize_bucket_schemes,
+    normalize_window_months,
     regression_error_metrics,
     topk_positive_ratio,
 )
+
+
+def test_normalize_window_months_and_bucket_schemes() -> None:
+    assert normalize_window_months([12, 6, 6, 0], [3]) == [6, 12]
+    assert normalize_bucket_schemes(["industry", {"col": "size", "bins": 4}, None]) == [
+        {"name": "industry", "column": "industry", "type": "category", "n_bins": 0},
+        {"name": "size", "column": "size", "type": "category", "n_bins": 4},
+    ]
 
 
 def test_regression_error_metrics_basic():

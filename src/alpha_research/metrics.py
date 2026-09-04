@@ -208,6 +208,68 @@ def bucket_ic_summary(
     return pd.DataFrame(records)
 
 
+def normalize_window_months(value: object | None, default: list[int]) -> list[int]:
+    """Normalize rolling-window month values used by evaluation reports."""
+
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return [int(value)]
+    if isinstance(value, (list, tuple, set)):
+        items: list[int] = []
+        for entry in value:
+            if entry is None:
+                continue
+            try:
+                number = int(cast(Any, entry))
+            except (TypeError, ValueError):
+                continue
+            if number > 0:
+                items.append(number)
+        return sorted(set(items))
+    return default
+
+
+def normalize_bucket_schemes(raw_schemes: object | None) -> list[dict[str, Any]]:
+    """Normalize bucket-IC grouping specifications from an evaluation config."""
+
+    schemes: list[dict[str, Any]] = []
+    if raw_schemes is None:
+        return schemes
+    raw_items = raw_schemes.get("schemes") or [] if isinstance(raw_schemes, dict) else raw_schemes
+    if isinstance(raw_items, (str, int, float)):
+        raw_items = [raw_items]
+    if not isinstance(raw_items, (list, tuple)):
+        return schemes
+    for item in raw_items:
+        if isinstance(item, str):
+            column = item.strip()
+            if column:
+                schemes.append({"name": column, "column": column, "type": "category", "n_bins": 0})
+            continue
+        if not isinstance(item, dict):
+            continue
+        column = item.get("column") or item.get("col")
+        if not column:
+            continue
+        name = item.get("name") or column
+        bucket_type = str(item.get("type", "category")).strip().lower()
+        n_bins_raw = item.get("n_bins", item.get("bins", 3))
+        try:
+            n_bins = int(cast(Any, n_bins_raw)) if n_bins_raw is not None else 0
+        except (TypeError, ValueError):
+            n_bins = 0
+        schemes.append(
+            {
+                "name": str(name),
+                "column": str(column),
+                "type": bucket_type,
+                "n_bins": n_bins,
+            }
+        )
+    return schemes
+
+
 def summarize_active_returns(
     strategy: pd.Series,
     benchmark: pd.Series,
