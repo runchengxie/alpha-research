@@ -32,9 +32,7 @@ def test_normalize_artifact_settings_preserves_validation_message() -> None:
         SystemExit,
         match=r"eval\.save_signal_artifact=true requires eval\.save_artifacts=true",
     ):
-        normalize_artifact_settings(
-            {"save_artifacts": False, "save_signal_artifact": True}
-        )
+        normalize_artifact_settings({"save_artifacts": False, "save_signal_artifact": True})
 
 
 def test_normalize_score_postprocess_defaults_and_neutralize() -> None:
