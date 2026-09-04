@@ -236,11 +236,7 @@ def normalize_bucket_schemes(raw_schemes: object | None) -> list[dict[str, Any]]
     schemes: list[dict[str, Any]] = []
     if raw_schemes is None:
         return schemes
-    raw_items = (
-        raw_schemes.get("schemes") or []
-        if isinstance(raw_schemes, dict)
-        else raw_schemes
-    )
+    raw_items = raw_schemes.get("schemes") or [] if isinstance(raw_schemes, dict) else raw_schemes
     if isinstance(raw_items, (str, int, float)):
         raw_items = [raw_items]
     if not isinstance(raw_items, (list, tuple)):
@@ -249,9 +245,7 @@ def normalize_bucket_schemes(raw_schemes: object | None) -> list[dict[str, Any]]
         if isinstance(item, str):
             column = item.strip()
             if column:
-                schemes.append(
-                    {"name": column, "column": column, "type": "category", "n_bins": 0}
-                )
+                schemes.append({"name": column, "column": column, "type": "category", "n_bins": 0})
             continue
         if not isinstance(item, dict):
             continue

@@ -14,9 +14,7 @@ from alpha_research.metrics import (
 
 def test_normalize_window_months_and_bucket_schemes() -> None:
     assert normalize_window_months([12, 6, 6, 0], [3]) == [6, 12]
-    assert normalize_bucket_schemes(
-        ["industry", {"col": "size", "bins": 4}, None]
-    ) == [
+    assert normalize_bucket_schemes(["industry", {"col": "size", "bins": 4}, None]) == [
         {"name": "industry", "column": "industry", "type": "category", "n_bins": 0},
         {"name": "size", "column": "size", "type": "category", "n_bins": 4},
     ]
