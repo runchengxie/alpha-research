@@ -191,7 +191,7 @@ def normalize_artifact_settings(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
         "SAVE_PRICING_ARTIFACT",
     ):
         if fields[key] and not save_artifacts:
-            option = key.removeprefix("SAVE_").lower()
+            option = key.lower()
             raise SystemExit(f"eval.{option}=true requires eval.save_artifacts=true.")
     return fields
 
