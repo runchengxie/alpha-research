@@ -11,6 +11,7 @@ from alpha_research.evaluation_config import (
     normalize_score_postprocess,
     normalize_signal_settings,
     normalize_walk_forward_permutation,
+    warn_if_purge_too_small,
 )
 
 
@@ -55,6 +56,17 @@ def test_normalize_score_postprocess_rejects_invalid_config() -> None:
         normalize_score_postprocess(
             {"score_postprocess": {"method": "rank_blend", "enabled": True}}
         )
+
+
+def test_warn_if_purge_too_small(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level("WARNING"):
+        warn_if_purge_too_small(
+            purge_days_cfg=2,
+            purge_days=2,
+            label_horizon_effective=5,
+            label_shift_days=1,
+        )
+    assert "may cause label leakage" in caplog.text
 
 
 def test_normalize_signal_settings_defaults_and_aliases() -> None:
