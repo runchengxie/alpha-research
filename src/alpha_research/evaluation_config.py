@@ -5,6 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, SupportsInt, cast
 
+from .metrics import normalize_window_months
+from .recency_diagnostics import DEFAULT_RECENCY_WINDOWS, normalize_recency_windows
+
 
 def normalize_signal_settings(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
     signal_direction_mode = str(eval_cfg.get("signal_direction_mode", "fixed")).strip().lower()
@@ -133,8 +136,72 @@ def normalize_score_postprocess(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def normalize_rolling_windows(eval_cfg: Mapping[str, Any]) -> list[int]:
+    rolling_cfg = eval_cfg.get("rolling")
+    if not isinstance(rolling_cfg, Mapping):
+        return normalize_window_months(rolling_cfg, [6, 12])
+    if not bool(rolling_cfg.get("enabled", True)):
+        return []
+    return normalize_window_months(rolling_cfg.get("windows_months"), [6, 12])
+
+
+def normalize_recency_settings(eval_cfg: Mapping[str, Any]) -> list[str]:
+    recency_cfg = eval_cfg.get("recency")
+    if recency_cfg is None:
+        return list(DEFAULT_RECENCY_WINDOWS)
+    if isinstance(recency_cfg, Mapping):
+        if not bool(recency_cfg.get("enabled", True)):
+            return []
+        return normalize_recency_windows(
+            recency_cfg.get("windows"),
+            default=list(DEFAULT_RECENCY_WINDOWS),
+        )
+    return normalize_recency_windows(recency_cfg, default=list(DEFAULT_RECENCY_WINDOWS))
+
+
+def normalize_final_oos(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
+    final_oos_cfg = eval_cfg.get("final_oos")
+    if isinstance(final_oos_cfg, Mapping):
+        size_raw = final_oos_cfg.get("size")
+        enabled = bool(final_oos_cfg.get("enabled", False) or size_raw)
+    elif final_oos_cfg is None:
+        size_raw = None
+        enabled = False
+    else:
+        size_raw = final_oos_cfg
+        enabled = bool(final_oos_cfg)
+    return {"FINAL_OOS_ENABLED": enabled, "FINAL_OOS_SIZE_RAW": size_raw}
+
+
+def normalize_artifact_settings(eval_cfg: Mapping[str, Any]) -> dict[str, Any]:
+    save_artifacts = bool(eval_cfg.get("save_artifacts", True))
+    fields = {
+        "SAVE_ARTIFACTS": save_artifacts,
+        "SAVE_SIGNAL_ARTIFACT": bool(eval_cfg.get("save_signal_artifact", False)),
+        "SAVE_SCORED_ARTIFACT": bool(eval_cfg.get("save_scored_artifact", False)),
+        "SAVE_DATASET": bool(eval_cfg.get("save_dataset", False)),
+        "SAVE_PRICING_ARTIFACT": bool(eval_cfg.get("save_pricing_artifact", False)),
+        "OUTPUT_DIR": eval_cfg.get("output_dir"),
+        "RUN_NAME": eval_cfg.get("run_name"),
+    }
+    for key in (
+        "SAVE_SIGNAL_ARTIFACT",
+        "SAVE_SCORED_ARTIFACT",
+        "SAVE_DATASET",
+        "SAVE_PRICING_ARTIFACT",
+    ):
+        if fields[key] and not save_artifacts:
+            option = key.removeprefix("SAVE_").lower()
+            raise SystemExit(f"eval.{option}=true requires eval.save_artifacts=true.")
+    return fields
+
+
 __all__ = [
+    "normalize_artifact_settings",
+    "normalize_final_oos",
     "normalize_permutation_test",
+    "normalize_recency_settings",
+    "normalize_rolling_windows",
     "normalize_score_postprocess",
     "normalize_signal_settings",
     "normalize_walk_forward_permutation",

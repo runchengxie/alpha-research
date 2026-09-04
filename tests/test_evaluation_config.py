@@ -3,11 +3,28 @@ from __future__ import annotations
 import pytest
 
 from alpha_research.evaluation_config import (
+    normalize_artifact_settings,
+    normalize_final_oos,
     normalize_permutation_test,
+    normalize_recency_settings,
+    normalize_rolling_windows,
     normalize_score_postprocess,
     normalize_signal_settings,
     normalize_walk_forward_permutation,
 )
+
+
+def test_normalize_evaluation_output_settings() -> None:
+    assert normalize_rolling_windows({"rolling": {"windows_months": [12, 6]}}) == [6, 12]
+    assert normalize_recency_settings({"recency": {"windows": ["1w", "6m"]}}) == [
+        "1w",
+        "6m",
+    ]
+    assert normalize_final_oos({"final_oos": {"size": 0.2}}) == {
+        "FINAL_OOS_ENABLED": True,
+        "FINAL_OOS_SIZE_RAW": 0.2,
+    }
+    assert normalize_artifact_settings({})["SAVE_ARTIFACTS"] is True
 
 
 def test_normalize_score_postprocess_defaults_and_neutralize() -> None:
