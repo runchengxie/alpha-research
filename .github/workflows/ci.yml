@@ -44,5 +44,8 @@ jobs:
           uv run --no-sync ruff check src scripts tests
           uv run --no-sync ruff format --check src scripts tests
 
+      - name: Run shared code-quality ratchet
+        run: uv run --no-sync research-code-quality --scope src --scope scripts --scope tests --baseline .code-quality-baseline.json --ratchet --json
+
       - name: Run offline tests
         run: uv run --no-sync pytest tests -q
