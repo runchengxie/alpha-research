@@ -9,6 +9,8 @@ from typing import Any, Literal, cast
 import numpy as np
 import pandas as pd
 
+from alpha_research.periodic_fundamental_state import build_periodic_fundamental_target_panel
+
 FUNDAMENTAL_STATE_SCHEMA = "fundamental_state_forecasting.v1"
 TargetTransform = Literal["level", "delta", "pct_change"]
 
@@ -731,6 +733,7 @@ __all__ = [
     "build_annual_fundamental_target_panel",
     "build_fundamental_forecast_score",
     "build_operating_quality_persistence_targets",
+    "build_periodic_fundamental_target_panel",
     "build_persistence_baseline",
     "evaluate_fundamental_forecast",
     "purge_and_embargo_fundamental_rows",

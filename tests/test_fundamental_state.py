@@ -14,6 +14,7 @@ from alpha_research.fundamental_state import (
     build_annual_fundamental_target_panel,
     build_fundamental_forecast_score,
     build_operating_quality_persistence_targets,
+    build_periodic_fundamental_target_panel,
     build_persistence_baseline,
     evaluate_fundamental_forecast,
     purge_and_embargo_fundamental_rows,
@@ -105,6 +106,34 @@ def test_build_annual_target_panel_tracks_label_availability_and_transforms() ->
     assert row["future_gross_margin_1y"] == pytest.approx(0.33)
     assert result.audit["complete_label_rows"] == 4
     assert result.audit["rows"] == 6
+
+
+def test_build_periodic_target_panel_supports_quarter_horizons_and_pit_dates() -> None:
+    frame = pd.DataFrame(
+        {
+            "symbol": ["A"] * 4,
+            "report_period": pd.to_datetime(
+                ["2024-03-31", "2024-06-30", "2024-09-30", "2024-12-31"]
+            ),
+            "available_date": pd.to_datetime(
+                ["2024-04-30", "2024-08-01", "2024-10-30", "2025-04-01"]
+            ),
+            "roa": [0.10, 0.11, 0.12, 0.13],
+        }
+    )
+    result = build_periodic_fundamental_target_panel(
+        frame,
+        (FundamentalTargetSpec("future_roa_1q", "roa", "level"),),
+        horizon_periods=1,
+        period_months=3,
+    )
+    row = result.frame.iloc[0]
+    assert row["target_report_period"] == pd.Timestamp("2024-06-30")
+    assert row["target_available_date"] == pd.Timestamp("2024-08-01")
+    assert row["fundamental_label_end_date"] == pd.Timestamp("2024-08-01")
+    assert row["future_roa_1q"] == pytest.approx(0.11)
+    assert result.audit["horizon_periods"] == 1
+    assert result.audit["period_months"] == 3
 
 
 def test_build_annual_target_panel_rejects_duplicate_report_periods() -> None:

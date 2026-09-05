@@ -43,6 +43,7 @@ def test_supported_model_types_come_from_registry():
         "xgb_regressor",
         "xgb_ranker",
         "ridge",
+        "ridge_scaled",
         "elasticnet",
         "fixed_score_artifact",
     )
@@ -99,6 +100,17 @@ def test_feature_importance_frame_accepts_model_type_hint():
     assert source == "coef_abs"
     assert importance_df["feature"].tolist() == ["f1"]
     assert float(importance_df["importance"].iloc[0]) > 0
+
+
+def test_scaled_ridge_model_scales_features_before_regression():
+    model = build_model("ridge_scaled", {"alpha": 1.0})
+    model.fit(
+        np.array([[1.0e-3, 1.0e3], [2.0e-3, 2.0e3], [3.0e-3, 3.0e3]]),
+        np.array([1.0, 2.0, 3.0]),
+    )
+
+    assert model.named_steps["scaler"].mean_.tolist() == pytest.approx([0.002, 2000.0])
+    assert model.predict(np.array([[4.0e-3, 4.0e3]])).shape == (1,)
 
 
 def test_resolve_model_spec_rejects_unknown_type():
