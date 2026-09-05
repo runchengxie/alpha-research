@@ -81,9 +81,9 @@ source = ["src/alpha_research"]
 show_missing = true
 
 [tool.uv.sources]
-market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "42d1d8045cf9fbfeda9be1178dacda8549df1132" }
+market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "826e21eb20b7570f1789a82f44269b75b12a7b3c" }
 research-contracts = { git = "https://github.com/runchengxie/research-workspace.git", subdirectory = "src/research_contracts", rev = "f28e97008b7c540730720aac82e63a2944a89b58" }
-research-code-quality = { git = "https://github.com/runchengxie/research-code-quality.git", rev = "3f6c668" }
+research-code-quality = { git = "https://github.com/runchengxie/research-code-quality.git", rev = "3ff7580" }
 
 [tool.uv]
 # pyqlib 0.9.7 在 Python <3.14 下钉死 mlflow==1.27.0，该版本有多个已知安全漏洞。
