@@ -34,7 +34,7 @@ def test_stability_label_requires_twelve_contiguous_positive_quarters() -> None:
         {
             "symbol": ["A"] * 12,
             "report_period": periods,
-            "quarter_index": periods.year * 4 + periods.quarter,
+            "quarter_index": list(range(8085, 8097)),
             "standalone_n_income_attr_p": 1.0,
             "standalone_n_cashflow_act": 1.2,
             "standalone_cfo_margin": 0.12,
@@ -52,7 +52,7 @@ def test_stability_label_does_not_treat_missing_cashflow_as_negative() -> None:
         {
             "symbol": ["A"] * 12,
             "report_period": periods,
-            "quarter_index": periods.year * 4 + periods.quarter,
+            "quarter_index": list(range(8085, 8097)),
             "standalone_n_income_attr_p": 1.0,
             "standalone_n_cashflow_act": [1.2] * 11 + [None],
             "standalone_cfo_margin": 0.12,

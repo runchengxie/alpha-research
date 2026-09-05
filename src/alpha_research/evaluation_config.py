@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any, SupportsInt, cast
 
 from .metrics import normalize_bucket_schemes, normalize_window_months
@@ -99,7 +99,7 @@ def normalize_walk_forward_permutation(
     return bool(wf_perm_cfg), perm_test_runs, perm_test_seed
 
 
-def _normalize_text_list(value: object | None) -> list[str]:
+def _normalize_text_list(value: Iterable[object] | None) -> list[str]:
     if not value:
         return []
     if isinstance(value, str):

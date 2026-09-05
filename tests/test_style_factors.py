@@ -255,6 +255,7 @@ def test_compute_factors_uses_full_history_for_momentum_before_formation_filter(
 def test_formation_universe_recomputes_quality_before_final_standardization() -> None:
     daily, basics = _sample_market_frames(days=90, symbols=4)
     date = pd.Timestamp(daily["trade_date"].max())
+    assert isinstance(date, pd.Timestamp)
     panel = _quality_formation_panel(date)
     keep = panel.loc[panel["symbol"] != "000004.SZ", ["trade_date", "symbol"]]
 

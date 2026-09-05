@@ -10,15 +10,14 @@ import pytest
 from alpha_research.daily_watch20_minute_features import (
     MINUTE_FEATURE_COLUMNS,
     MINUTE_TRANSFORM_CONTRACT,
+    MinuteSourceCatalog,
     transform_daily_watch20_minute_catalog,
 )
 from alpha_research.daily_watch20_policy import DailyWatch20AlphaPolicy
 
 market_data_platform = pytest.importorskip("market_data_platform")
-from market_data_platform.research_views.daily_watch20_minute_source import (  # noqa: E402
-    MINUTE_SOURCE_CONTRACT,
-    MinutePartitionState,
-    MinuteSourceCatalog,
+minute_source = pytest.importorskip(
+    "market_data_platform.research_views.daily_watch20_minute_source"
 )
 
 
@@ -51,14 +50,14 @@ def _catalog(tmp_path: Path) -> MinuteSourceCatalog:
     fingerprint = hashlib.sha256(
         json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
-    state = MinutePartitionState(
+    state = minute_source.MinutePartitionState(
         trade_date="20260717",
         fingerprint=fingerprint,
         files=(path,),
         file_metadata=metadata,
     )
-    return MinuteSourceCatalog(
-        source_contract=MINUTE_SOURCE_CONTRACT,
+    return minute_source.MinuteSourceCatalog(
+        source_contract=minute_source.MINUTE_SOURCE_CONTRACT,
         start_date="20260717",
         end_date="20260717",
         canonical_root=root,

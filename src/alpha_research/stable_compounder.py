@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pandas as pd
 
@@ -98,7 +100,7 @@ def select_latest_pit_report_events(
     missing = sorted(required - set(pit_panel.columns))
     if missing:
         raise ValueError(f"PIT event panel missing columns: {missing}")
-    as_of = pd.Timestamp(as_of_date).normalize()
+    as_of = cast(pd.Timestamp, pd.Timestamp(as_of_date)).normalize()
     out = pit_panel.copy()
     out[available_date_col] = pd.to_datetime(
         out[available_date_col], errors="coerce"
