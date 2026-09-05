@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from importlib import import_module
 from pathlib import Path
 
 import pandas as pd
@@ -16,9 +17,7 @@ from alpha_research.daily_watch20_minute_features import (
 from alpha_research.daily_watch20_policy import DailyWatch20AlphaPolicy
 
 market_data_platform = pytest.importorskip("market_data_platform")
-minute_source = pytest.importorskip(
-    "market_data_platform.research_views.daily_watch20_minute_source"
-)
+minute_source = import_module("market_data_platform.research_views.daily_watch20_minute_source")
 
 
 def _catalog(tmp_path: Path) -> MinuteSourceCatalog:
