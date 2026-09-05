@@ -32,6 +32,8 @@ def _numeric_frame(frame: pd.DataFrame, *, label: str) -> pd.DataFrame:
 
 def _comparison_timestamp(value: pd.Timestamp) -> pd.Timestamp:
     timestamp = pd.Timestamp(value)
+    if not isinstance(timestamp, pd.Timestamp):
+        raise ValueError("comparison timestamp must be present")
     return timestamp.tz_convert(None) if timestamp.tzinfo is not None else timestamp
 
 
@@ -156,6 +158,8 @@ def build_factor_risk_model(
     """
 
     normalized_as_of = pd.Timestamp(as_of)
+    if not isinstance(normalized_as_of, pd.Timestamp):
+        raise ValueError("as_of timestamp must be present")
     exposure_frame = _numeric_frame(exposures, label="exposures")
     factor_history = _history_frame(
         factor_returns,
@@ -204,13 +208,17 @@ def build_factor_risk_model(
     if not all(isfinite(float(value)) for value in specific_risk):
         raise ValueError("specific risk must be finite")
 
+    history_start = pd.Timestamp(common_index.min())
+    history_end = pd.Timestamp(common_index.max())
+    if not isinstance(history_start, pd.Timestamp) or not isinstance(history_end, pd.Timestamp):
+        raise ValueError("history timestamps must be present")
     estimate = FactorRiskModelEstimate(
         as_of=normalized_as_of,
         exposures=exposure_frame,
         factor_covariance=factor_covariance,
         specific_risk=specific_risk,
-        history_start=pd.Timestamp(common_index.min()),
-        history_end=pd.Timestamp(common_index.max()),
+        history_start=history_start,
+        history_end=history_end,
         observations=len(common_index),
         covariance_shrinkage=covariance_shrinkage,
     )

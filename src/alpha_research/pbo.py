@@ -388,11 +388,9 @@ def run(args: argparse.Namespace) -> int:
     if returns_path is None or not returns_path.exists():
         raise SystemExit(f"Returns file not found: {args.returns}")
     frame = _read_frame(returns_path)
-    registry = (
-        ExperimentRegistry.read(_resolve_path(args.trial_registry))
-        if getattr(args, "trial_registry", None)
-        else None
-    )
+    registry_text = getattr(args, "trial_registry", None)
+    registry_path = _resolve_path(registry_text) if registry_text else None
+    registry = ExperimentRegistry.read(registry_path) if registry_path is not None else None
     report = compute_pbo_report(
         frame,
         date_col=args.date_col,

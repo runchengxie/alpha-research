@@ -45,7 +45,7 @@ def _timestamp(value: object, label: str) -> pd.Timestamp:
         parsed = pd.Timestamp(str(value))
     except ValueError as exc:
         raise ValueError(f"invalid {label}: {value}") from exc
-    if pd.isna(parsed):
+    if not isinstance(parsed, pd.Timestamp):
         raise ValueError(f"invalid {label}: {value}")
     return parsed.normalize()
 

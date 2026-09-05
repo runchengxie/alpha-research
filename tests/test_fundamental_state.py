@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -20,6 +21,25 @@ from alpha_research.fundamental_state import (
     purge_and_embargo_fundamental_rows,
     run_walk_forward_fundamental_forecast,
 )
+
+
+def test_purge_accepts_individually_valid_mixed_date_formats() -> None:
+    frame = pd.DataFrame(
+        {
+            "feature_as_of_date": pd.to_datetime(["2019-01-01"]),
+            "fundamental_label_end_date": pd.to_datetime(["2019-12-31"]),
+        }
+    )
+    result = purge_and_embargo_fundamental_rows(
+        frame, test_start="2020-01-01", test_end="2020-12-31 16:00:00"
+    )
+    assert len(result.frame) == 1
+
+
+def test_purge_rejects_missing_boundary_with_interval_error():
+    frame = pd.DataFrame(columns=pd.Index(["feature_as_of_date", "fundamental_label_end_date"]))
+    with pytest.raises(ValueError, match="valid interval"):
+        purge_and_embargo_fundamental_rows(frame, test_start="NaT", test_end="2020-01-01")
 
 
 def test_build_operating_quality_persistence_targets_is_future_and_auditable() -> None:
@@ -373,7 +393,10 @@ def test_walk_forward_runner_compares_persistence_and_ridge_without_future_label
     assert test_rows["pred_ridge"].notna().all()
     assert test_rows["pred_persistence"].eq(0.0).all()
     assert np.allclose(test_rows["pred_ridge"], test_rows["delta_roa_1y"], atol=1e-5)
-    final_fold = result.audit["folds"][-1]
+    folds = result.audit["folds"]
+    assert isinstance(folds, list) and folds
+    assert isinstance(folds[-1], dict)
+    final_fold = cast(dict[str, Any], folds[-1])
     assert final_fold["training_label_end_max"] < final_fold["test_cutoff"]
     assert final_fold["training_rows"] == 8
 
@@ -429,7 +452,11 @@ def test_walk_forward_runner_supports_pairwise_and_listwise_fundamental_targets(
     )
     assert result.frame["pred_pairwise"].notna().any()
     assert result.frame["pred_listwise"].notna().any()
-    assert result.audit["folds"][-1]["target_transforms"] == {
+    folds = result.audit["folds"]
+    assert isinstance(folds, list) and folds
+    assert isinstance(folds[-1], dict)
+    final_fold = cast(dict[str, Any], folds[-1])
+    assert final_fold["target_transforms"] == {
         "pairwise": "cross_sectional_rank",
         "listwise": "cross_sectional_rank",
     }

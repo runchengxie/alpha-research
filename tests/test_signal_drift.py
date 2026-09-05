@@ -26,8 +26,8 @@ def test_shifted_live_population_is_detected() -> None:
 
     assert report.psi > 0.1
     assert report.ks_statistic > 0.2
-    assert report.mean_shift_std > 0.5
-    assert report.std_ratio > 1.0
+    assert report.mean_shift_std is not None and report.mean_shift_std > 0.5
+    assert report.std_ratio is not None and report.std_ratio > 1.0
 
 
 def test_nonfinite_values_are_removed_but_minimum_sample_is_enforced() -> None:

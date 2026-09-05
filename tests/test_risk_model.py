@@ -1,10 +1,25 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from alpha_research.risk_model import FactorRiskModelEstimate, build_factor_risk_model
+
+
+def _date(value: str) -> pd.Timestamp:
+    result = pd.Timestamp(value)
+    assert isinstance(result, pd.Timestamp)
+    return result
+
+
+def test_risk_timestamp_rejects_missing_date():
+    from alpha_research.risk_model import _comparison_timestamp
+
+    with pytest.raises(ValueError, match="timestamp"):
+        _comparison_timestamp(cast(pd.Timestamp, pd.NaT))  # Deliberately invalid runtime input.
 
 
 def _inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -15,7 +30,7 @@ def _inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             "value": [1.0, 0.2, -0.4],
             "momentum": [0.1, 1.1, 0.5],
         },
-        index=["000001.SZ", "000002.SZ", "600000.SH"],
+        index=pd.Index(["000001.SZ", "000002.SZ", "600000.SH"]),
     )
     factor_returns = pd.DataFrame(
         {
@@ -41,7 +56,7 @@ def test_factor_risk_model_builds_asset_covariance_and_receipt() -> None:
         exposures=exposures,
         factor_returns=factor_returns,
         specific_returns=specific_returns,
-        as_of=pd.Timestamp("2025-04-01"),
+        as_of=_date("2025-04-01"),
         covariance_shrinkage=0.15,
         min_observations=40,
     )
@@ -65,7 +80,7 @@ def test_factor_risk_model_rejects_future_observations() -> None:
             exposures=exposures,
             factor_returns=factor_returns,
             specific_returns=specific_returns,
-            as_of=pd.Timestamp("2025-02-01"),
+            as_of=_date("2025-02-01"),
             min_observations=10,
         )
 
@@ -78,7 +93,7 @@ def test_factor_risk_model_rejects_factor_mismatch() -> None:
             exposures=exposures.rename(columns={"momentum": "size"}),
             factor_returns=factor_returns,
             specific_returns=specific_returns,
-            as_of=pd.Timestamp("2025-04-01"),
+            as_of=_date("2025-04-01"),
         )
 
 
@@ -89,7 +104,7 @@ def test_full_shrinkage_removes_factor_covariance_cross_terms() -> None:
         exposures=exposures,
         factor_returns=factor_returns,
         specific_returns=specific_returns,
-        as_of=pd.Timestamp("2025-04-01"),
+        as_of=_date("2025-04-01"),
         covariance_shrinkage=1.0,
     )
 
@@ -101,7 +116,7 @@ def test_full_shrinkage_removes_factor_covariance_cross_terms() -> None:
 def test_manual_estimate_rejects_nonsymmetric_or_indefinite_factor_covariance() -> None:
     exposures, _, _ = _inputs()
     specific_risk = pd.Series(0.1, index=exposures.index)
-    base = {
+    base: dict[str, Any] = {
         "as_of": pd.Timestamp("2025-04-01"),
         "exposures": exposures,
         "specific_risk": specific_risk,
@@ -137,7 +152,7 @@ def test_manual_estimate_rejects_nonsymmetric_or_indefinite_factor_covariance() 
 def test_manual_estimate_rejects_history_after_as_of() -> None:
     exposures, _, _ = _inputs()
     estimate = FactorRiskModelEstimate(
-        as_of=pd.Timestamp("2025-03-01"),
+        as_of=_date("2025-03-01"),
         exposures=exposures,
         factor_covariance=pd.DataFrame(
             [[0.04, 0.0], [0.0, 0.03]],
@@ -145,8 +160,8 @@ def test_manual_estimate_rejects_history_after_as_of() -> None:
             columns=exposures.columns,
         ),
         specific_risk=pd.Series(0.1, index=exposures.index),
-        history_start=pd.Timestamp("2025-01-01"),
-        history_end=pd.Timestamp("2025-03-02"),
+        history_start=_date("2025-01-01"),
+        history_end=_date("2025-03-02"),
         observations=40,
         covariance_shrinkage=0.0,
     )

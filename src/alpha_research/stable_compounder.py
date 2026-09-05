@@ -98,7 +98,10 @@ def select_latest_pit_report_events(
     missing = sorted(required - set(pit_panel.columns))
     if missing:
         raise ValueError(f"PIT event panel missing columns: {missing}")
-    as_of = pd.Timestamp(as_of_date).normalize()
+    as_of = pd.Timestamp(as_of_date)
+    if not isinstance(as_of, pd.Timestamp):
+        raise ValueError("as_of_date must be a valid timestamp")
+    as_of = as_of.normalize()
     out = pit_panel.copy()
     out[available_date_col] = pd.to_datetime(
         out[available_date_col], errors="coerce"

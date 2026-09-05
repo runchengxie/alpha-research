@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -94,7 +93,11 @@ def _yoy_delta(period_end: pd.Series, values: pd.Series) -> pd.Series:
     }
     result: list[float] = []
     for period, value in zip(period_end, values, strict=True):
-        prior_period = cast(pd.Timestamp, pd.Timestamp(period) - pd.DateOffset(years=1))
+        timestamp = pd.Timestamp(period)
+        if not isinstance(timestamp, pd.Timestamp):
+            result.append(np.nan)
+            continue
+        prior_period = timestamp - pd.DateOffset(years=1)
         prior = lookup.get(prior_period)
         result.append(float(value) - prior if prior is not None else np.nan)
     return pd.Series(result, index=values.index, dtype=float)
