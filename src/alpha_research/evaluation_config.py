@@ -104,6 +104,8 @@ def _normalize_text_list(value: Iterable[object] | None) -> list[str]:
         return []
     if isinstance(value, str):
         return [value.strip()] if value.strip() else []
+    if not isinstance(value, Iterable):
+        raise SystemExit("columns must be a string or iterable of column names")
     return [str(item).strip() for item in value if str(item).strip()]
 
 

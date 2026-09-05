@@ -699,9 +699,12 @@ def purge_and_embargo_fundamental_rows(
         raise ValueError(f"fundamental purge frame missing columns: {missing}")
     if int(embargo_days) < 0:
         raise ValueError("embargo_days must be non-negative")
-    start = cast(pd.Timestamp, pd.Timestamp(test_start)).normalize()
-    end = cast(pd.Timestamp, pd.Timestamp(test_end)).normalize()
-    if pd.isna(start) or pd.isna(end) or start > end:
+    start = pd.Timestamp(cast(Any, test_start))
+    end = pd.Timestamp(cast(Any, test_end))
+    if not isinstance(start, pd.Timestamp) or not isinstance(end, pd.Timestamp):
+        raise ValueError("test_start and test_end must define a valid interval")
+    start, end = start.normalize(), end.normalize()
+    if start > end:
         raise ValueError("test_start and test_end must define a valid interval")
 
     feature_dates = _normalized_dates(frame[feature_date_col], column=feature_date_col)

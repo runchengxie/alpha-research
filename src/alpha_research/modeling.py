@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import ElasticNet, Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -218,6 +219,20 @@ _MODEL_REGISTRY: dict[str, ModelSpec] = {
                 ("ridge", Ridge(**dict(params))),
             ]
         ),
+        fit=_fit_regressor_model,
+    ),
+    "random_forest_regressor": ModelSpec(
+        name="random_forest_regressor",
+        aliases=("random_forest_regressor", "random_forest", "rf_regressor"),
+        default_params={
+            "n_estimators": 300,
+            "max_depth": 3,
+            "min_samples_leaf": 50,
+            "max_features": 0.7,
+            "random_state": 7,
+            "n_jobs": 1,
+        },
+        factory=lambda params: RandomForestRegressor(**dict(params)),
         fit=_fit_regressor_model,
     ),
     "elasticnet": ModelSpec(

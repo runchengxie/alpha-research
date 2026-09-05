@@ -44,6 +44,7 @@ def test_supported_model_types_come_from_registry():
         "xgb_ranker",
         "ridge",
         "ridge_scaled",
+        "random_forest_regressor",
         "elasticnet",
         "fixed_score_artifact",
     )
@@ -115,7 +116,28 @@ def test_scaled_ridge_model_scales_features_before_regression():
 
 def test_resolve_model_spec_rejects_unknown_type():
     with pytest.raises(ValueError, match=r"Unsupported model\.type"):
-        resolve_model_spec({"type": "random_forest", "params": {}})
+        resolve_model_spec({"type": "unknown_estimator", "params": {}})
+
+
+def test_random_forest_uses_shared_fit_prediction_and_importance_interfaces():
+    model_type, params = resolve_model_spec(
+        {
+            "type": "random_forest",
+            "params": {
+                "n_estimators": 20,
+                "max_depth": 2,
+                "random_state": 7,
+            },
+        }
+    )
+    frame = pd.DataFrame({"feature": [0.0] * 20 + [1.0] * 20, "target": [0.0] * 20 + [1.0] * 20})
+    model = build_model(model_type, params)
+    fit_model(model, model_type, frame, features=["feature"], target_col="target")
+    predictions = model.predict(pd.DataFrame({"feature": [0.0, 1.0]}))
+    assert predictions.tolist() == pytest.approx([0.0, 1.0])
+    importance, source = feature_importance_frame(model, ["feature"], model_type=model_type)
+    assert importance.importance.tolist() == pytest.approx([1.0])
+    assert source == "feature_importances"
 
 
 def test_fixed_score_artifact_model_replays_configured_score_column():

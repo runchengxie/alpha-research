@@ -16,6 +16,19 @@ from alpha_research.evaluation_config import (
 )
 
 
+@pytest.mark.parametrize("columns", [7, True])
+def test_postprocess_rejects_noniterable_columns_with_config_error(columns):
+    with pytest.raises(SystemExit, match="columns"):
+        normalize_score_postprocess(
+            {
+                "score_postprocess": {
+                    "method": "neutralize",
+                    "columns": columns,
+                }
+            }
+        )
+
+
 def test_normalize_evaluation_output_settings() -> None:
     assert normalize_rolling_windows({"rolling": {"windows_months": [12, 6]}}) == [6, 12]
     assert normalize_recency_settings({"recency": {"windows": ["1w", "6m"]}}) == [

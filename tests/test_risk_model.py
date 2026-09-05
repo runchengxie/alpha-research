@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -151,3 +152,10 @@ def test_manual_estimate_rejects_history_after_as_of() -> None:
 
     with pytest.raises(ValueError, match="history_end"):
         estimate.validate()
+
+
+def test_risk_timestamp_rejects_missing_date():
+    from alpha_research.risk_model import _comparison_timestamp
+
+    with pytest.raises(ValueError, match="timestamp"):
+        _comparison_timestamp(cast(pd.Timestamp, pd.NaT))  # Deliberately invalid runtime input.

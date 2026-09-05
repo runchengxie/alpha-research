@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from alpha_research.stable_compounder import (
     build_quarterly_operating_panel,
     build_rolling_stability_labels,
     select_latest_pit_report_events,
 )
+
+
+def test_pit_selector_rejects_missing_as_of_date():
+    frame = pd.DataFrame(columns=pd.Index(["symbol", "report_period", "available_date"]))
+    with pytest.raises(ValueError, match="as_of"):
+        select_latest_pit_report_events(frame, as_of_date="NaT")
 
 
 def test_quarterly_panel_converts_ytd_flows_without_future_dates() -> None:
@@ -34,7 +41,7 @@ def test_stability_label_requires_twelve_contiguous_positive_quarters() -> None:
         {
             "symbol": ["A"] * 12,
             "report_period": periods,
-            "quarter_index": list(range(8085, 8097)),
+            "quarter_index": pd.Series(periods).dt.year * 4 + pd.Series(periods).dt.quarter,
             "standalone_n_income_attr_p": 1.0,
             "standalone_n_cashflow_act": 1.2,
             "standalone_cfo_margin": 0.12,
@@ -52,7 +59,7 @@ def test_stability_label_does_not_treat_missing_cashflow_as_negative() -> None:
         {
             "symbol": ["A"] * 12,
             "report_period": periods,
-            "quarter_index": list(range(8085, 8097)),
+            "quarter_index": pd.Series(periods).dt.year * 4 + pd.Series(periods).dt.quarter,
             "standalone_n_income_attr_p": 1.0,
             "standalone_n_cashflow_act": [1.2] * 11 + [None],
             "standalone_cfo_margin": 0.12,
