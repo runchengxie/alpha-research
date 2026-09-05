@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Mapping, Sequence
+from importlib import import_module
 from typing import Any, cast
 
 import pandas as pd
@@ -31,9 +32,7 @@ from .base import (
 def _require_qlib() -> Any:
     """Lazily import qlib. Raises a clear error when pyqlib is not installed."""
     try:
-        import qlib
-
-        return qlib
+        return import_module("qlib")
     except ImportError as exc:  # pragma: no cover - depends on optional extra
         raise ImportError(
             "qlib backend requires the optional dependency 'pyqlib'. "

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from importlib import import_module
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -14,7 +16,7 @@ from alpha_research.backends import (
 
 HAS_QLIB = pytest.importorskip if False else True
 try:
-    import qlib  # noqa: F401
+    import_module("qlib")
 
     QLIB_AVAILABLE = True
 except ImportError:

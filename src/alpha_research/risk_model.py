@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -31,7 +32,7 @@ def _numeric_frame(frame: pd.DataFrame, *, label: str) -> pd.DataFrame:
 
 
 def _comparison_timestamp(value: pd.Timestamp) -> pd.Timestamp:
-    timestamp = pd.Timestamp(value)
+    timestamp = cast(pd.Timestamp, pd.Timestamp(value))
     return timestamp.tz_convert(None) if timestamp.tzinfo is not None else timestamp
 
 
@@ -155,7 +156,7 @@ def build_factor_risk_model(
     All historical observations must be at or before ``as_of``.
     """
 
-    normalized_as_of = pd.Timestamp(as_of)
+    normalized_as_of = cast(pd.Timestamp, pd.Timestamp(as_of))
     exposure_frame = _numeric_frame(exposures, label="exposures")
     factor_history = _history_frame(
         factor_returns,
@@ -209,8 +210,8 @@ def build_factor_risk_model(
         exposures=exposure_frame,
         factor_covariance=factor_covariance,
         specific_risk=specific_risk,
-        history_start=pd.Timestamp(common_index.min()),
-        history_end=pd.Timestamp(common_index.max()),
+        history_start=cast(pd.Timestamp, pd.Timestamp(common_index.min())),
+        history_end=cast(pd.Timestamp, pd.Timestamp(common_index.max())),
         observations=len(common_index),
         covariance_shrinkage=covariance_shrinkage,
     )

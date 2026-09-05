@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any, Literal, cast
 
 import numpy as np
@@ -685,8 +686,8 @@ def build_fundamental_forecast_score(
 def purge_and_embargo_fundamental_rows(
     frame: pd.DataFrame,
     *,
-    test_start: object,
-    test_end: object,
+    test_start: str | date | datetime | int | float | np.datetime64,
+    test_end: str | date | datetime | int | float | np.datetime64,
     embargo_days: int = 0,
     feature_date_col: str = "feature_as_of_date",
     label_end_col: str = "fundamental_label_end_date",

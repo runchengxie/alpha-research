@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Buffer
 from dataclasses import dataclass, field
 from datetime import date
 from math import isfinite
-from typing import Any
+from typing import Any, SupportsFloat, SupportsIndex, cast
 
 FACTOR_CATALOG_SCHEMA = "alpha_research.factor_catalog.v1"
 FACTOR_LIFECYCLE_STATUSES = frozenset({"research", "candidate", "production", "retired"})
@@ -35,7 +36,7 @@ def _unique_text_tuple(value: object, field_name: str) -> tuple[str, ...]:
 def _optional_finite(value: object, field_name: str) -> float | None:
     if value is None:
         return None
-    number = float(value)
+    number = float(cast(str | Buffer | SupportsFloat | SupportsIndex, value))
     if not isfinite(number):
         raise ValueError(f"{field_name} must be finite")
     return number
@@ -263,7 +264,7 @@ class FactorCatalog:
             spec_payload = entry.get("spec")
             if not isinstance(spec_payload, dict):
                 raise ValueError(f"entries[{index}].spec must be an object")
-            spec = FactorSpec.from_mapping(spec_payload)
+            spec = FactorSpec.from_mapping(cast(dict[str, Any], spec_payload))
             catalog.register(spec)
             evidence_payload = entry.get("evidence", [])
             if not isinstance(evidence_payload, list):
@@ -273,7 +274,7 @@ class FactorCatalog:
                     raise ValueError(f"entries[{index}].evidence items must be objects")
                 catalog.add_evidence(
                     spec.key,
-                    FactorEvidenceSummary.from_mapping(raw_evidence),
+                    FactorEvidenceSummary.from_mapping(cast(dict[str, Any], raw_evidence)),
                 )
         return catalog
 

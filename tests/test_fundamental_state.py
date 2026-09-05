@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -373,7 +374,7 @@ def test_walk_forward_runner_compares_persistence_and_ridge_without_future_label
     assert test_rows["pred_ridge"].notna().all()
     assert test_rows["pred_persistence"].eq(0.0).all()
     assert np.allclose(test_rows["pred_ridge"], test_rows["delta_roa_1y"], atol=1e-5)
-    final_fold = result.audit["folds"][-1]
+    final_fold = cast(list[dict[str, Any]], result.audit["folds"])[-1]
     assert final_fold["training_label_end_max"] < final_fold["test_cutoff"]
     assert final_fold["training_rows"] == 8
 
@@ -429,7 +430,8 @@ def test_walk_forward_runner_supports_pairwise_and_listwise_fundamental_targets(
     )
     assert result.frame["pred_pairwise"].notna().any()
     assert result.frame["pred_listwise"].notna().any()
-    assert result.audit["folds"][-1]["target_transforms"] == {
+    final_fold = cast(list[dict[str, Any]], result.audit["folds"])[-1]
+    assert final_fold["target_transforms"] == {
         "pairwise": "cross_sectional_rank",
         "listwise": "cross_sectional_rank",
     }

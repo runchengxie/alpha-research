@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import cast
 
 import pytest
 
@@ -128,5 +129,5 @@ def test_evidence_rejects_invalid_ic_turnover_and_decay() -> None:
             as_of=date(2026, 9, 1),
             observations=100,
             status="research",
-            decay_horizon_days=1.5,
+            decay_horizon_days=cast(int, 1.5),  # Deliberately invalid runtime input.
         )
