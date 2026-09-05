@@ -59,6 +59,32 @@ def _target_values(
     return ((future / valid_base) - 1.0).replace([np.inf, -np.inf], np.nan)
 
 
+def _prepare_periodic_observations(
+    frame: pd.DataFrame,
+    specs: tuple[FundamentalTargetSpec, ...],
+    symbol_col: str,
+    report_period_col: str,
+    available_date_col: str,
+) -> pd.DataFrame:
+    required = {symbol_col, report_period_col, available_date_col}
+    required.update(spec.source_col for spec in specs)
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(f"fundamental state frame missing columns: {missing}")
+    out = frame.copy()
+    out[symbol_col] = out[symbol_col].astype("string")
+    if out[symbol_col].isna().any() or out[symbol_col].str.strip().eq("").any():
+        raise ValueError("fundamental state requires non-empty symbols")
+    out[symbol_col] = out[symbol_col].astype(str)
+    out[report_period_col] = _normalized_dates(out[report_period_col], column=report_period_col)
+    out[available_date_col] = _normalized_dates(out[available_date_col], column=available_date_col)
+    if out.duplicated([symbol_col, report_period_col]).any():
+        raise ValueError("fundamental state input contains duplicate symbol/report_period rows")
+    if (out[available_date_col] <= out[report_period_col]).any():
+        raise ValueError("observations must become available after their report period")
+    return out
+
+
 def build_periodic_fundamental_target_panel(
     frame: pd.DataFrame,
     target_specs: tuple[FundamentalTargetSpec, ...],
@@ -84,23 +110,9 @@ def build_periodic_fundamental_target_panel(
     _validate_target_specs(specs)
     if int(horizon_periods) <= 0 or int(period_months) <= 0:
         raise ValueError("horizon_periods and period_months must be positive")
-    required = {symbol_col, report_period_col, available_date_col}
-    required.update(spec.source_col for spec in specs)
-    missing = sorted(required - set(frame.columns))
-    if missing:
-        raise ValueError(f"fundamental state frame missing columns: {missing}")
-
-    out = frame.copy()
-    out[symbol_col] = out[symbol_col].astype("string")
-    if out[symbol_col].isna().any() or out[symbol_col].str.strip().eq("").any():
-        raise ValueError("fundamental state requires non-empty symbols")
-    out[symbol_col] = out[symbol_col].astype(str)
-    out[report_period_col] = _normalized_dates(out[report_period_col], column=report_period_col)
-    out[available_date_col] = _normalized_dates(out[available_date_col], column=available_date_col)
-    if out.duplicated([symbol_col, report_period_col]).any():
-        raise ValueError("fundamental state input contains duplicate symbol/report_period rows")
-    if (out[available_date_col] <= out[report_period_col]).any():
-        raise ValueError("observations must become available after their report period")
+    out = _prepare_periodic_observations(
+        frame, specs, symbol_col, report_period_col, available_date_col
+    )
 
     out["feature_as_of_date"] = out[available_date_col]
     offset = pd.DateOffset(months=int(horizon_periods) * int(period_months))

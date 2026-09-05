@@ -99,7 +99,7 @@ def normalize_walk_forward_permutation(
     return bool(wf_perm_cfg), perm_test_runs, perm_test_seed
 
 
-def _normalize_text_list(value: object | None) -> list[str]:
+def _normalize_text_list(value: Iterable[object] | None) -> list[str]:
     if not value:
         return []
     if isinstance(value, str):
