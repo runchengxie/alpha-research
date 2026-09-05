@@ -109,9 +109,7 @@ def test_scaled_ridge_model_scales_features_before_regression():
         np.array([1.0, 2.0, 3.0]),
     )
 
-    assert model.named_steps["scaler"].mean_.tolist() == pytest.approx(
-        [0.002, 2000.0]
-    )
+    assert model.named_steps["scaler"].mean_.tolist() == pytest.approx([0.002, 2000.0])
     assert model.predict(np.array([[4.0e-3, 4.0e3]])).shape == (1,)
 
 
