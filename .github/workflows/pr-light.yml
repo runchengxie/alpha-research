@@ -1,0 +1,53 @@
+name: Lightweight pull request quality
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/pr-light.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alpha-research-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Lint
+        run: uvx --from 'ruff>=0.8,<1' ruff check .
+
+      - name: Format changed Python files
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha || 'HEAD^' }}"
+          mapfile -t files < <(git diff --name-only "$base_sha" "$GITHUB_SHA" -- '*.py')
+          if ((${#files[@]} == 0)); then
+            echo "No changed Python files."
+          else
+            uvx --from 'ruff>=0.8,<1' ruff format --check "${files[@]}"
+          fi
+
+      - name: Compile public Python sources
+        run: python -m compileall -q src scripts
