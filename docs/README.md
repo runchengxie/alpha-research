@@ -1,5 +1,12 @@
 # alpha-research 文档入口
 
+> status: active
+> owner: alpha-research
+> audience: human and agent
+> last_verified: 2026-09-06
+> source_of_truth: yes
+> superseded_by: n/a
+
 本目录记录 alpha 研究层和模型专用规则。
 
 ## 推荐阅读
@@ -20,12 +27,12 @@
 | 研究后端与 Qlib 状态 | [concepts/framework-backends.md](concepts/framework-backends.md) |
 | 分钟因子边界 | [concepts/minute-factors.md](concepts/minute-factors.md) |
 | StyleReplica | [concepts/style-replica.md](concepts/style-replica.md) |
-| 研究模板设计 | [playbooks/research-template-design.md](playbooks/research-template-design.md) |
+| 研究模板设计 | [guides/research-template-design.md](guides/research-template-design.md) |
 | 信号产物契约 | [reference/signal-artifacts.md](reference/signal-artifacts.md) |
 | 研究产物契约 | [reference/research-outputs.md](reference/research-outputs.md) |
 | DailyWatch20 alpha 归属 | [ownership-migration.md](ownership-migration.md) |
 | 组合研究命名空间 | [namespace-migration.md](namespace-migration.md) |
-| 测试和质量检查 | [testing.md](testing.md) |
+| 测试和质量检查 | [operations/testing.md](operations/testing.md) |
 
 ## 文档边界
 
@@ -40,4 +47,4 @@
 
 通用组合回测、交易成本和容量分析由 `portfolio-backtester` 维护。运行编排、CLI、配置合成、运行目录和目标文件导出由 `strategy-pipeline` 维护。
 
-从其他仓库迁入文档时，应同时更新旧页面的跳转说明，避免形成两份活跃版本。pipeline 侧只保留命令、配置、运行编排和交接入口。
+从其他仓库迁入文档时，应同时更新旧页面的跳转说明，避免形成两份活跃版本。pipeline 侧只保留命令、配置、运行编排和交接入口。编码代理默认只读取本页、相关分类入口和目标页面。
