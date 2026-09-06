@@ -59,7 +59,7 @@ scripts/dev/run_tests.sh maintainability
 默认安装不需要私有数据平台。需要分钟数据源目录等数据平台能力时，再通过 `market-data` extra 安装 `market-data-platform`。版本固定信息记录在 `pyproject.toml` 和 `uv.lock` 中。
 独立检出时需要对应私有仓库的 GitHub 读取权限。
 
-`fast` 和 `unit` 是 `all` 的兼容别名。详细范围见 [docs/testing.md](docs/testing.md)。
+`fast` 和 `unit` 是 `all` 的兼容别名。详细范围见 [测试和质量检查](docs/operations/testing.md)。
 
 ## 主要产物
 
@@ -73,4 +73,4 @@ promotion evidence
 
 信号字段和元数据约定见 [docs/reference/signal-artifacts.md](docs/reference/signal-artifacts.md)。修改契约时，应同步更新代码、测试和文档。
 
-文档从 [docs/README.md](docs/README.md) 进入。
+文档从 [docs/README.md](docs/README.md) 进入。编码代理默认读取根 README、文档首页和与任务相关的一个分类目录，不递归读取全部 Markdown。

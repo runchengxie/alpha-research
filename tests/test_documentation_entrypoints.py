@@ -72,7 +72,7 @@ def test_local_markdown_links_resolve() -> None:
 
 def test_testing_docs_match_script_modes() -> None:
     script = (ROOT / "scripts" / "dev" / "run_tests.sh").read_text(encoding="utf-8")
-    docs = (ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
+    docs = (ROOT / "docs" / "operations" / "testing.md").read_text(encoding="utf-8")
 
     for mode in (
         "all",
@@ -100,7 +100,7 @@ def test_ty_is_the_only_configured_type_checker() -> None:
 
 
 def test_docs_record_current_automation_status() -> None:
-    docs = (ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
+    docs = (ROOT / "docs" / "operations" / "testing.md").read_text(encoding="utf-8")
 
     assert "本仓库是 public" in docs
     assert "GitHub Actions" in docs
@@ -113,7 +113,7 @@ def test_framework_backend_docs_match_current_main_surface() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     docs_index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
     framework_docs = FRAMEWORK_BACKEND_DOC.read_text(encoding="utf-8")
-    testing_docs = (ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
+    testing_docs = (ROOT / "docs" / "operations" / "testing.md").read_text(encoding="utf-8")
     ownership_docs = (ROOT / "docs" / "ownership-migration.md").read_text(encoding="utf-8")
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     dependencies = [
