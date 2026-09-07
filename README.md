@@ -1,5 +1,7 @@
 # alpha-research
 
+> 迁移状态：migration-only。新的私有策略研究进入 `quant-research`，可复用的公共机制进入 `quant-platform`。本仓库仅用于历史复现和迁移兼容。
+
 `alpha-research` 是量化研究工作区的 alpha 研究包，权威 Python 包是 `alpha_research`。
 
 本仓库维护：

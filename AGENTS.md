@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## 迁移通知
+
+`research-workspace` 处于 sunset 过渡期。本仓库不再承载新的策略研究实现。策略 IP、现金流 ML 和研究证据进入 `quant-research`，通用机制进入 `quant-platform`，这里仅维护历史复现和迁移兼容。
+
 本文件说明 `alpha-research` 的协作边界。工作区级规则见顶层 `research-workspace/AGENTS.md`。
 
 ## 仓库职责
