@@ -82,7 +82,7 @@ show_missing = true
 
 [tool.uv.sources]
 market-data-platform = { git = "https://github.com/runchengxie/market-data-platform.git", rev = "fb4da36874382b9887fd2a16dfde8a5c83ea43fa" }
-research-contracts = { git = "https://github.com/runchengxie/research-workspace.git", subdirectory = "src/research_contracts", rev = "f28e97008b7c540730720aac82e63a2944a89b58" }
+research-contracts = { git = "https://github.com/runchengxie/research-workspace.git", subdirectory = "src/research_contracts", rev = "e12aa19f4c17d9a64250cdd1f0d3c58c03fbd44c" }
 research-code-quality = { git = "https://github.com/runchengxie/research-code-quality.git", rev = "1c754c3" }
 
 [tool.uv]
